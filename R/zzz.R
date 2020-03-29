@@ -1,7 +1,7 @@
 # Load needed functions from different packages for fast access
 #' @importFrom bvartools bvs
 # @importFrom bvartools kalman_dk
-#' @importFrom bvartools loglik_normal
+# @importFrom bvartools loglik_normal
 #' @importFrom bvartools post_coint_kls
 #' @importFrom bvartools post_coint_kls_sur
 #' @importFrom bvartools post_normal
