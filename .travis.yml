@@ -1,0 +1,16 @@
+language: r
+cache: packages
+dist: trusty
+
+branches:
+  only:
+  - master
+
+jobs:
+  include:
+  - r: 3.3
+  - r: 3.4
+  - r: 3.5
+  - r: 3.6
+  - r: release
+  - r: devel

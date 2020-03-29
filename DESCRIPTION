@@ -1,0 +1,27 @@
+Package: bgvars
+Title: Bayesian Inference for Global Vector Autoregressive Models
+Version: 0.0.0.9000
+Date: 2020-03-29
+Authors@R: person("Franz X.", "Mohr", email = "franz.x.mohr@outlook.com", role = c("aut","cre"))
+Description: Assists in the set-up and inference of Bayesian global vector autoregressive (BGVAR) models.
+License: GPL (>= 2) 
+Depends: R (>= 3.2.0)
+Imports:
+    bvartools,
+    coda,
+    grDevices,
+    graphics,
+    parallel,
+    Rcpp (>= 0.12.14),
+    stats,
+    utils
+LinkingTo: Rcpp, RcppArmadillo
+LazyData: true
+Encoding: UTF-8
+RoxygenNote: 7.0.2
+URL: https://github.com/franzmohr/bgvars
+BugReports: https://github.com/franzmohr/bgvars/issues
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
