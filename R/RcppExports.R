@@ -9,3 +9,33 @@
     .Call(`_bgvars_ir`, A, h, impulse, response, full)
 }
 
+#' Calculates the log-likelihood of a multivariate normal distribution.
+#' 
+#' @param u a \eqn{K \times T} matrix of residuals.
+#' @param sigma a \eqn{K \times K} or \eqn{KT \times K} variance-covariance matrix.
+#' 
+#' @examples
+#' data("e1")
+#' e1 <- diff(log(e1))
+#' 
+#' # Generate VAR model
+#' data <- gen_var(e1, p = 2, deterministic = "const")
+#' y <- data$Y
+#' x <- data$Z
+#'
+#' # LS estimate
+#' ols <- tcrossprod(y, x) %*% solve(tcrossprod(x))
+#' 
+#' # Residuals
+#' u <- y - ols %*% x # Residuals
+#'
+#' # Covariance matrix
+#' sigma <- tcrossprod(u) / ncol(u)
+#' 
+#' # Log-likelihood
+#' loglik_normal(u = u, sigma = sigma)
+#' 
+loglik_normal <- function(u, sigma) {
+    .Call(`_bgvars_loglik_normal`, u, sigma)
+}
+

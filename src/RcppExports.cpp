@@ -33,10 +33,23 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// loglik_normal
+arma::vec loglik_normal(arma::mat u, arma::mat sigma);
+RcppExport SEXP _bgvars_loglik_normal(SEXP uSEXP, SEXP sigmaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type u(uSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type sigma(sigmaSEXP);
+    rcpp_result_gen = Rcpp::wrap(loglik_normal(u, sigma));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_bgvars_combine_p_sigma", (DL_FUNC) &_bgvars_combine_p_sigma, 2},
     {"_bgvars_ir", (DL_FUNC) &_bgvars_ir, 5},
+    {"_bgvars_loglik_normal", (DL_FUNC) &_bgvars_loglik_normal, 2},
     {NULL, NULL, 0}
 };
 
