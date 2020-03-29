@@ -6,18 +6,6 @@
 
 using namespace Rcpp;
 
-// combine_p_sigma
-Rcpp::List combine_p_sigma(arma::mat& p, arma::mat& sigma);
-RcppExport SEXP _bgvars_combine_p_sigma(SEXP pSEXP, SEXP sigmaSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::mat& >::type p(pSEXP);
-    Rcpp::traits::input_parameter< arma::mat& >::type sigma(sigmaSEXP);
-    rcpp_result_gen = Rcpp::wrap(combine_p_sigma(p, sigma));
-    return rcpp_result_gen;
-END_RCPP
-}
 // ir
 arma::mat ir(Rcpp::List A, int h, int impulse, int response, bool full);
 RcppExport SEXP _bgvars_ir(SEXP ASEXP, SEXP hSEXP, SEXP impulseSEXP, SEXP responseSEXP, SEXP fullSEXP) {
@@ -47,7 +35,6 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_bgvars_combine_p_sigma", (DL_FUNC) &_bgvars_combine_p_sigma, 2},
     {"_bgvars_ir", (DL_FUNC) &_bgvars_ir, 5},
     {"_bgvars_loglik_normal", (DL_FUNC) &_bgvars_loglik_normal, 2},
     {NULL, NULL, 0}
