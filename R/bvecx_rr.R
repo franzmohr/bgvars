@@ -129,7 +129,6 @@
   
   #### Gibbs sampler ####
   for (draw in 1:iterations) {
-    #### Non-cointegration coefficients ####
     if (var_select & gamma_update) {
       z <- z_bvs %*% gamma_lambda
     }
@@ -137,7 +136,7 @@
     if (use_rr) {
       temp <- post_coint_kls_sur(y = y, beta = beta, w = ect, sigma_i = sigma_i,
                                  v_i = v_i, p_tau_i = p_tau_i, g_i = sigma_i,
-                                 x = z, gamma_mu_prior = gamma_mu_prior, gamma_v_i_prior = gamma_v_i_prior)
+                                 x = z, gamma_mu_prior = gamma_mu_prior, gamma_V_i_prior = gamma_v_i_prior)
       Pi <- temp$Pi
       gamma <- temp$Gamma
       beta <- temp$beta 

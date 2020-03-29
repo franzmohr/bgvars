@@ -15,11 +15,11 @@
 #' @param sigma a \eqn{K \times K} or \eqn{KT \times K} variance-covariance matrix.
 #' 
 #' @examples
-#' data("e1")
+#' data("e1", package = "bvartools")
 #' e1 <- diff(log(e1))
 #' 
 #' # Generate VAR model
-#' data <- gen_var(e1, p = 2, deterministic = "const")
+#' data <- bvartools::gen_var(e1, p = 2, deterministic = "const")
 #' y <- data$Y
 #' x <- data$Z
 #'
