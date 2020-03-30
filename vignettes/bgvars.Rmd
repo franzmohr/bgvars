@@ -1,5 +1,5 @@
 ---
-title: "Introduction to bgvars"
+title: "Introduction to `bgvars`"
 author: "Franz X. Mohr"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
@@ -18,23 +18,23 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
-Global vector autoregressive (GVAR) models are convenient tools to model the world economy. They were originally proposed by Pesaran et al. (2004) and further developed by Dees et al. (2007) to study the international transmission of shocks. Since then they have been used in a range of macroeconomic applications. Chudik and Pesaran (2016) provide an extensive survey of the latest developments in GVAR modelling.
+Global vector autoregressive (GVAR) models are convenient tools to model the world economy. They were originally proposed by Pesaran et al. (2004) and further developed by Dees et al. (2007) to study the international transmission of economic shocks. Since then they have been used in a range of macroeconomic applications. Chudik and Pesaran (2016) provide an extensive survey of the latest developments in GVAR modelling. The `bgvars` package allows Bayesian inference of such models.
 
-GVAR models address the so-called *curse of dimensionality* of standard VAR models, where the number of estimated coefficients increases disproportionately with the number of variables. Since macroeconomic time series tend to be relatively short, there might not be enough observations for the estimation of large VAR models. This problem is especially severe in the realm of international spill-over effects, where the interaction of variables across many countries are of interest. Based on a few assumptions the GVAR approach tries to mitigate this challenge by dividing such an estimation problem into multiple, country-specific models. For a basic GVAR model with global variables and constant coefficients such a model can have the form
+GVAR models address the so-called *curse of dimensionality* of standard VAR models, where the number of estimated coefficients increases disproportionately with the number of variables. Since macroeconomic time series tend to be relatively short, there might not be enough observations for the estimation of large VAR models. This problem is especially severe in the realm of international spill-over effects, where the interaction of variables across many countries are of interest. Based on a few assumptions the GVAR approach tries to mitigate this challenge by dividing such an estimation problem into multiple, country-specific models. For a basic GVAR model with global variables and constant coefficients such a model can have the following form
 
 $$y_{i,t} = \sum_{l = 1}^{p^d_i} A^{d}_{i,l} y_{i, t - l} +
 \sum_{l = 0}^{p_i^*} A^{*}_{i,l} y^*_{i, t - l}+
 \sum_{l = 0}^{s_i} B_{i,l} x_{t - l} +
-C_i d_{t} + u_{i,t},$$
+C_i d_{i,t} + u_{i,t},$$
 
-where $y_{i,t}$ is a $K_i$-dimensional vector of endogenous domestic variables of country $i$ in period $t$ and $K_i$ is the number of endogenous domestic variables for that country. $y^{*}_{i,t}$ is a $K^{*}_{i} \times 1$ vector of country-specific foreign variables. $A^{d}_{i,l}$ is a $K_i \times K_i$ coefficient matrix of lagged values of endogenous domestic variables. $A^{*}_{i,l}$ is the $K_i \times K^{*}_{i}$ coefficient matrix of foreign variables. $p^{d}_{i}$ and $p^{*}_{i}$ are the lag orders of endogenous and foreign variables, respectively. $C_{i}$ is the coefficient matrix of unrestricted deterministic terms in vector $d_t$. The error term $u_t$ is assumed to have zero mean and a variance-covariance matrix $\Sigma_{i}$.
+where $y_{i,t}$ is a $K_i$-dimensional vector of endogenous domestic variables of country $i$ in period $t$ and $K_i$ is the number of endogenous domestic variables for that country. $y^{*}_{i,t}$ is a $K^{*}_{i} \times 1$ vector of country-specific foreign variables. $A^{d}_{i,l}$ is a $K_i \times K_i$ coefficient matrix of lagged values of endogenous domestic variables. $A^{*}_{i,l}$ is the $K_i \times K^{*}_{i}$ coefficient matrix of foreign variables. $p^{d}_{i}$ and $p^{*}_{i}$ are the lag orders of endogenous and foreign variables, respectively. $B_{i,l}$ is a $K_i \times K^{g}_{i}$ coefficient matrix corresponding to the $K^{g}_{i} \times 1$ vector $x_t$ of global variables. $C_{i}$ is the coefficient matrix of deterministic terms in vector $d_{i,t}$. The error term $u_t$ is assumed to have zero mean and a variance-covariance matrix $\Sigma_{i}$.
 
 Subtracting the term of contemporaneous foreign variables and using $v_{i, t} = (y^{\prime}_{i,t}, y^{*\prime}_{i,t})^{\prime}$ gives
 
 $$\left[I_{K_i}, -A_{i,0}^{*} \right]  v_{i,t} =
 \sum_{l = 1}^{p_i}  \left[ A^d_{i,l}, A_{i,l}^* \right] v_{i,t-l} +
 \sum_{l = 0}^{s_i} B_{i, l} x_{t - j} +
-C_i d_{t} + u_{i, t},$$
+C_i d_{i,t} + u_{i, t},$$
 
 where $A^{d}_{i,l}$ and $A^{*}_{i,l}$ are set to zero if $p^{d}_{i}$ or $p^{*}_{i}$ are smaller than $p_i$, respectively.
 
@@ -43,21 +43,24 @@ The country-specific foreign variables in $y^{*}_{i,t}$ are constructed as weigh
 $$A_{i,0} y_t =
 \sum_{l = 1}^{p_{i}} A_{i, l} y_{t-l} +
 \sum_{l = 0}^{s_{i}} B_{i, l} x_{t-l} +
-C_{i,t} d_{t} +
+C_{i} d_{i,t} +
 u_{i,t}.$$
 
 Note that the country-specific weight matrix is one of the central aspect of GVAR modelling. The matrix helps to reduce the dimensionality of the overall model by adding prior information about the relative importance of a foreign country to the model.
 
-Stacking the country-specific coefficient matrices gives the structural GVAR model
+Stacking the country-specific coefficient matrices gives the *structural GVAR model*
 
 $$A_{0} y_t = \sum_{l = 1}^{p} A_{l} y_{t-l} + \sum_{l = 1}^{s} B_{l} x_{t} + C d_t + u_t,$$
-where $p = max(p^d_1,...,p^d_N, p^{*}_1,...,p^{*}_N)$ is the lag of the global system, $s = max(s_1,...,s_N)$ is the lag of the global variable and $u_t$ is normally distributed with zero mean and covariance matrix $\Sigma$. Furthermore
+where $p = max(p^d_1,...,p^d_N, p^{*}_1,...,p^{*}_N)$ is the lag of the global system, $s = max(s_1,...,s_N)$ is the lag of the global variable and $u_t$ is normally distributed with zero mean and covariance matrix $\Sigma$. Furthermore,
 
-$$A_j = \begin{bmatrix} A_{1, j} \\ A_{2,j} \\ \vdots \\ A_{N_j} \end{bmatrix}, B_j = \begin{bmatrix} B_{1, j} \\ B_{2,j} \\ \vdots \\ B_{N_j} \end{bmatrix}, \text{ and } \Sigma = \begin{bmatrix} \Sigma_1 & 0 & \dots & 0 \\ 0 & \Sigma_2 & \ddots & \vdots \\ \vdots & \ddots & \ddots & 0 \\ 0 & \dots & 0 & \Sigma_{N} \end{bmatrix}.$$
+$$A_j = \begin{bmatrix} A_{1, j} \\ A_{2,j} \\ \vdots \\ A_{N,j} \end{bmatrix},
+B_j = \begin{bmatrix} B_{1, j} \\ B_{2,j} \\ \vdots \\ B_{N,j} \end{bmatrix},
+C = \begin{bmatrix} C_{1} \\ C_{2} \\ \vdots \\ C_{N} \end{bmatrix},
+\text{ and } \Sigma = \begin{bmatrix} \Sigma_1 & 0 & \dots & 0 \\ 0 & \Sigma_2 & \ddots & \vdots \\ \vdots & \ddots & \ddots & 0 \\ 0 & \dots & 0 & \Sigma_{N} \end{bmatrix}.$$
 
-The reduced form GVAR model is
+The *reduced form GVAR model* is
 
-$$y_t = \sum_{l = 1}^{p} G_{l} y_{t-l} + \sum_{l = 1}^{s} H_{l} x_{t} + D d_t + A_0^{-1} u_t,$$
+$$y_t = \sum_{l = 1}^{p} G_{l} y_{t-l} + \sum_{l = 1}^{s} H_{l} x_{t-l} + D d_t + A_0^{-1} u_t,$$
 where $G_l = A_0^{-1} A_l$, $H_l = A_0^{-1} B_l$ and $D = A_0^{-1} C$. This model resembles a standard VAR model with exogenous variables, for which impulse responses and variance decompositions can be calculated in the usual manner.
 
 ## Data
@@ -65,8 +68,7 @@ where $G_l = A_0^{-1} A_l$, $H_l = A_0^{-1} B_l$ and $D = A_0^{-1} C$. This mode
 The `bgvars` package comes with the *2016 Vintage* of the GVAR dataset (Mohaddes and Raissi, 2018), which contains economic time series for 33 countries and three commodities from 1979Q2 to 2016Q4.
 
 ```{r data, eval = FALSE}
-library(bgvars)
-
+library(bgvars) 
 data("gvar2016")
 ```
 
@@ -78,8 +80,9 @@ global_data <- gvar2016$global_data
 ```
 
 
-
 ### Regional data
+
+In Dees et al. (2007) the observations of eight euro area countries are combined to obtain a time series for the euro area regiona. The function `create_regions` can be used to do this and the data set `region_weights` in `gvar2016` contains suitable weight data.
 
 ```{r regions, eval = FALSE}
 region_weights <- gvar2016$region_weights
@@ -98,7 +101,9 @@ country_data <- temp$country_data
 gvar_weights <- temp$gvar_weights
 ```
 
-### Weight data
+### Weight matrix data
+
+
 
 ```{r weights, eval = FALSE}
 weight_data <- gvar2016$weight_data
@@ -154,14 +159,7 @@ country_models <- add_deterministics(country_models,
 Before the country models can be estimated, the priors of the coefficients have to be specified. The `add_priors` function can 
 
 ```{r priors, eval = FALSE}
-country_models <- add_priors(country_models, type = "minnesota")
-```
-
-
-```{r ssvs, eval = FALSE}
-country_models <- add_ssvs(country_models, 
-                           semiautomatic = c(.1, 10), prob_prior = .8,
-                           threshold = .5, draws = 10000)
+country_models <- add_priors(country_models)
 ```
 
 ## Estimation
