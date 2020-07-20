@@ -30,14 +30,21 @@ devtools::install_github("franzmohr/bgvars")
 
 ## Usage
 
-A typical analysis consists of four steps:
+The `bgvars` package allows Bayesian inference of GVAR models. It
+separates a typical GVAR analysis into four steps:
 
-  - Data preparation
-  - Model specification
-  - Estimating and solving the GVAR model
-  - Impulse response analysis
+  - *Preparation*, which includes the initial transformation of raw data
+    and the generation of regional aggregates as well as the weight
+    matrices \(W_{i, t}\);
+  - *Specification* for setting up country-specific models that should
+    be estimated;
+  - *Estimation* using Bayesian algorithms to produce draws from the
+    posterior distribution of each country model, which are subsequently
+    combined to a global model;
+  - *Evaluation* for the generation of forecasts, impulse responses and
+    forecast error variance decompositions.
 
-### Data preparation
+### Data
 
 The `bgvars` packages comes with the updated GVAR database of Mohaddes
 and Raissi (2018), which contains economic time series for 33 countries
@@ -56,6 +63,8 @@ weight_data <- gvar2016$weight_data # Data for trade weights
 country_data <- diff_variables(country_data, variables = c("y", "eq", "ep"))
 global_data <- diff_variables(global_data)
 ```
+
+### Preparation
 
 Regional series can be calculated from individual country series with
 the function `create_regions`.
