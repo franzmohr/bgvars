@@ -17,7 +17,6 @@
 #'   \item \strong{lr:} long-term interest rate
 #'   \item \strong{ep:} log deflated exchange rate
 #'   \item \strong{eq:} log real equity prices
-#   \item \strong{credit:} log real credit to the privat non-financial sector
 #'   }
 #'   
 #'   The variables are available for the following countries
@@ -95,6 +94,7 @@
 #' 
 #' Mohaddes, K., & Raissi, M. (2018). \emph{Compilation, revision and updating of the global VAR (GVAR) database, 1979Q2--2016Q4} (mimeo). University of Cambridge: Faculty of Economics.
 #' The paper and dataset can be downloaded from \href{https://www.mohaddes.org/gvar}{https://www.mohaddes.org/gvar}.
+#' 
 "gvar2016"
 
 #' Dees, di Mauro, Pesaran \& Smith data set

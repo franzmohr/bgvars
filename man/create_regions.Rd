@@ -4,10 +4,15 @@
 \alias{create_regions}
 \title{Create Regional Series}
 \usage{
-create_regions(country_data, regions, period, region_weights, weight_data)
+create_regions(country_data, weight_data, region_weights, regions, period)
 }
 \arguments{
 \item{country_data}{a named list of time-series objects containing country data.}
+
+\item{weight_data}{a named list of named time-series objects. See 'Details'.}
+
+\item{region_weights}{a multivariate time-series object containing data used
+to weight the observations in \code{country_data}.}
 
 \item{regions}{a named list of character vectors containing the names of countries
 in \code{country_data}, which should be combined to a region. The name of a
@@ -15,11 +20,6 @@ list element will become the name of the region.}
 
 \item{period}{either a single integer or a numeric vector specifiying the periods in
 \code{region_weights}, which should be used to construct weights.}
-
-\item{region_weights}{a multivariate time-series object containing data used
-to weight the observations in \code{country_data}.}
-
-\item{weight_data}{a named list of named time-series objects. See 'Details'.}
 }
 \value{
 A list containing the following elements:

@@ -18,9 +18,9 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
-Global vector autoregressive (GVAR) models are convenient tools to model the world economy. They were originally proposed by Pesaran et al. (2004) and further developed by Dees et al. (2007) to study the international transmission of economic shocks. Since then they have been used in a range of macroeconomic applications. Chudik and Pesaran (2016) provide an extensive survey of the latest developments in GVAR modelling. The `bgvars` package allows Bayesian inference of such models.
+Global vector autoregressive (GVAR) models are convenient tools to model the world economy. They were originally proposed by Pesaran et al. (2004) and further developed by Dees et al. (2007) to study the international transmission of economic shocks. Since then they have been employed to address a range of macroeconomic questions. Chudik and Pesaran (2016) provide an extensive survey of the latest developments in GVAR modelling.
 
-GVAR models address the so-called *curse of dimensionality* of standard VAR models, where the number of estimated coefficients increases disproportionately with the number of variables. Since macroeconomic time series tend to be relatively short, there might not be enough observations for the estimation of large VAR models. This problem is especially severe in the realm of international spill-over effects, where the interaction of variables across many countries are of interest. Based on a few assumptions the GVAR approach tries to mitigate this challenge by dividing such an estimation problem into multiple, country-specific models. For a basic GVAR model with global variables and constant coefficients such a model can have the following form
+GVAR models address the so-called *curse of dimensionality* of standard VAR models, where the number of estimated coefficients increases disproportionately with the number of variables. Since macroeconomic time series tend to be relatively short, there might not be enough observations for the estimation of large VAR models. This problem is especially severe in the realm of international spill-over effects, where the interaction of variables across many countries is of interest. Based on a few assumptions the GVAR approach tries to mitigate this issue by dividing the large VAR model into country-specific sub-models. For a basic GVAR model with global variables and constant coefficients these country models can have the form
 
 $$y_{i,t} = \sum_{l = 1}^{p^d_i} A^{d}_{i,l} y_{i, t - l} +
 \sum_{l = 0}^{p_i^*} A^{*}_{i,l} y^*_{i, t - l}+
@@ -36,9 +36,9 @@ $$\left[I_{K_i}, -A_{i,0}^{*} \right]  v_{i,t} =
 \sum_{l = 0}^{s_i} B_{i, l} x_{t - j} +
 C_i d_{i,t} + u_{i, t},$$
 
-where $A^{d}_{i,l}$ and $A^{*}_{i,l}$ are set to zero if $p^{d}_{i}$ or $p^{*}_{i}$ are smaller than $p_i$, respectively.
+where $A^{d}_{i,l}$ and $A^{*}_{i,l}$ are set to zero if $p^{d}_{i}$ or $p^{*}_{i}$ are smaller than $p_i = \max(p^{d}_{i}, p^{*}_{i})$, respectively.
 
-The country-specific foreign variables in $y^{*}_{i,t}$ are constructed as weighted averages of foreign observations. Therefore, the vector of country-specific domestic and foreign variables can be written in terms of the global $K$-dimensional vector $y_t$ so that $v_{i, t} = W_{i} y_t$, where $W_{i}$ is a $K_i \times K$ weight matrix and $K = \sum_{i = 1}^{N} K_i$ is the total number of endogenous variables in the global model. Defining $A_{i,0} = \left[I_{K_i}, -A^{*}_{i,0}\right] W_{i, t}$ and $A_{i,l} = \left[A^{d}_{i,l} A^{*}_{i,l}\right] W_{i, t}$ for $l = 1, ..., p_i$ each country model can be written as
+The country-specific foreign variables in $y^{*}_{i,t}$ are constructed as weighted averages of foreign observations. Therefore, the vector of country-specific domestic and foreign variables can be written in terms of the global $K$-dimensional vector $y_t$ so that $v_{i, t} = W_{i} y_t$, where $W_{i}$ is a $(K_i + K^{*}_{i}) \times K$ weight matrix and $K = \sum_{i = 1}^{N} K_i$ is the total number of endogenous variables in the global model. Defining $A_{i,0} = \left[I_{K_i}, -A^{*}_{i,0}\right] W_{i, t}$ and $A_{i,l} = \left[A^{d}_{i,l}, A^{*}_{i,l}\right] W_{i, t}$ for $l = 1, ..., p_i$ each country model can be written as
 
 $$A_{i,0} y_t =
 \sum_{l = 1}^{p_{i}} A_{i, l} y_{t-l} +
@@ -46,96 +46,154 @@ $$A_{i,0} y_t =
 C_{i} d_{i,t} +
 u_{i,t}.$$
 
-Note that the country-specific weight matrix is one of the central aspect of GVAR modelling. The matrix helps to reduce the dimensionality of the overall model by adding prior information about the relative importance of a foreign country to the model.
+The country-specific weight matrix is one of the central aspects of GVAR modelling. The matrix helps to reduce the dimensionality of the overall model by adding prior information about the relative importance of a foreign country to the model. The coefficients corresponding to foreign variables describe the impact of a change in a composite indicator. The weight matrix is subsequently used to distribute this effect across the countries in the model.
 
 Stacking the country-specific coefficient matrices gives the *structural GVAR model*
 
 $$A_{0} y_t = \sum_{l = 1}^{p} A_{l} y_{t-l} + \sum_{l = 1}^{s} B_{l} x_{t} + C d_t + u_t,$$
-where $p = max(p^d_1,...,p^d_N, p^{*}_1,...,p^{*}_N)$ is the lag of the global system, $s = max(s_1,...,s_N)$ is the lag of the global variable and $u_t$ is normally distributed with zero mean and covariance matrix $\Sigma$. Furthermore,
+where $p = max(p_1,...,p_N)$ is the lag of the global system, $s = max(s_1,...,s_N)$ is the lag of the global variable and $u_t$ is normally distributed with zero mean and covariance matrix $\Sigma$. Furthermore,
 
 $$A_j = \begin{bmatrix} A_{1, j} \\ A_{2,j} \\ \vdots \\ A_{N,j} \end{bmatrix},
 B_j = \begin{bmatrix} B_{1, j} \\ B_{2,j} \\ \vdots \\ B_{N,j} \end{bmatrix},
 C = \begin{bmatrix} C_{1} \\ C_{2} \\ \vdots \\ C_{N} \end{bmatrix},
 \text{ and } \Sigma = \begin{bmatrix} \Sigma_1 & 0 & \dots & 0 \\ 0 & \Sigma_2 & \ddots & \vdots \\ \vdots & \ddots & \ddots & 0 \\ 0 & \dots & 0 & \Sigma_{N} \end{bmatrix}.$$
 
-The *reduced form GVAR model* is
+The *reduced form GVAR model* is obtained by pre-multiplying by $A_{0}^{-1}$ so that 
 
 $$y_t = \sum_{l = 1}^{p} G_{l} y_{t-l} + \sum_{l = 1}^{s} H_{l} x_{t-l} + D d_t + A_0^{-1} u_t,$$
-where $G_l = A_0^{-1} A_l$, $H_l = A_0^{-1} B_l$ and $D = A_0^{-1} C$. This model resembles a standard VAR model with exogenous variables, for which impulse responses and variance decompositions can be calculated in the usual manner.
+where $G_l = A_0^{-1} A_l$, $H_l = A_0^{-1} B_l$ and $D = A_0^{-1} C$. This model resembles a standard VAR model with exogenous variables, for which forecasts, impulse responses and variance decompositions can be obtained in the usual manner.
 
-## Data
+The `bgvars` package allows Bayesian inference of GVAR models. It separates a typical GVAR analysis into four steps:
 
-The `bgvars` package comes with the *2016 Vintage* of the GVAR dataset (Mohaddes and Raissi, 2018), which contains economic time series for 33 countries and three commodities from 1979Q2 to 2016Q4.
+* *Preparation* includes the initial transformation of raw data and the generation of regional aggregates and the weight matrices $W_{i}$;
+* *Specification* of the different country-specific models;
+* *Estimation* uses Bayesian algorithms to obtain draws from the posterior distribution of each country model;
+* *Evaluation* for the generation of forecasts, impulse responses and forecast error variance decompositions.
 
-```{r data, eval = FALSE}
-library(bgvars) 
+## Preparation
+
+### Data
+
+The `bgvars` package comes with the *2016 Vintage* of the GVAR dataset of Mohaddes and Raissi (2018), which contains economic time series for 33 countries[^countries] and three commodities from 1979Q2 to 2016Q4 as well as additional datasets for the construction of regional aggregrates and trade weights.[^dees2007] The dataset can be loaded with `data("gvar2016")`, which returns a list of four elements:
+
+[^countries]: Argentina, Australia, Austria, Belgium, Brazil, Canada, China, Chile, Finland, France, Germany, India, Indonesia, Italy, Japan, Korea, Malaysia, Mexico, Netherlands, Norway, New Zealand, Peru, Philippines, South Africa, Saudi Arabia, Singapore, Spain, Sweden, Switzerland, Thailand, Turkey, United Kingdom, USA.
+
+[^dees2007]: In addition to `gvar2016` the `bgvars` package also contains the dataset used by Dees et al. (2007), which can be loaded with `data("dees2007")`. Its structure is analogous to that of`gvar2016`.
+
+* `country_data`: A named list of 33 time-series objects with 151 quarterly observations from 1979Q2 to 2016Q4 for real gross domestic product, inflation, real exchange rates, real equity prices, and short-term as well as long-term interest rates, where available.
+* `global_data`: A time-series object containing 151 quarterly observations from 1979Q2 to 2016Q4 for the prices of oil, agricultural raw materials and metals.
+* `region_weights`: A time-series object containing annual data on PPP-GDP from 1990 to 2016 for the countries covered by the dataset.
+* `weight_data`: A named list of time-series objects containing annual data on trade flows from 1980 to 2016 for the countries covered by the dataset.
+
+```{r data, eval = FALSE, messsage = FALSE}
+# Load package
+library(bgvars)
+
+# Load gvar2016 dataset
 data("gvar2016")
-```
 
-### Country and commodity data
-
-```{r country data, eval = FALSE}
+# Create distinct data objects for each list element
 country_data <- gvar2016$country_data
 global_data <- gvar2016$global_data
+region_weights <- gvar2016$region_weights
+weight_data <- gvar2016$weight_data
 ```
 
+As can be seen from the equations above, country-specific time series and data on trade weights are obligatory input for a GVAR model. Time series of global variables and data on regional weights are optional, but they are used frequently. Therefore, all four datasets will be used in this introduction.
 
-### Regional data
+### Transformation
 
-In Dees et al. (2007) the observations of eight euro area countries are combined to obtain a time series for the euro area regiona. The function `create_regions` can be used to do this and the data set `region_weights` in `gvar2016` contains suitable weight data.
+The time series on GDP in the GVAR dataset of Mohaddes and Raissi (2018) are in levels for all countries. Hence, it can be assumed that many of the series are not stationary.[^vecm] The function `diff_variables` allows to take the first difference of either a specific variable or all available series across all country data sets in order to make them stationary.
+
+[vecm^]: Although stationary time series are a used in standard VAR models as presented in this introduction, the series of Mohaddes and Raissi (2018) can be considered to be $I$(1), which is suitable for vector-error correction (VEC) models.
+
+```{r, eval = FALSE}
+# Take first difference of GDP across all countries
+country_data <- diff_variables(country_data, variables = "y")
+```
+
+Since the GVAR model considered in this instroduction also includes a global variable, the first differences of the series in object `global_data` are obtained as well.
+
+```{r, eval = FALSE}
+# Take first difference over all global series
+global_data <- diff_variables(global_data)
+```
+
+### Generating regional aggregates
+
+In Dees et al. (2007) time series of eight euro area countries[^pppcountries] are combined to obtain series for the euro area region. Function `create_regions` can be used to perform this task. It produces a list, which contains updated versions of the country-specific series in `country_data` and `weight_data`. The data set `region_weights` in `gvar2016` contains suitable weight data for the combination of the series in `country_data`. Object `weight_data` is adjusted by simply adding up the respective series. The function `create_regions` also requires a list of specifications of the regions, which should be created, and a specification of the periods used for the creation of the weights. In the following example the euro area region `"EA"` is created from the countries that are specified in vector `ea`. Furthermore, by specifying `period = 3` a 3-period rolling window of the weights in object `region_weights` is used to calculate the regional aggregates from the respective elements of `country_data`.[^rollwind]
+
+[^pppcountries]: Austria, Belgium, Finland, France, Germany, Italy, Netherlands and Spain.
+
+[^rollwind]: If a numeric vector is provided instead, the function will weight country-specific observations based on the sums over these specified periods.
 
 ```{r regions, eval = FALSE}
-region_weights <- gvar2016$region_weights
-
 # Define region for the Euro area
 ea <- c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")
 
+# Create regions
 temp <- create_regions(country_data = country_data,
                        regions = list("EA" = ea),
                        period = 3,
                        region_weights = region_weights,
-                       gvar_weights = gvar_weights)
+                       weight_data = weight_data)
 
 # Update country and weight data
 country_data <- temp$country_data
-gvar_weights <- temp$gvar_weights
+weight_data <- temp$weight_data
 ```
 
-### Weight matrix data
+### Generating weight matrices
 
-
+Function `create_weights` can be used to produce the country-specific weight matrices $W_{i,t}$. If an integer is provided as argument `period`, the weights are constructed from rolling sums over the last periods contained in `weight_data`. This specification also requires to specify the argument `country_data` so that the periods of the weights can be matched with the periods of the country series. If a numeric vector is provided, the function calculates country weights based on the sums over the specified periods and no specification of `country_data` is necessary. In the following example a 3-period rolling window of weights is produced.
 
 ```{r weights, eval = FALSE}
-weight_data <- gvar2016$weight_data
-
-gvar_weights <- create_weights(weight_data = weight_data, period = 3,
-                               country_data = country_data)
+weight_data <- create_weights(weight_data = weight_data, period = 3,
+                              country_data = country_data)
 ```
 
+## Specification
 
-## Model specification
+The specification of lags for domestic, foreign and global variables -- i.e. $p^d_i$, $p_i^*$ and $s_i$, respectively -- as well as deterministic terms and priors for multiple country models is a laborious process. `bgvars` provides functions that alleviate this step by setting up standard specifications, which can be fine-tuned by the researcher. This workflow is illustrated in the following.
+
+### Countries, variables and lags
+
+Function `create_specifications` produces a list of model specifications for each country in the GVAR model. In the following example the lag order for domestic variables is set to 2 and for foreign and global variables to 1 for the country-specific VAR models of the euro area, the USA, Japan, Canada, Norway and the United Kingdom. All other countries are excluded from the model. In terms of variables only GDP growth $y$, inflation $\Delta p$, short-term interest rates $r$ and oil prices $poil$ are used.
 
 ```{r specs, eval = FALSE}
 model_specs <- create_specifications(country_data = country_data,
                                      global_data = global_data,
                                      p_domestic = 2,
                                      p_foreign = 1,
-                                     r = 2,
-                                     countries = c("EA", "US", "JP", "CA", "MX", "GB"),
+                                     s = 1,
+                                     countries = c("EA", "US", "JP", "CA", "NO", "GB"),
                                      variables = c("y", "Dp", "r", "poil"),
-                                     type = "VEC")
+                                     type = "VAR")
 ```
 
+This introduction follows Dees et al. (2007) by including oil prices $poil$ in the US model as an endogenous varible. Therefore the variable is not considered a global variable any more and becomes a foreign variable in the other country models. Furthermore, foreign interest rates $r^{*}$ are excluded from the US model. To implement such a specification the researcher can directly manipulate the output of function `create_specifications`. The vectors of endogenous and foreign variables in the US model can be changed by accessing and changing the respective elements of the output object:
 
 ```{r us, eval = FALSE}
+# Change vector of endogenous variables in US model
 model_specs$US$domestic$variables <- c("poil", "y", "Dp", "r")
+# Change vector of foreign variables in US model
 model_specs$US$foreign$variables <- c("y", "Dp")
-model_specs$US$cointegration$rank <- 1
-
-model_specs$MX$domestic$lags <- 1
 ```
 
-The function `create_models` is used to produce a list of models that can be estimated. This list structure was chosen to facilitate the use of parallel computing, where each element of that list - a country model - can be estimated on a seperate node.
+In case the researcher wants to set the lag of foreign variables of the US model to 2 instead of 1, this can be done in the following way:
+
+```{r , eval = FALSE}
+# Change vector of foreign variables in US model
+model_specs$US$foreign$lags <- 2
+```
+
+Note that `bgvars` also allows to specify a vector of different lag specifications for a group of variables. For example, if `p_domestic = 1:2` was used in `create_specifications`, each lag element corresponding to endogenous variables in the resulting output object would include this specification.
+
+### Country models
+
+As a next step, the list of specifications for each country model is translated into a list of models that can be estimated separately. Each element of the resulting list contains all the necessary information such as data, lag orders and the included variables for the estimation of a certain specification of a country model. This also means that it is possible to estimate multiple models with different specifications for the same country. For example, if `p_domestic = 1:2` was used in `create_specifications`, two models would be generated for each country. The first object would use one lag for endogenous variables and the second model would use two lags. If the argument `p_foreign = 1:2` was used in addition to `p_domestic = 1:2`, there would be four country models with each possible combination of lags for endogenous and foreign variables.
+
+Function `create_models` produces a list of country models for each distinct specification.
 
 ```{r models, eval = FALSE}
 country_models <- create_models(country_data = country_data,
@@ -144,17 +202,19 @@ country_models <- create_models(country_data = country_data,
                                 model_specs = model_specs)
 ```
 
-Note that once a global variable enters a country model as endogenous variable, `create_models` automatically turns it into a foreign star variable in other countries and excludes it from the set of global variables.
+Note that once a global variable enters a country model as endogenous variable as was specified above, `create_models` automatically turns it into a foreign variable in other country models and excludes it from the set of global variables.
+
+### Deterministic terms
 
 Deterministic terms can be added to each country model with the `add_deterministics` function. For VEC models it can be chosen, whether constants, linear trends or seasonal dummy variables enter the error correction term as restricted variables or the non-cointegration part of the model as unrestricted variables. Similar to the existing literature, a trend is added to the error correction term and a constant to the non-cointegration part of the model.
 
 ```{r deterministics, eval = FALSE}
 country_models <- add_deterministics(country_models,
-                                     const = "unrestricted",
-                                     trend = "restricted")
+                                     const = TRUE,
+                                     trend = FALSE)
 ```
 
-## Priors
+### Priors
 
 Before the country models can be estimated, the priors of the coefficients have to be specified. The `add_priors` function can 
 
@@ -162,7 +222,15 @@ Before the country models can be estimated, the priors of the coefficients have 
 country_models <- add_priors(country_models)
 ```
 
+### Variable selection
+
+
+
+
+
 ## Estimation
+
+using Bayesian algorithms to produce draws from the posterior distribution of each country model, which are subsequently combined to a global model;
 
 The country-specific models can be estimated with the `estimate_gvar` function.
 
@@ -178,8 +246,6 @@ gvar_est <- estimate_gvar(country_models, iterations = 25000, burnin = 10000, th
 contemp_coeffs(gvar_est)
 ```
 
-## Solving the GVAR model
-
 Once the country-specific models are estimated.
 
 ```{r, message=FALSE, include = FALSE, eval = FALSE}
@@ -189,7 +255,26 @@ gvar <- solve_gvar(gvar_est)
 gvar <- solve_gvar(gvar_est)
 ```
 
-## Impulse response analysis
+## Evaluation
+
+### Contemporary coefficients
+
+Dees et al. (2007) present results on contemporary coefficients, which can provide an indication of how strongly a country is connected to the world economy.
+
+
+
+
+
+### Forecasting
+
+```{r, eval = FALSE, fig.width=5.5, fig.height = 4.5}
+gvar_irf <- girf(gvar, impulse = c("US", "r"), response = c("US", "y"),
+                n.ahead = 20, ci = .68)
+
+plot(gvar_irf * 100)
+```
+
+### Impulse response analysis
 
 ```{r gir, eval = FALSE, fig.width=5.5, fig.height = 4.5}
 gvar_irf <- girf(gvar, impulse = c("US", "r"), response = c("US", "y"),
@@ -198,7 +283,7 @@ gvar_irf <- girf(gvar, impulse = c("US", "r"), response = c("US", "y"),
 plot(gvar_irf * 100)
 ```
 
-## Forecast error variance decomposition
+### Forecast error variance decomposition
 
 ```{r gfevd, eval = FALSE, fig.width=5.5, fig.height = 4.5}
 gvar_fevd <- gfevd(gvar, response = c("US", "y"), n.ahead = 20, normalise_gir = TRUE)

@@ -1,11 +1,12 @@
 #' Create Country Model Specifications
 #' 
-#' Produces a list of model specifications for every country model in a GVAR model.
+#' Produces a list of model specifications for each country in a GVAR model.
 #' 
 #' @param country_data a named list of time-series objects of country-specific data.
 #' @param global_data a named time-series object of global data.
 #' @param countries a character vector of country names, which should enter the GVAR model.
-#' The names must correspond to the country names in \code{country_data}.
+#' The names must correspond to the names of the elements in \code{country_data}. If
+#' \code{NULL}, (default) all countries are considered.
 #' @param variables a character vector specifying the considered variables. If \code{NULL},
 #' all available variables will be used.
 #' @param type a character specifying if the country models are estimated as vector
@@ -16,23 +17,22 @@
 #' @param r an integer or vector for the cointegration rank. See also 'Details'.
 #' 
 #' @details
-#' The function assists in setting up a framework for the estimation of
-#' the country-specific models of a GVAR model.
 #' 
-#' \code{p_domestic}, \code{p_star} and \code{s} refer to the lag order of the VAR formulation. If \code{type = "VEC"},
+#' \code{p_domestic}, \code{p_foreign} and \code{s} refer to the lag order of the VAR model If \code{type = "VEC"},
 #' the function \code{\link{create_models}} will automatically reduce each lag order by 1. If a vector is provided,
-#' \code{\link{create_models}} will produce a distinct model for all possible specification.
+#' \code{\link{create_models}} will produce a distinct model for all possible specifications.
 #' 
 #' The argument \code{rank} is only used when \code{type = "VEC"}. Otherwise, the rank is set to zero.
 #' If a vector is provided, \code{\link{create_models}} will produce a distinct model for all possible specifications.
 #' 
-#' @return The function produces a list of preliminary model specifications for each country,
-#' which consists of the following elements:
+#' @return The function produces a list of model specifications for each country,
+#' where each element consists of the following elements:
 #' \item{domestic}{a list of domestic variable names and their lag order.}
 #' \item{foreign}{a list of foreign variable names and their lag order.}
 #' \item{global}{a list of global variable names and their lag order (optional).}
-#' \item{cointegration}{if \code{type = "VEC"}, a list of rank of the country model.}
-#' \item{type}{a character specifying the type of the model, either "VAR" or "VEC".}
+#' \item{cointegration}{if \code{type = "VEC"}, a vector of rank specifications for
+#' the cointegration matrix.}
+#' \item{type}{a character specifying the type of the model, either \code{"VAR"} or \code{"VEC"}.}
 #' 
 #' @examples
 #' data("gvar2016")

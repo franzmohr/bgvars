@@ -3,14 +3,14 @@
 #' Combines multiple country-specific time series to regional series.
 #' 
 #' @param country_data a named list of time-series objects containing country data.
+#' @param weight_data a named list of named time-series objects. See 'Details'.
+#' @param region_weights a multivariate time-series object containing data used
+#' to weight the observations in \code{country_data}.
 #' @param regions a named list of character vectors containing the names of countries
 #' in \code{country_data}, which should be combined to a region. The name of a
 #' list element will become the name of the region.
 #' @param period either a single integer or a numeric vector specifiying the periods in
 #' \code{region_weights}, which should be used to construct weights.
-#' @param region_weights a multivariate time-series object containing data used
-#' to weight the observations in \code{country_data}.
-#' @param weight_data a named list of named time-series objects. See 'Details'.
 #' 
 #' @details
 #' If a numeric vector is provided for argument \code{period}, the function will weight
@@ -53,7 +53,7 @@
 #' weight_data <- temp$weight_data # New weight data
 #' 
 #' @export
-create_regions <- function(country_data, regions, period, region_weights, weight_data){
+create_regions <- function(country_data, weight_data, region_weights, regions, period){
   
   tt <- unique(unlist(lapply(country_data, NROW)))
   if (length(tt) > 1) {stop("Country data must have the same numbers of observations.")}

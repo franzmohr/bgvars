@@ -4,7 +4,8 @@
 \name{dees2007}
 \alias{dees2007}
 \title{Dees, di Mauro, Pesaran \& Smith data set}
-\format{A named list containing the following elements:
+\format{
+A named list containing the following elements:
 \describe{
   \item{\strong{country_data}}{A named list of 26 time-series objects with 99 quarterly
   observations from 1979Q2 to 2003Q4 of the following variables:
@@ -30,7 +31,8 @@
 }
 
 See the supplementary material to Dees et al. (2007) for further details on the
-sources and compilation of the data (\url{http://qed.econ.queensu.ca/jae/datasets/dees001/}).}
+sources and compilation of the data (\url{http://qed.econ.queensu.ca/jae/datasets/dees001/}).
+}
 \usage{
 data("dees2007")
 }

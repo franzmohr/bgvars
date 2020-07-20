@@ -4,7 +4,8 @@
 \name{gvar2016}
 \alias{gvar2016}
 \title{Global VAR Database (1979Q2-2016Q4)}
-\format{A named list containing the following elements:
+\format{
+A named list containing the following elements:
 \describe{
   \item{\strong{country_data}}{A named list of 33 time-series objects with 151 quarterly
   observations from 1979Q2 to 2016Q4 of the following variables:
@@ -70,7 +71,8 @@ USA \tab US  \tab x \tab x \tab x \tab x \tab  \tab x  \cr
   
   \item{\strong{weight_data}}{A named list of time-series objects containing annual data on
   trade flows from 1980 to 2016 for the countries listed above.}
-}}
+}
+}
 \usage{
 data("gvar2016")
 }

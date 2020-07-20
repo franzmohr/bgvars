@@ -15,7 +15,7 @@
 #' The function assists in the creation of country-specific weight matrices.
 #' If a numeric vector is provided as \code{period}, the function calculates
 #' country weights based on the sums over the specified periods. If an integer
-#' is proved, the weights are construced from rolling sums over the last
+#' is proved, the weights are constructed from rolling sums over the last
 #' \code{period} periods. If a country series begins earlier than its
 #' corresponding weight series, the sums over the first \code{period}
 #' observations of \code{weight_data} are used until the periods match.
