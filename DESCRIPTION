@@ -5,9 +5,9 @@ Date: 2020-03-29
 Authors@R: person("Franz X.", "Mohr", email = "franz.x.mohr@outlook.com", role = c("aut","cre"))
 Description: Assists in the set-up and inference of Bayesian global vector autoregressive (BGVAR) models.
 License: GPL (>= 2) 
-Depends: R (>= 3.2.0)
+Depends: R (>= 3.3.0)
 Imports:
-    bvartools,
+    bvartools (>= 0.0.3),
     coda,
     grDevices,
     graphics,
