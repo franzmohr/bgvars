@@ -69,7 +69,7 @@ bvarxpost <- function(object) {
   tvp_sigma <- FALSE
   structural <- FALSE
   
-  mc_spec <- c(object[["model"]][["burnin"]] + 1, object[["model"]][["iterations"]], 1)
+  mc_spec <- c(object[["model"]][["burnin"]] + 1, object[["model"]][["burnin"]] + object[["model"]][["iterations"]], 1)
 
   if (!is.null(object[["posteriors"]][["sigma"]][["lambda"]])) {
     sigma_lambda <- matrix(diag(NA_real_, k), k * k, object[["model"]][["iterations"]])
