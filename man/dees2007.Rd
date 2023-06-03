@@ -21,11 +21,8 @@ A named list containing the following elements:
   }
   
   \item{\strong{global_data}}{A time-series object containing 99 quarterly observations
-  from 1979Q2 to 2003Q4 of log of oil prices.}   
-  \item{\strong{region_weights}}{A time-series object containing annual data on PPP-GDP
-  from 1999 to 2001 for 26 economies.}
-  \item{\strong{weight_data}}{A named list of time-series objects containing annual data on
-  trade flows from 1980 to 2003 for 26 economies.}
+  from 1979Q2 to 2003Q4 of log of oil prices.} 
+  \item{\strong{weight_data}}{A named \eqn{26 \times 26} weight matrix.}
   \item{\strong{dees_specs}}{A named list of country model specifications as used in
   Dees et al. (2007).}
 }

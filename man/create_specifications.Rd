@@ -8,12 +8,17 @@ create_specifications(
   country_data,
   global_data = NULL,
   countries = NULL,
-  variables = NULL,
+  domestic = NULL,
+  foreign = NULL,
+  global = NULL,
+  deterministic = NULL,
   type = "VAR",
-  p_domestic = 2,
-  p_foreign = 2,
-  s = 2,
-  r = NULL
+  r = NULL,
+  structural = NULL,
+  tvp = FALSE,
+  sv = FALSE,
+  iterations = 50000,
+  burnin = 5000
 )
 }
 \arguments{
@@ -23,61 +28,92 @@ create_specifications(
 
 \item{countries}{a character vector of country names, which should enter the GVAR model.
 The names must correspond to the names of the elements in \code{country_data}. If
-\code{NULL}, (default) all countries are considered.}
+\code{NULL} (default), all countries are included.}
 
-\item{variables}{a character vector specifying the considered variables. If \code{NULL},
-all available variables will be used.}
+\item{domestic}{a named list of specificatios for domestic variables. See also 'Details'.}
+
+\item{foreign}{a named list of specificatios for foreign variables. See also 'Details'.}
+
+\item{global}{a named list of specificatios for global variables. See also 'Details'.}
+
+\item{deterministic}{a named list of specifications for deterministic terms. See alos 'Details'.}
 
 \item{type}{a character specifying if the country models are estimated as vector
-autoregressive "VAR" (default) or error correction "VEC" models.}
+autoregressive "VAR" (default) or vector error correction "VEC" models.}
 
-\item{p_domestic}{an integer or integer vector of the lag order of domestic variables in the VAR. See also 'Details'.}
+\item{r}{an integer or vector for the cointegration rank of VEC models. See also 'Details'.}
 
-\item{p_foreign}{an integer or integer vector of the lag order of foreign variables in the VAR. See also 'Details'.}
+\item{structural}{a character vector of country names, for which structural models
+should be estimated. If \code{NULL} (default), no country-model will be structural.}
 
-\item{s}{an integer or integer vector of the lag order of global variables in the VAR. See also 'Details'.}
+\item{tvp}{logical indicating whether the coefficients of the model are time varying (default is \code{FALSE}).}
 
-\item{r}{an integer or vector for the cointegration rank. See also 'Details'.}
+\item{sv}{logical indicating whether the error variances are time varying and should be estimated using a stochastic volatility algorithm (default is \code{FALSE}).}
+
+\item{iterations}{an integer of MCMC draws excluding burn-in draws (defaults
+to 50000).}
+
+\item{burnin}{an integer of MCMC draws used to initialize the sampler
+(defaults to 5000). These draws do not enter the computation of posterior
+moments, forecasts etc.}
 }
 \value{
-The function produces a list of model specifications for each country,
-where each element consists of the following elements:
-\item{domestic}{a list of domestic variable names and their lag order.}
-\item{foreign}{a list of foreign variable names and their lag order.}
-\item{global}{a list of global variable names and their lag order (optional).}
-\item{cointegration}{if \code{type = "VEC"}, a vector of rank specifications for
-the cointegration matrix.}
-\item{type}{a character specifying the type of the model, either \code{"VAR"} or \code{"VEC"}.}
+A list of model specifications for each country.
 }
 \description{
 Produces a list of model specifications for each country in a GVAR model.
 }
 \details{
-\code{p_domestic}, \code{p_foreign} and \code{s} refer to the lag order of the VAR model If \code{type = "VEC"},
-the function \code{\link{create_models}} will automatically reduce each lag order by 1. If a vector is provided,
-\code{\link{create_models}} will produce a distinct model for all possible specifications.
+If arguments \code{domestic}, \code{foreign} or \code{global} are \code{NULL} (default), all available variables
+are used and the lag order is set to 1 for each group of variables. If a list is provided, the used variables can be
+changed by adding an element \code{"variables"} with a character vector, i.e. \code{variables = c("var1", "var2", ...)},
+where \code{"var1"} is the name of a column in object \code{"country_data"}. Similarly, the lag order of each
+variable group can be changed by adding an element \code{"lags"} with an integer or integer vector, i.e. \code{lags = 1}.
+If a vector is provided, \code{\link{create_models}} will produce a distinct model for all
+possible specifications.
+
+If a list is provided as argument \code{deterministic}, it can contain the following elements:
+\describe{
+ \item{\code{const}}{either logical for VAR models or a character specifying whether a constant term
+ enters the error correction term (\code{"restricted"}) or the non-cointegration term (\code{"unrestricted"})
+ of a VEC model. If `NULL` (default) no constant term will be added.}
+ \item{\code{trend}}{either logical for VAR models or a character specifying whether a trend term
+ enters the error correction term (\code{"restricted"}) or the non-cointegration term (\code{"unrestricted"})
+ of a VEC model. If `NULL` (default) no trend term will be added.}
+ \item{\code{seasonal}}{either logical for VAR models or a character specifying whether seasonal dummies
+ enter the error correction term (\code{"restricted"}) or the non-cointegreation term (\code{"unrestricted"}).
+ If `NULL` (default) no seasonal terms will be added. The amount of dummy variables depends
+ on the frequency of the time series data in each list element.}
+}
 
 The argument \code{rank} is only used when \code{type = "VEC"}. Otherwise, the rank is set to zero.
 If a vector is provided, \code{\link{create_models}} will produce a distinct model for all possible specifications.
 }
 \examples{
+
+# Load gvar2016 dataset
 data("gvar2016")
 
-country_data <- gvar2016$country_data
-global_data <- gvar2016$global_data
-region_weights <- gvar2016$region_weights
-weight_data <- gvar2016$weight_data
+# Data objects
+country_data <- gvar2016[["country_data"]]
+global_data <- gvar2016[["global_data"]]
+region_weights <- gvar2016[["region_weights"]]
+weight_data <- gvar2016[["weight_data"]]
 
-# Generate weight matrices as 2 year, rolling window averages
-gvar_weights <- create_weights(weight_data = weight_data, period = 2,
-                               country_data = country_data)
+# Obtain weights
+weight_data <- create_weights(weight_data = weight_data, period = 3,
+                              country_data = country_data)
 
-# Create an object with country model specifications
+# Generate specifications
 model_specs <- create_specifications(country_data = country_data,
                                      global_data = global_data,
-                                     variables = c("y", "Dp"),
-                                     p_domestic = 2,
-                                     p_foreign = 2,
-                                     type = "VAR")
+                                     countries = c("US", "JP", "CA", "NO", "GB"), 
+                                     domestic = list(variables = c("y", "Dp", "r"), lags = 1:2),
+                                     foreign = list(variables = c("y", "Dp", "r"), lags = 1:2),
+                                     global = list(variables = c("poil"), lags = 1:2),
+                                     deterministic = list(const = TRUE, trend = FALSE, seasonal = FALSE),
+                                     iterations = 10,
+                                     burnin = 10,
+                                     thin = 1)
 
 }

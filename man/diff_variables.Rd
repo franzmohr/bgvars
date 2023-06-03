@@ -4,27 +4,30 @@
 \alias{diff_variables}
 \title{Differences of Variables}
 \usage{
-diff_variables(data, variables = NULL)
+diff_variables(data, variables = NULL, multi = NULL)
 }
 \arguments{
 \item{data}{a named time-series object or a list of named time-series objects.}
 
-\item{variables}{a character vector of variables that should be differenced.
-If \code{NULL} (default), all variables are differenced.}
+\item{variables}{a character vector of variables that should be differenced, if
+they appear in a time-series object. If \code{NULL} (default), all variables are differenced.}
+
+\item{multi}{optional. Numeric by which the differenced series should be multiplicated.}
 }
 \value{
-A differenced time-series object or a named list of differenced time-series objects.
+A differenced time-series object or a list of differenced time-series objects.
 }
 \description{
-Calculates the first difference of variables in a time-series object or in a
-list of named time-series objects
+Produces the first difference of variables in a time-series object or in a
+list of named time-series objects.
 }
 \examples{
 data("gvar2016")
 
 country_data <- gvar2016$country_data
 
-# Take first difference of all variables y and Dp
+# Take first difference of the variables "y" and "Dp" across all
+# elements of obect "country_data"
 country_data <- diff_variables(country_data, variables = c("y", "Dp"))
 
 }

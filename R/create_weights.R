@@ -1,4 +1,4 @@
-#' Create Weight Matrices for GVAR Models
+#' Create Weight Matrices
 #' 
 #' Produces a matrix of fixed or an array of time varying country-specific
 #' weights for a GVAR model.
@@ -6,12 +6,13 @@
 #' @param weight_data a named list of named time-series objects or a named
 #' matrix containing data for the construction of weights. See 'Details'.
 #' @param period either an integer for time varying weights or a numeric
-#' vector specifying the number of past periods in \code{weight_data} used to
-#' calculate constant weights. See 'Details'.
+#' vector specifying the number of past periods in \code{weight_data} that
+#' should be used to calculate constant weights. See 'Details'.
 #' @param country_data a named list of time-series objects containing country
 #' data. Only requried if \code{period} is an integer.
 #' 
 #' @details 
+#' 
 #' The function assists in the creation of country-specific weight matrices.
 #' If a numeric vector is provided as \code{period}, the function calculates
 #' country weights based on the sums over the specified periods. If an integer
@@ -31,28 +32,30 @@
 #' @return A named matrix or an array containing country-specific weight matrices.
 #' 
 #' @examples
+#' 
+#' # Load gvar2016 dataset
 #' data("gvar2016")
+#'
+#' # Data objects
+#' country_data <- gvar2016[["country_data"]]
+#' global_data <- gvar2016[["global_data"]]
+#' region_weights <- gvar2016[["region_weights"]]
+#' weight_data <- gvar2016[["weight_data"]]
 #' 
-#' country_data <- gvar2016$country_data
-#' global_data <- gvar2016$global_data
-#' region_weights <- gvar2016$region_weights
-#' weight_data <- gvar2016$weight_data
-#' 
-#' # Generate weight matrices as 3 year, rolling window averages
-#' gvar_weights <- create_weights(weight_data = weight_data, period = 3,
-#'                                country_data = country_data)
+#' weight_data <- create_weights(weight_data = weight_data, period = 3,
+#'                               country_data = country_data)
 #' 
 #' @export
 create_weights <- function(weight_data, period, country_data = NULL){
   # Check if weight.data is a list or matrix.
-  if (class(weight_data) %in% c("matrix", "list")) {
-    if (class(weight_data) == "list") {
+  if (any(class(weight_data) %in% c("matrix", "list"))) {
+    if ("list" %in% class(weight_data)) {
       l <- TRUE
     } else {
       l <- FALSE
     } 
   } else {
-    stop("weight_data must be of class list or matrix.")
+    stop("Object 'weight_data' must be of class list or matrix.")
   }
   
   if (l) {
@@ -119,6 +122,7 @@ create_weights <- function(weight_data, period, country_data = NULL){
       stop("Entries, where row and column names are the same must contain the value zero.")
     }
     
+    w <- matrix(NA, NROW(weight_data), NCOL(weight_data))
     dimnames(w) <- list(dimnames(weight_data)[[1]], dimnames(weight_data)[[1]])
     for (i in dimnames(weight_data)[[1]]) {
       temp <- weight_data[i, ]

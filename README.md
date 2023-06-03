@@ -5,8 +5,7 @@
 
 [![CRAN
 status](https://www.r-pkg.org/badges/version/bgvars)](https://cran.r-project.org/package=bgvars)
-[![Travis build
-status](https://travis-ci.org/franzmohr/bgvars.svg?branch=master)](https://travis-ci.org/franzmohr/bgvars)
+[![R-CMD-check](https://github.com/franzmohr/bgvars/workflows/R-CMD-check/badge.svg)](https://github.com/franzmohr/bgvars/actions)
 
 ## Overview
 
@@ -14,7 +13,7 @@ The `bgvars` package provides functions for the specification,
 estimation and evaluation of Bayesian global autoregressive (GVAR)
 models. Global vector autoregressive (GVAR) models are convenient tools
 to model the world economy. They were originally proposed by Pesaran et
-al. (2004) and further developed by Dees et al. (2007) to study the
+al. (2004) and further developed by Dees et al. (2007) to study the
 international transmission of shocks. Since then they have been applied
 to a range of macroeconomic topics. Chudik and Pesaran (2016) provide an
 extensive survey of the latest developments in GVAR modelling.
@@ -33,35 +32,37 @@ devtools::install_github("franzmohr/bgvars")
 The `bgvars` package allows Bayesian inference of GVAR models. It
 separates a typical GVAR analysis into four steps:
 
-  - *Preparation*, which includes the initial transformation of raw data
-    and the generation of regional aggregates as well as the weight
-    matrices \(W_{i, t}\);
-  - *Specification* for setting up country-specific models that should
-    be estimated;
-  - *Estimation* using Bayesian algorithms to produce draws from the
-    posterior distribution of each country model, which are subsequently
-    combined to a global model;
-  - *Evaluation* for the generation of forecasts, impulse responses and
-    forecast error variance decompositions.
+- *Preparation*, which includes the initial transformation of raw data
+  and the generation of regional aggregates as well as the weight
+  matrices $W_{i, t}$;
+- *Specification* for setting up country-specific models that should be
+  estimated;
+- *Estimation* using Bayesian algorithms to produce draws from the
+  posterior distribution of each country model, which are subsequently
+  combined to a global model;
+- *Evaluation* for the generation of forecasts, impulse responses and
+  forecast error variance decompositions.
 
 ### Data
 
 The `bgvars` packages comes with the updated GVAR database of Mohaddes
 and Raissi (2018), which contains economic time series for 33 countries
-and 3 commodities from 1979Q2 to 2016Q4.\[1\]
+and 3 commodities from 1979Q2 to 2016Q4.[^1]
 
 ``` r
 library(bgvars)
+#> Loading required package: bvartools
+#> Loading required package: coda
 data("gvar2016")
 
-country_data <- lapply(gvar2016$country_data, function(x) {x * 100}) # Country series
-global_data <- gvar2016$global_data * 100 # Global commodities data
+country_data <- gvar2016$country_data # Country series
+global_data <- gvar2016$global_data # Global commodities data
 region_weights <- gvar2016$region_weights # Data for regional weights
 weight_data <- gvar2016$weight_data # Data for trade weights
 
 # Take first differences of non-stationary series  
-country_data <- diff_variables(country_data, variables = c("y", "eq", "ep"))
-global_data <- diff_variables(global_data)
+country_data <- diff_variables(country_data, variables = c("y", "Dp", "r"), multi = 100)
+global_data <- diff_variables(global_data, multi = 100)
 ```
 
 ### Preparation
@@ -102,10 +103,12 @@ contains the specifications for each country.
 # Create an object with country model specifications
 model_specs <- create_specifications(country_data = country_data,
                                      global_data = global_data,
-                                     variables = c("y", "Dp", "r", "poil"),
+                                     domestic = list(variables = c("y", "Dp", "r"), lags = 2),
+                                     foreign = list(variables = c("y", "Dp", "r"), lags = 1),
+                                     global = list(variables = c("poil"), lags = 1),
+                                     deterministic = list(const = TRUE),
                                      countries = c("EA", "US", "JP", "CA", "GB", "CN"),
-                                     p_domestic = 2,
-                                     p_foreign = 1,
+                                     iterations = 3000, burnin = 1000,
                                      type = "VAR")
 ```
 
@@ -119,31 +122,19 @@ model_specs$US$foreign$variables <- c("y", "Dp")
 
 `create_models` produces all country models, which should be estimated.
 This allows for easy parallelisation. The number of elements of the
-resulting list depends on the specification of domestic lags
-`p_domestic`, foreign lags `p_foreign`, lags of global lags `s`, and the
-rank of the cointegration matrix `r`, if sepecified. For example, if
-`p_domestic = 1:2` was set in `create_specifications`, the function
-produces two elements for each country in the resulting list.
+resulting list depends on the specification of domestic lags, foreign
+lags, global lags, and the rank of the cointegration matrix `r`, if
+sepecified. For example, if the lags of domestic variables were set to
+`lags = 1:2`, the function produces two country submodels for each
+specification.
 
 ``` r
 # Create estimable objects
 object <- create_models(country_data = country_data,
-                        gvar_weights = gvar_weights,
+                        weight_data = gvar_weights,
                         global_data = global_data,
                         model_specs = model_specs)
 ```
-
-Additional elmements can be added by using `add_` functions. A standard
-addition would be deterministic terms:
-
-``` r
-# Add deterministic terms
-object <- add_deterministics(object, const = TRUE)
-```
-
-It is also possible to estimated the models using the SSVS algorithm of
-George et al. (2008) or the BVS algorithm of Korobilis (2013) by using
-`add_ssvs` and `add_bvs`, respectively.
 
 Finally, priors must be specified with `add_priors`.
 
@@ -154,20 +145,17 @@ object <- add_priors(object)
 ### Estimate and solve the model
 
 `estimate_gvar` can be used to estimate the country models. Parallel
-computating can be activated by specifying the argument
-`mc.cores`.
+computating can be activated by specifying the argument `mc.cores`.
 
 ``` r
-object <- estimate_gvar(object, iterations = 5000, burnin = 1000, thin = 5)
-#> Estimating country models.
+object <- draw_posterior(object)
 ```
 
 The estimated country models can be combined and solved with the
-function `solve_gvar`.
+function `combine_submodels`.
 
 ``` r
-gvar <- solve_gvar(object)
-#> Solving GVAR model.
+gvar <- combine_submodels(object)
 ```
 
 ### Impulse response analysis
@@ -175,14 +163,14 @@ gvar <- solve_gvar(object)
 Impulse response analysis can be done with the `girf` function.
 
 ``` r
-gvar_irf <- girf(gvar, impulse = c("US", "y"),
+gvar_irf <- girf(gvar, impulse = c("US", "r"),
                  response = c("EA", "y"),
                  n.ahead = 20, ci = .68)
 
 plot(gvar_irf)
 ```
 
-<img src="man/figures/README-unnamed-chunk-11-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-10-1.png" width="100%" />
 
 ## References
 
@@ -219,5 +207,5 @@ interdependencies using a global error-correcting macroeconometric
 model. *Journal of Business & Economic Statistics 22*(2), 129-162.
 <https://doi.org/10.1198/073500104000000019>
 
-1.  The paper and dataset can be downloaded from
+[^1]: The paper and dataset can be downloaded from
     <https://www.mohaddes.org/gvar>.

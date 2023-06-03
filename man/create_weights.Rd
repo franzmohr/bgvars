@@ -2,7 +2,7 @@
 % Please edit documentation in R/create_weights.R
 \name{create_weights}
 \alias{create_weights}
-\title{Create Weight Matrices for GVAR Models}
+\title{Create Weight Matrices}
 \usage{
 create_weights(weight_data, period, country_data = NULL)
 }
@@ -11,8 +11,8 @@ create_weights(weight_data, period, country_data = NULL)
 matrix containing data for the construction of weights. See 'Details'.}
 
 \item{period}{either an integer for time varying weights or a numeric
-vector specifying the number of past periods in \code{weight_data} used to
-calculate constant weights. See 'Details'.}
+vector specifying the number of past periods in \code{weight_data} that
+should be used to calculate constant weights. See 'Details'.}
 
 \item{country_data}{a named list of time-series objects containing country
 data. Only requried if \code{period} is an integer.}
@@ -42,15 +42,17 @@ zeros when the reference country and the trading partner are the same,
 i.e. row and column names are equal.
 }
 \examples{
+
+# Load gvar2016 dataset
 data("gvar2016")
 
-country_data <- gvar2016$country_data
-global_data <- gvar2016$global_data
-region_weights <- gvar2016$region_weights
-weight_data <- gvar2016$weight_data
+# Data objects
+country_data <- gvar2016[["country_data"]]
+global_data <- gvar2016[["global_data"]]
+region_weights <- gvar2016[["region_weights"]]
+weight_data <- gvar2016[["weight_data"]]
 
-# Generate weight matrices as 3 year, rolling window averages
-gvar_weights <- create_weights(weight_data = weight_data, period = 3,
-                               country_data = country_data)
+weight_data <- create_weights(weight_data = weight_data, period = 3,
+                              country_data = country_data)
 
 }

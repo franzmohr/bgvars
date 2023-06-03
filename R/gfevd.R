@@ -32,63 +32,12 @@
 #' 
 #' Pesaran, H. H., & Shin, Y. (1998). Generalized impulse response analysis in linear multivariate models. \emph{Economics Letters, 58}, 17-29.
 #' 
-#' @examples 
-#' data("gvar2016")
-#' 
-#' country_data <- gvar2016$country_data
-#' global_data <- gvar2016$global_data
-#' region_weights <- gvar2016$region_weights
-#' weight_data <- gvar2016$weight_data
-#' 
-#' # Take first difference of all variables y and Dp
-#' country_data <- diff_variables(country_data, variables = c("y", "Dp", "r"))
-#' 
-#' # Generate EA area region with 3 year rolling window weights
-#' ea <- c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")
-#' temp <- create_regions(country_data = country_data,
-#'                        regions = list("EA" = ea),
-#'                        period = 3,
-#'                        region_weights = region_weights,
-#'                        weight_data = weight_data)
-#' country_data <- temp$country_data
-#' weight_data <- temp$weight_data
-#' 
-#' # Generate weight matrices as 3 year rolling window averages
-#' gvar_weights <- create_weights(weight_data = weight_data, period = 3,
-#'                                country_data = country_data)
-#' 
-#' # Create an object with country model specifications
-#' model_specs <- create_specifications(country_data = country_data,
-#'                                      global_data = global_data,
-#'                                      variables = c("y", "Dp", "r"),
-#'                                      countries = c("EA", "US", "JP", "CA", "MX", "GB"),
-#'                                      p_domestic = 1,
-#'                                      p_foreign = 1,
-#'                                      type = "VAR")
-#' 
-#' # Create estimable objects
-#' object <- create_models(country_data = country_data,
-#'                         gvar_weights = gvar_weights,
-#'                         model_specs = model_specs)
-#' 
-#' # Add priors
-#' object <- add_priors(object)
-#' 
-#' # Estimate GVAR model
-#' gvar_est <- estimate_gvar(object, iterations = 100, burnin = 10, thin = 2)
-#' # Note that the number of iterations and burnin should be much higher.
-#' 
-#' # Solve GVAR
-#' gvar_solved <- solve_gvar(gvar_est)
-#' 
-#' # GFEVD
-#' gvar_gfevd <- gfevd(gvar_solved, response = c("EA", "y"))
-#'
-#' # Plot GFEVD
-#' plot(gvar_gfevd)
-#' 
+#'  
 #' @export
 gfevd <- function(object, response, n.ahead = 5, normalise_gir = FALSE, mc.cores = NULL) {
+  
+  # rm(list = ls()[-which(ls() == "object")]); response = c("US", "y"); n.ahead = 5; normalise_gir = FALSE; mc.cores = NULL
+  
   if (!"bgvar" %in% class(object)) {
     stop("Object must be of class 'bgvar'.")
   }
@@ -99,43 +48,26 @@ gfevd <- function(object, response, n.ahead = 5, normalise_gir = FALSE, mc.cores
   response <- which(object$index[, "country"] == response[1] & object$index[, "variable"] == response[2])
   if (length(response) == 0){stop("Response variable not available.")}
   
-  k <- sqrt(NCOL(object$g0_i))
-  store <- NROW(object$g0_i)
+  k <- sqrt(NCOL(object$a0)) # Number of endogenous variables
+  store <- NROW(object$a0) # Number of draws
   
   # Produce FEIR
   a <- NULL # Prepare data for lapply
   for (i in 1:store) {
-    a[[i]] <- list(g0_i = matrix(object$g0_i[i, ], k),
-                   g = matrix(object$g[i, ], k),
+    a[[i]] <- list(a0 = matrix(object$a0[i, ], k),
+                   a = matrix(object$a[i, ], k),
                    sigma = matrix(object$sigma[i, ], k))
-    a[[i]]$shock <- 0
   }
+  
   if (is.null(mc.cores)) {
-    phi <- lapply(a, .ir, h = n.ahead, impulse = 0, response = 0, full = TRUE)
+    phi <- lapply(a, .vardecomp, h = n.ahead, response = response)
   } else {
-    phi <- parallel::mclapply(a, .ir, h = n.ahead, impulse = 0, response = 0,
-                              full = FALSE, mc.cores = mc.cores)
+    phi <- parallel::mclapply(a, .vardecomp, h = n.ahead, response = response,
+                              mc.cores = mc.cores)
   }
+  
+  result <- matrix(rowMeans(matrix(unlist(phi), (n.ahead + 1) * k)), n.ahead + 1)
 
-  # Produce GFEVD
-  ej_t <- matrix(0, 1, k)
-  ej_t[, response] <- 1
-  result <- matrix(NA, (n.ahead + 1) * k, store)
-  for (j in 1:store) {
-    P <- a[[j]]$g0_i %*% a[[j]]$sigma
-    numerator <- matrix(NA, n.ahead + 1, k)
-    mse <- matrix(NA, n.ahead + 1, 1)
-    numerator[1, ] <- (ej_t %*% phi[[j]][1:k, ] %*% P)^2
-    mse[1,] <- ej_t %*% phi[[j]][1:k,] %*% tcrossprod(P, a[[j]]$g0_i) %*% t(phi[[j]][1:k,]) %*% t(ej_t)
-    for (i in 2:(n.ahead + 1)) {
-      numerator[i, ] <- numerator[i - 1, ] + (ej_t %*% phi[[j]][(i - 1) * k + 1:k, ] %*% P)^2
-      mse[i, ] <- mse[i - 1,] + ej_t %*% phi[[j]][(i - 1) * k + 1:k,] %*% tcrossprod(P, a[[j]]$g0_i) %*% t(phi[[j]][(i - 1) * k + 1:k,]) %*% t(ej_t)
-    }
-    numerator <- numerator / a[[j]]$sigma[response, response]
-    result[, j] <- matrix(numerator / matrix(mse, n.ahead + 1, k))
-  }
-  # Get means
-  result <- matrix(apply(result, 1, mean), n.ahead + 1)
   # Normalise
   if (normalise_gir) {
     result <- t(apply(result, 1, function(x) {x / sum(x)}))

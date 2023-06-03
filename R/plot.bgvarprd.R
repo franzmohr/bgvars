@@ -64,23 +64,24 @@
 #' 
 #' @export
 plot.bgvarprd <- function(x, variable = NULL, ...) {
-  y <- x$y
-  t <- ncol(y)
+  
+  tt <- nrow(x[["y"]])
   if (is.null(variable)) {
-    k <- 1:nrow(y)
+    pos <- 1:ncol(x[["y"]])
   } else {
-    k <- which(x$index[, "country"] == variable[1] & x$index[, "variable"] == variable[2])
+    pos <- which(x[["index"]][, "country"] == variable[1] & x$index[, "variable"] == variable[2])
   }
-  for (i in k) {
-    n_ahead <- nrow(x$fcst[[i]])
-    temp <- matrix(NA, t + n_ahead, 4)
-    temp[1:t, 1] <- y[i,]
-    temp[t, 2:4] <- y[i, t]
-    temp[(t + 1):(t + n_ahead), 2:4] <- x$fcst[[i]]
-    tsp_temp <- stats::tsp(x$fcst[[i]])
+  for (i in pos) {
+    n_ahead <- nrow(x[["fcst"]][[i]])
+    temp <- matrix(NA, tt + n_ahead, 4)
+    temp[1:tt, 1] <- x[["y"]][, i]
+    temp[tt, 2:4] <- x[["y"]][tt, i]
+    temp[(tt + 1):(tt + n_ahead), 2:4] <- x[["fcst"]][[i]]
+    tsp_temp <- stats::tsp(x[["fcst"]][[i]])
     temp <- stats::ts(temp, end = tsp_temp[2], frequency = tsp_temp[3])
     rm(tsp_temp)
-    title_temp <- paste(x$index[i, "country"], ": ", x$index[i, "variable"], sep = "")
+    title_temp <- paste(x[["index"]][i, "country"], ": ", x[["index"]][i, "variable"], sep = "")
     stats::plot.ts(temp, plot.type = "single", lty = c(1, 2, 1, 2), main = title_temp, ylab = "")
   }
+  
 }

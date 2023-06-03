@@ -88,7 +88,7 @@
 #'  is the nominal equity price index, and \eqn{R_{it}^{S}} and \eqn{R_{it}^{L}} are short-term and long-term
 #'  interest rates, respectively.
 #' 
-#' See Mohaddes and Raissi (2018) for further details on the sources and compilation of all variables.
+#' See Mohaddes and Raissi (2018) for further details on the sources and compilation of the data set.
 #' 
 #' @references
 #' 
@@ -120,11 +120,8 @@
 #'   }
 #'   
 #'   \item{\strong{global_data}}{A time-series object containing 99 quarterly observations
-#'   from 1979Q2 to 2003Q4 of log of oil prices.}   
-#'   \item{\strong{region_weights}}{A time-series object containing annual data on PPP-GDP
-#'   from 1999 to 2001 for 26 economies.}
-#'   \item{\strong{weight_data}}{A named list of time-series objects containing annual data on
-#'   trade flows from 1980 to 2003 for 26 economies.}
+#'   from 1979Q2 to 2003Q4 of log of oil prices.} 
+#'   \item{\strong{weight_data}}{A named \eqn{26 \times 26} weight matrix.}
 #'   \item{\strong{dees_specs}}{A named list of country model specifications as used in
 #'   Dees et al. (2007).}
 #' }

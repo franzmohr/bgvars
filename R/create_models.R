@@ -3,78 +3,86 @@
 #' Produces a list of country models for each model specification that should be estimated.
 #'
 #' @param country_data a named list of time-series objects of country-specific data.
-#' @param gvar_weights a matrix or an array of weights, usually, the output of a call to \code{\link{create_weights}}.
+#' @param weight_data a matrix or an array of weights, usually, the output of a call to \code{\link{create_weights}}.
 #' @param global_data a named time-series object of global data.
-#' @param model_specs a list of model specifications as produced by \code{\link{create_specifications}}.
+#' @param model_specs a list of model specifications, usuall, the output of a call to \code{\link{create_specifications}}.
 #' 
-#' @return A list of country model input.
+#' @return A list of country data and model specifications.
 #' 
 #' @examples
+#' 
+#' # Load gvar2016 dataset
 #' data("gvar2016")
+#'
+#' # Data objects
+#' country_data <- gvar2016[["country_data"]]
+#' global_data <- gvar2016[["global_data"]]
+#' region_weights <- gvar2016[["region_weights"]]
+#' weight_data <- gvar2016[["weight_data"]]
 #' 
-#' country_data <- gvar2016$country_data
-#' global_data <- gvar2016$global_data
-#' region_weights <- gvar2016$region_weights
-#' weight_data <- gvar2016$weight_data
+#' # Obtain weights
+#' weight_data <- create_weights(weight_data = weight_data, period = 3,
+#'                               country_data = country_data)
 #' 
-#' # Take first difference of all variables y and Dp
-#' country_data <- diff_variables(country_data, variables = c("y", "Dp"))
-#' 
-#' # Generate weight matrices as 2 year, rolling window averages
-#' gvar_weights <- create_weights(weight_data = weight_data, period = 2,
-#'                                country_data = country_data)
-#' 
-#' # Create an object with country model specifications
+#' # Generate specifications
 #' model_specs <- create_specifications(country_data = country_data,
 #'                                      global_data = global_data,
-#'                                      variables = c("y", "Dp", "poil"),
-#'                                      p_domestic = 2,
-#'                                      p_foreign = 2,
-#'                                      type = "VAR")
+#'                                      countries = c("US", "JP", "CA", "NO", "GB"), 
+#'                                      domestic = list(variables = c("y", "Dp", "r"), lags = 1:2),
+#'                                      foreign = list(variables = c("y", "Dp", "r"), lags = 1:2),
+#'                                      global = list(variables = c("poil"), lags = 1:2),
+#'                                      deterministic = list(const = TRUE, trend = FALSE, seasonal = FALSE),
+#'                                      iterations = 10,
+#'                                      burnin = 10,
+#'                                      thin = 1)
 #' 
-#' # Create estimable objects
-#' object <- create_models(country_data = country_data,
-#'                         gvar_weights = gvar_weights,
-#'                         global_data = global_data,
-#'                         model_specs = model_specs)
+#' # Create list element for each model
+#' country_models <- create_models(country_data = country_data,
+#'                                 weight_data = weight_data,
+#'                                 global_data = global_data,
+#'                                 model_specs = model_specs)
 #' 
 #' @export
-create_models <- function(country_data, gvar_weights, global_data = NULL,
+create_models <- function(country_data, weight_data, global_data = NULL,
                           model_specs = NULL){
   
+  # rm(list = ls()[-which(ls() %in% c("country_data", "weight_data", "global_data", "model_specs"))]);
+  
   # Check if weights are named
-  if (is.null(dimnames(gvar_weights)[[1]]) | is.null(dimnames(gvar_weights)[[2]])) {
-    stop("Rows and columns of 'gvar_weights' must both be named.")
+  if (is.null(dimnames(weight_data)[[1]]) | is.null(dimnames(weight_data)[[2]])) {
+    stop("Rows and columns of 'weight_data' must both be named.")
   }
   
   #### Prepare weight matrices ####
+  
+  # Build skeletons for weight matrices
   countries <- names(model_specs)
-  const_weight <- class(gvar_weights) == "matrix"
+  const_weight <- "matrix" %in% class(weight_data)
   if (const_weight) {
     temp_w <- matrix(0, length(countries), length(countries))
     dimnames(temp_w) <- list(countries, countries)
   } else {
-    temp_w <- array(0, dim = c(length(countries), length(countries), dim(gvar_weights)[[3]]))
-    dimnames(temp_w) <- list(countries, countries, dimnames(gvar_weights)[[3]])
+    temp_w <- array(0, dim = c(length(countries), length(countries), dim(weight_data)[[3]]))
+    dimnames(temp_w) <- list(countries, countries, dimnames(weight_data)[[3]])
   }
   
-  # Recalculate weights
+  # Recalculate weights for the used countries
   temp_c <- NULL
   for (i in countries){
     temp_c <- c(temp_c, list(country_data[[i]]))
     if (const_weight){
-      temp_w[i,] <- gvar_weights[i, countries] / (1 - sum(gvar_weights[i, !is.element(dimnames(gvar_weights)[[2]], countries)]))
+      temp_w[i,] <- weight_data[i, countries] / (1 - sum(weight_data[i, !is.element(dimnames(weight_data)[[2]], countries)]))
     } else {
-      for (j in 1:dim(gvar_weights)[3]){
-        temp_w[i,,j] <- gvar_weights[i, countries, j] / (1 - sum(gvar_weights[i, !is.element(dimnames(gvar_weights)[[2]], countries), j])) 
+      for (j in 1:dim(weight_data)[3]){
+        temp_w[i,,j] <- weight_data[i, countries, j] / (1 - sum(weight_data[i, !is.element(dimnames(weight_data)[[2]], countries), j])) 
       }
     }
   }
   country_data <- temp_c; rm(temp_c)
   names(country_data) <- countries
-  gvar_weights <- temp_w; rm(temp_w)
+  weight_data <- temp_w; rm(temp_w)
   
-  # Check if all country time series have the same length
+  # Check if all country time series have the same length ----
   n_c <- length(countries)
   t_max <- c()
   for (i in 1:n_c){
@@ -86,7 +94,6 @@ create_models <- function(country_data, gvar_weights, global_data = NULL,
     }
     t_max <- append(t_max, dim(stats::na.omit(country_data[[i]]))[1])
   }
-  
   if (min(t_max) != max(t_max)) {
     stop("Numbers of observations differ across countries. For now, this package requires the same number for each country.")
   } else {
@@ -95,26 +102,27 @@ create_models <- function(country_data, gvar_weights, global_data = NULL,
   }
   
   # Check if weight matrix has the same order of names in the rows and columns
-  if (any(dimnames(gvar_weights)[[1]] != dimnames(gvar_weights)[[2]])){
+  if (any(dimnames(weight_data)[[1]] != dimnames(weight_data)[[2]])){
     stop("The order of country names in the rows and columns of the weight matrix is not the same.")
   }
   
   # Check if weight matrix contains data on all required countries
-  if (any(!is.element(names(country_data), dimnames(gvar_weights)[[1]]))){
+  if (any(!is.element(names(country_data), dimnames(weight_data)[[1]]))){
     stop("The weight matrix does not contain data for at least one country in the country sample or is named differently.")
   }
   
-  # If weight matrix is time varying, check if the number of periods is the same as in the country series
-  if (!is.na(dim(gvar_weights)[3])){
-    if (dim(gvar_weights)[3] > t) {
+  # If weight matrix is time varying, check if the number of periods
+  # is the same as in the country series
+  if (!is.na(dim(weight_data)[3])){
+    if (dim(weight_data)[3] > t) {
       warning("The weight array does not contain as much periods as the country sample. Trying to correct this.")
-      dim_w <- as.numeric(dimnames(gvar_weights)[[3]])
+      dim_w <- as.numeric(dimnames(weight_data)[[3]])
       w_t <- stats::ts(dim_w, start = dim_w[1], frequency = stats::frequency(country_data[[1]]))
-      gvar_weights <- gvar_weights[,,-which(!w_t %in% stats::time(country_data[[1]]))]
+      weight_data <- weight_data[,,-which(!w_t %in% stats::time(country_data[[1]]))]
     }
   }
   
-  #### Reduce object with global data to relevant series  ####
+  # Reduce object with global data to relevant series  ----
   global_vars <- any(unlist(lapply(model_specs, function(x) {return(!is.null(x$global))})))
   if (global_vars){
     if (is.null(global_data)) {
@@ -125,6 +133,31 @@ create_models <- function(country_data, gvar_weights, global_data = NULL,
     global_data <- stats::as.ts(as.matrix(global_data[, global_vars_temp]))
     dimnames(global_data)[[2]] <- global_vars_temp
     stats::tsp(global_data) <- tsp_temp
+    
+    # In case global data has different length than country data
+    if (t < nrow(global_data)) {
+      n_global <- NCOL(global_data)
+      global_data <- na.omit(cbind(global_data, country_data[[1]]))[, 1:n_global]
+      tsp_temp <- stats::tsp(global_data)
+      global_data <- stats::as.ts(as.matrix(global_data))
+      dimnames(global_data)[[2]] <- global_vars_temp
+      stats::tsp(global_data) <- tsp_temp
+    }
+    
+    if (t > nrow(global_data)) {
+      pos_global <- 1:NCOL(global_data)
+      for (i in names(country_data)) {
+        temp_names <- dimnames(country_data[[i]])
+        c_data <- na.omit(cbind(country_data[[i]], global_data))[, 1:length(temp_names[[2]])]
+        tsp_temp <- stats::tsp(c_data)
+        c_data <- stats::as.ts(as.matrix(c_data))
+        dimnames(c_data)[[2]] <- temp_names[[2]]
+        stats::tsp(c_data) <- tsp_temp
+        country_data[[i]] <- c_data
+        rm(c_data)
+      }
+      t <- nrow(country_data[[1]])
+    }
     rm(tsp_temp)
   }
   
@@ -133,14 +166,14 @@ create_models <- function(country_data, gvar_weights, global_data = NULL,
   }
   rm(global_vars)
   
-  #### Create global model data ####
+  # Generate final variable index ----
   # Get list of all variables
   avail.dom.vars <- unique(unlist(lapply(country_data, function(x) {return(dimnames(x)[[2]])}))) # Domestic variables
   if (!is.null(global_data)){
     avail.global.vars <- dimnames(global_data)[[2]] # Global variables
   }
   
-  # Generate final variable index
+  # Create index
   index <- data.frame() # Index
   X <- c() # Final data set of domestic variables (incl. global endogenous)
   X_names <- c()
@@ -166,7 +199,7 @@ create_models <- function(country_data, gvar_weights, global_data = NULL,
   index[, 1] <- as.character(index[, 1])
   index[, 2] <- as.character(index[, 2])
   
-  #### Update modelled global variables ####
+  # Update foreign and global variables if global variable is endogenous in one country ----
   variables <- unique(index[, 2]) # All endogenous variables
   endo.g.var <- NULL
   for (i in countries){
@@ -196,6 +229,7 @@ create_models <- function(country_data, gvar_weights, global_data = NULL,
       model_specs[[i]]$foreign$variables <- foreign
     }
   }
+  
   # Update global data
   endo.g.var <- unique(endo.g.var)
   if (length(endo.g.var) > 0){
@@ -206,25 +240,31 @@ create_models <- function(country_data, gvar_weights, global_data = NULL,
     }
   }
   
-  #### Trim data to same length ####
+  # Trim endo and global data to same length ----
   global <- !is.null(global_data) # If a global variable is used
   if (global){
     k <- dim(X)[2]
     names_X <- dimnames(X)[[2]]
     names_g <- dimnames(global_data)[[2]]
+    # Join endogenous and global data and omit NAs
     temp <- stats::na.omit(cbind(X, global_data))
+    # Extract final endogenous variables
     X <- temp[, 1:k]
+    # Extract final global variables
     X_global <- stats::as.ts(as.matrix(temp[, -(1:k)]))
     stats::tsp(X_global) <- stats::tsp(X)
     dimnames(X)[[2]] <- names_X
     dimnames(X_global)[[2]] <- names_g
+    class(X_global) <- c("mts", "ts", "matrix")
     rm(list = c("temp", "names_X", "names_g"))
   } else {
     X_global <- NULL
   }
   rm(global_data)
   
-  #### Max length of global VAR model ####
+  # Max length of global VAR model ---
+  # Used so that each country model contains the same number of
+  # observations so that information criteria are comparable
   max_lag <- c()
   for (i in countries) {
     max_lag <- append(max_lag, c(model_specs[[i]]$domestic$lags,
@@ -240,8 +280,10 @@ create_models <- function(country_data, gvar_weights, global_data = NULL,
     model_specs[[i]]$max_lag <- max_lag
   }
   
-  #### Generate weight matrices for each country ####
-  tv <- !is.na(dim(gvar_weights)[3])
+  # WEIGHT MATRICES ----
+  
+  # Generate weight matrices for each country ----
+  tv <- !is.na(dim(weight_data)[3])
   
   # Check data availability for each country
   n_v <- length(variables)
@@ -262,19 +304,19 @@ create_models <- function(country_data, gvar_weights, global_data = NULL,
     star.vars <- model_specs[[i]]$foreign$variables
     n.star <- length(star.vars)
     if (tv){
-      W.i <- array(0, dim = c(n.endo + n.star, k, dim(gvar_weights)[3]))
+      W.i <- array(0, dim = c(n.endo + n.star, k, dim(weight_data)[3]))
       dimnames(W.i) <- list(c(index[index[, 1] == i, 2], paste("s.", star.vars, sep = "")),
-                            index[, 2], dimnames(gvar_weights)[[3]])
-      for (l in 1:dim(gvar_weights)[3]) {
+                            index[, 2], dimnames(weight_data)[[3]])
+      for (l in 1:dim(weight_data)[3]) {
         W.i[1:n.endo, which(index[, 1] == i), l] <- diag(1, n.endo)
         for (j in star.vars){
-          w.temp <- gvar_weights[i,,l]
+          w.temp <- weight_data[i,,l]
           # Set all values to zero, where variable is not available
           w.temp[!var.exists[, j]] <- 0
           # Extract weights for available values
-          exist.weights <- gvar_weights[i, var.exists[, j], l]
+          exist.weights <- weight_data[i, var.exists[, j], l]
           # Make sum over weights of not available values
-          non.exist.weights <- sum(gvar_weights[i, !var.exists[, j], l])
+          non.exist.weights <- sum(weight_data[i, !var.exists[, j], l])
           # Recalculate weights
           w.temp[var.exists[, j]] <- exist.weights/(1 - non.exist.weights)
           # Add weights to country's weight matrix
@@ -289,13 +331,13 @@ create_models <- function(country_data, gvar_weights, global_data = NULL,
                             index[, 2])
       W.i[1:n.endo, which(index[, 1] == i)] <- diag(1, n.endo)
       for (j in star.vars){
-        w.temp <- gvar_weights[i,]
+        w.temp <- weight_data[i,]
         # Set all values to zero, where variable is not available
         w.temp[!var.exists[, j]] <- 0
         # Extract weights for available values
-        exist.weights <- gvar_weights[i, var.exists[, j]]
+        exist.weights <- weight_data[i, var.exists[, j]]
         # Make sum over weights of not available values
-        non.exist.weights <- sum(gvar_weights[i, !var.exists[, j]])
+        non.exist.weights <- sum(weight_data[i, !var.exists[, j]])
         # Recalculate weights
         w.temp[var.exists[, j]] <- exist.weights/(1 - non.exist.weights)
         # Add weights to country's weight matrix
@@ -310,16 +352,19 @@ create_models <- function(country_data, gvar_weights, global_data = NULL,
   }
   names(W) <- W.names
   
-  #### Generate vector z = (x, x.star)' for each country ####
+  # Generate vector z = (x, x.star)' for each country ----
   X_temp <- t(X)
   Z <- NULL
   for (j in countries) {
-    if (class(W[[j]]) == "matrix"){
+    if ("matrix" %in% class(W[[j]])){
       x <- W[[j]] %*% X_temp
     } else {
-      x <- matrix(NA, dim(W[[j]])[1], dim(W[[j]])[3])
-      for (i in 1:dim(W[[j]])[3]){
-        x[, i] <- W[[j]][,, i] %*% X_temp[, i]
+      
+      # Check if weight data is compatible with country data
+      w_pos <- which(as.numeric(dimnames(W[[j]])[[3]]) %in% stats::time(country_data[[j]]))
+      x <- matrix(NA, dim(W[[j]])[1], t)
+      for (i in 1:t){
+        x[, i] <- W[[j]][,, w_pos[i]] %*% X_temp[, i]
       } 
     }
     dimnames(x)[[1]] <- dimnames(W[[j]])[[1]]
@@ -329,8 +374,7 @@ create_models <- function(country_data, gvar_weights, global_data = NULL,
   names(Z) <- countries
   rm(X_temp)
   
-  
-  #### Produce basic (x, x_star, x_global) objects ####
+  #### Generate data for each country ----
   X_index <- stats::tsp(X)
   data <- c()
   for (i in 1:length(Z)){
@@ -355,12 +399,146 @@ create_models <- function(country_data, gvar_weights, global_data = NULL,
     }
     
     # Collect data
-    temp <- list(data = list(x_domestic = x, x_foreign = x_star),
+    temp <- list(data = list(domestic = x,
+                             foreign = x_star),
                  model = model_specs[[i]])
     
-    # Check for global variables
+    # Add global data to data element
     if (!is.null(model_specs[[i]]$global)){
-      temp$data$x_global <- X_global
+      temp$data$global <- X_global
+    }
+    
+    # Add data on deterministic terms ----
+    if (!is.null(model_specs[[i]]$deterministic)) {
+      
+      tt <- nrow(x)
+      
+      # For VAR models
+      if (model_specs[[i]]$type == "VAR") {
+        determ <- NULL
+        determ_names <- NULL
+        if ("const" %in% model_specs[[i]]$deterministic) {
+          determ <- cbind(determ, rep(1, tt))
+          determ_names <- append(determ_names, "const")
+        }
+        if ("trend" %in% model_specs[[i]]$deterministic) {
+          determ <- cbind(determ, 1:tt)
+          determ_names <- append(determ_names, "trend")
+        }
+        if ("seasonal" %in% model_specs[[i]]$deterministic) {
+          freq <- stats::frequency(temp$data$domestic)
+          if (freq == 1) {
+            warning("The frequency of the provided data is 1. No seasonal dummmies are generated.")
+          } else {
+            # Find first reference date
+            pos <- which(stats::cycle(temp$data$domestic) == 1)[1]
+            # Define positions which get a seasonal dummy
+            pos <- rep(1:freq, 2)[pos:(pos + (freq - 2))]
+            # Produce dummy series
+            for (j in 1:(freq - 1)) {
+              s_temp <- rep(0, freq)
+              s_temp[pos[j]] <- 1
+              determ <- cbind(determ, rep(s_temp, length.out = tt))
+              determ_names <- c(determ_names, paste("season.", j, sep = ""))
+            }
+          }
+        }
+        
+        # Make det series a ts object
+        determ <- stats::ts(as.matrix(determ), class = c("mts", "ts", "matrix"))
+        stats::tsp(determ) <- stats::tsp(x)
+        dimnames(determ)[[2]] <- determ_names
+      }
+      
+      # For VEC models
+      if (model_specs[[i]]$type == "VEC") {
+        
+        temp_res <- NULL
+        temp_unres <- NULL
+        temp_names_res <- NULL
+        temp_names_unres <- NULL
+        
+        use_res <- !is.null(model_specs[[i]]$deterministic$restricted)
+        use_unres <- !is.null(model_specs[[i]]$deterministic$unrestricted)
+        
+        if (use_res) {
+          if ("const" %in% model_specs[[i]]$deterministic$restricted) {
+            temp_res <- cbind(temp_res, rep(1, tt))
+            temp_names_res <- append(temp_names_res, "const")
+          }
+          if ("trend" %in% model_specs[[i]]$deterministic$restricted) {
+            temp_res <- cbind(temp_res, 1:tt)
+            temp_names_res <- append(temp_names_res, "trend")
+          }
+          if ("seasonal" %in% model_specs[[i]]$deterministic$restricted) {
+            seas <- NULL
+            freq <- stats::frequency(temp$data$domestic)
+            if (freq == 1) {
+              warning("The frequency of the provided data is 1. No seasonal dummmies are generated.")
+            } else {
+              # Find first reference date
+              pos <- which(stats::cycle(temp$data$domestic) == 1)[1]
+              # Define positions which get a seasonal dummy
+              pos <- rep(1:freq, 2)[pos:(pos + (freq - 2))]
+              for (j in 1:(freq - 1)) {
+                s_temp <- rep(0, freq)
+                s_temp[pos[j]] <- 1
+                temp_res <- cbind(temp_res, rep(s_temp, length.out = tt))
+                temp_names_res <- c(temp_names_res, paste("season.", j, sep = "")) 
+              }
+            }
+          }
+        }
+        
+        if (use_unres) {
+          if ("const" %in% model_specs[[i]]$deterministic$unrestricted) {
+            temp_unres <- cbind(temp_unres, rep(1, tt))
+            temp_names_unres <- append(temp_names_unres, "const")
+          }
+          if ("trend" %in% model_specs[[i]]$deterministic$unrestricted) {
+            temp_unres <- cbind(temp_unres, 1:tt)
+            temp_names_unres <- append(temp_names_unres, "trend")
+          }
+          if ("seasonal" %in% model_specs[[i]]$deterministic$unrestricted) {
+            seas <- NULL
+            freq <- stats::frequency(temp$data$domestic)
+            if (freq == 1) {
+              warning("The frequency of the provided data is 1. No seasonal dummmies are generated.")
+            } else {
+              # Find first reference date
+              pos <- which(stats::cycle(temp$data$domestic) == 1)[1]
+              # Define positions which get a seasonal dummy
+              pos <- rep(1:freq, 2)[pos:(pos + (freq - 2))]
+              for (j in 1:(freq - 1)) {
+                s_temp <- rep(0, freq)
+                s_temp[pos[j]] <- 1
+                temp_unres <- cbind(temp_unres, rep(s_temp, length.out = tt))
+                temp_names_unres <- c(temp_names_unres, paste("season.", j, sep = "")) 
+              }
+            }
+          }
+        }
+        
+        # Make det series ts objects
+        determ <- list()
+        if (use_res) {
+          temp_res <- stats::ts(as.matrix(temp_res), class = c("mts", "ts", "matrix"))
+          stats::tsp(temp_res) <- stats::tsp(x)
+          dimnames(temp_res)[[2]] <- temp_names_res
+          determ$restricted <- temp_res
+          rm(temp_res)
+        }
+        if (use_unres) {
+          temp_unres <- stats::ts(as.matrix(temp_unres), class = c("mts", "ts", "matrix"))
+          stats::tsp(temp_unres) <- stats::tsp(x)
+          dimnames(temp_unres)[[2]] <- temp_names_unres
+          determ$unrestricted <- temp_unres
+          rm(temp_unres)
+        }
+      }
+      
+      temp$data$deterministic <- determ
+      
     }
     
     temp$data$weights = W[[i]]
@@ -374,16 +552,21 @@ create_models <- function(country_data, gvar_weights, global_data = NULL,
   data_temp <- NULL
   names_temp <- NULL
   for (i in countries){
+    
+    # Helping object, since loops cannot deal with empty objects
     if (!global) {
       data[[i]]$model$global$lags <- "none"
     }
     if (data[[i]]$model$type == "VAR") {
-      data[[i]]$model$cointegration$rank <- "none"
+      data[[i]]$model$rank <- "none"
     }
+    
+    # Create country objects
     for (j in data[[i]]$model$domestic$lags) {
       for (k in data[[i]]$model$foreign$lags) {
         for (l in data[[i]]$model$global$lags) {
-          for (m in data[[i]]$model$cointegration$rank) {
+          for (m in data[[i]]$model$rank) {
+            
             temp <- data[[i]]
             temp$model$domestic$lags <- j
             temp$model$foreign$lags <- k
@@ -392,19 +575,32 @@ create_models <- function(country_data, gvar_weights, global_data = NULL,
             } else {
               temp$model$global <- NULL
             }
-            if (temp$model$type == "VAR") {
-              temp$model$cointegration <- NULL
+            
+            if (temp$model[["type"]] == "VEC") {
+              temp$model[["rank"]] <- m
             } else {
-              temp$model$cointegration$rank <- m
+              temp$model[["rank"]] <- NULL
             }
             
-            temp$model$structural <- FALSE
-            temp$model$tvp <- FALSE
-            temp$model$sv <- FALSE
-            temp$model$variable_selection$type <- "none"
+            temp$model$varselect <- "none"
+            
+            # Add matrices for estimation
+            if (temp$model$type == "VAR") {
+              temp_i <- .gen_varx(temp)
+              temp$data[["Y"]] <- temp_i[["Y"]]
+              temp$data[["Z"]] <- temp_i[["Z"]]
+              temp$data[["SUR"]] <- temp_i[["SUR"]]
+            }
+            if (temp$model$type == "VEC") {
+              temp_i <- .gen_vecx(temp)
+              temp$data[["Y"]] <- temp_i[["Y"]]
+              temp$data[["W"]] <- temp_i[["W"]]
+              temp$data[["X"]] <- temp_i[["X"]]
+              temp$data[["SUR"]] <- temp_i[["SUR"]]
+            }
             
             data_temp <- c(data_temp, list(temp))
-            names_temp <- c(names_temp, i)  
+            names_temp <- c(names_temp, i)
           } 
         }
       }
@@ -412,6 +608,17 @@ create_models <- function(country_data, gvar_weights, global_data = NULL,
   }
   
   names(data_temp) <- names_temp
-  data <- data_temp
-  return(data)
+  
+  type <- unique(unlist(lapply(data_temp, function(x){x$model$type})))
+  if (length(type) > 1) {
+    warning("Multiple types of submodels identified.")
+  }
+  if (type[1] == "VAR") {
+    class(data_temp) <- append("gvarsubmodels", class(data_temp))  
+  }
+  if (type[1] == "VEC") {
+    class(data_temp) <- append("gvecsubmodels", class(data_temp))  
+  }
+  
+  return(data_temp)
 }

@@ -54,62 +54,6 @@ and \eqn{\sigma_{jj}} is the diagonal element of the \eqn{j}th variable of the v
 
 Since GIR-based FEVDs do not add up to unity, they can be normalised by setting \code{normalise_gir = TRUE}.
 }
-\examples{
-data("gvar2016")
-
-country_data <- gvar2016$country_data
-global_data <- gvar2016$global_data
-region_weights <- gvar2016$region_weights
-weight_data <- gvar2016$weight_data
-
-# Take first difference of all variables y and Dp
-country_data <- diff_variables(country_data, variables = c("y", "Dp", "r"))
-
-# Generate EA area region with 3 year rolling window weights
-ea <- c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")
-temp <- create_regions(country_data = country_data,
-                       regions = list("EA" = ea),
-                       period = 3,
-                       region_weights = region_weights,
-                       weight_data = weight_data)
-country_data <- temp$country_data
-weight_data <- temp$weight_data
-
-# Generate weight matrices as 3 year rolling window averages
-gvar_weights <- create_weights(weight_data = weight_data, period = 3,
-                               country_data = country_data)
-
-# Create an object with country model specifications
-model_specs <- create_specifications(country_data = country_data,
-                                     global_data = global_data,
-                                     variables = c("y", "Dp", "r"),
-                                     countries = c("EA", "US", "JP", "CA", "MX", "GB"),
-                                     p_domestic = 1,
-                                     p_foreign = 1,
-                                     type = "VAR")
-
-# Create estimable objects
-object <- create_models(country_data = country_data,
-                        gvar_weights = gvar_weights,
-                        model_specs = model_specs)
-
-# Add priors
-object <- add_priors(object)
-
-# Estimate GVAR model
-gvar_est <- estimate_gvar(object, iterations = 100, burnin = 10, thin = 2)
-# Note that the number of iterations and burnin should be much higher.
-
-# Solve GVAR
-gvar_solved <- solve_gvar(gvar_est)
-
-# GFEVD
-gvar_gfevd <- gfevd(gvar_solved, response = c("EA", "y"))
-
-# Plot GFEVD
-plot(gvar_gfevd)
-
-}
 \references{
 Lütkepohl, H. (2007). \emph{New introduction to multiple time series analysis} (2nd ed.). Berlin: Springer.
 

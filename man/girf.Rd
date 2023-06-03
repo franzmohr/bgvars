@@ -44,62 +44,6 @@ A time-series object of class \code{"bgvarirf"}.
 Computes the generalised impulse response coefficients of an object of class \code{"bgvar"} for
 `n.ahead` steps.
 }
-\examples{
-data("gvar2016")
-
-country_data <- gvar2016$country_data
-global_data <- gvar2016$global_data
-region_weights <- gvar2016$region_weights
-weight_data <- gvar2016$weight_data
-
-# Take first difference of all variables y and Dp
-country_data <- diff_variables(country_data, variables = c("y", "Dp", "r"))
-
-# Generate EA area region with 2 year, rolling window weights
-ea <- c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")
-temp <- create_regions(country_data = country_data,
-                       regions = list("EA" = ea),
-                       period = 2,
-                       region_weights = region_weights,
-                       weight_data = weight_data)
-country_data <- temp$country_data
-weight_data <- temp$weight_data
-
-# Generate weight matrices as 2 year, rolling window averages
-gvar_weights <- create_weights(weight_data = weight_data, period = 2,
-                               country_data = country_data)
-
-# Create an object with country model specifications
-model_specs <- create_specifications(country_data = country_data,
-                                     global_data = global_data,
-                                     variables = c("y", "Dp", "r"),
-                                     countries = c("EA", "US", "JP", "CA", "MX", "GB"),
-                                     p_domestic = 1,
-                                     p_foreign = 1,
-                                     type = "VAR")
-
-# Create estimable objects
-object <- create_models(country_data = country_data,
-                        gvar_weights = gvar_weights,
-                        model_specs = model_specs)
-
-# Add priors
-object <- add_priors(object)
-
-# Estimate GVAR model
-gvar_est <- estimate_gvar(object, iterations = 100, burnin = 10, thin = 2)
-# Note that the number of iterations and burnin should be much higher.
-
-# Solve GVAR
-gvar_solved <- solve_gvar(gvar_est)
-
-# GIRF
-gvar_girf <- girf(gvar_solved, impulse = c("US", "r"), response = c("EA", "y"))
-
-# Plot GIRF
-plot(gvar_girf)
-
-}
 \references{
 Lütkepohl, H. (2007). \emph{New introduction to multiple time series analyis} (2nd ed.). Berlin: Springer.
 

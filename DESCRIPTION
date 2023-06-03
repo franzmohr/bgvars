@@ -1,13 +1,12 @@
 Package: bgvars
-Title: Bayesian Inference for Global Vector Autoregressive Models
-Version: 0.0.0.9000
-Date: 2020-03-29
+Title: Bayesian Inference for Global Vector Autoregressive and Error Correction Models
+Version: 0.0.0.9002
+Date: 2023-05-23
 Authors@R: person("Franz X.", "Mohr", email = "franz.x.mohr@outlook.com", role = c("aut","cre"))
-Description: Assists in the set-up and inference of Bayesian global vector autoregressive (BGVAR) models.
+Description: Assists in the set-up and inference of Bayesian global vector autoregressive (BGVAR) and error correction (BGVEC) models.
 License: GPL (>= 2) 
-Depends: R (>= 3.3.0)
+Depends: R (>= 3.3.0), bvartools (>= 0.2.1)
 Imports:
-    bvartools (>= 0.0.3),
     coda,
     grDevices,
     graphics,
@@ -15,13 +14,58 @@ Imports:
     Rcpp (>= 0.12.14),
     stats,
     utils
-LinkingTo: Rcpp, RcppArmadillo
+LinkingTo: Rcpp, RcppArmadillo, bvartools
 LazyData: true
 Encoding: UTF-8
-RoxygenNote: 7.1.0
+RoxygenNote: 7.2.3
 URL: https://github.com/franzmohr/bgvars
 BugReports: https://github.com/franzmohr/bgvars/issues
-Suggests: 
-    knitr,
-    rmarkdown
-VignetteBuilder: knitr
+Suggests: knitr, rmarkdown
+Collate: 
+    'RcppExports.R'
+    'add_priors.gvarsubmodels.R'
+    'add_priors.gvecsubmodels.R'
+    'bgvars.R'
+    'bvarxpost.R'
+    'bvecxpost.R'
+    'choose_submodels.R'
+    'combine_submodels.R'
+    'contemp_coeffs.R'
+    'country_fill_helper.R'
+    'create_models.R'
+    'create_pi_matrices.R'
+    'create_regions.R'
+    'create_specifications.R'
+    'create_weights.R'
+    'ctryvec_to_ctryvar.R'
+    'data.R'
+    'diff_variables.R'
+    'draw_posterior.gvarsubmodels.R'
+    'draw_posterior.gvecsubmodels.R'
+    'gen_varx.R'
+    'gen_vecx.R'
+    'get_regressor_names.R'
+    'gfevd.R'
+    'girf.R'
+    'plot.bgvarest.R'
+    'plot.bgvarfevd.R'
+    'plot.bgvarirf.R'
+    'plot.bgvarprd.R'
+    'plot.bgvecest.R'
+    'plot.ctryvarest.R'
+    'plot.ctryvecest.R'
+    'predict.bgvar.R'
+    'summary.bgvarest.R'
+    'print.summary.bgvarest.R'
+    'summary.bgvecest.R'
+    'print.summary.bgvecest.R'
+    'summary.ctryvarest.R'
+    'print.summary.ctryvarest.R'
+    'summary.ctryvecest.R'
+    'print.summary.ctryvecest.R'
+    'submodel_test_statistics.R'
+    'thin.bgvar.R'
+    'thin.bgvarest.R'
+    'thin.bgvecest.R'
+    'tvpribbon.R'
+    'zzz.R'

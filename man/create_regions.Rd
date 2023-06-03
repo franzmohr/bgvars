@@ -14,55 +14,57 @@ create_regions(country_data, weight_data, region_weights, regions, period)
 \item{region_weights}{a multivariate time-series object containing data used
 to weight the observations in \code{country_data}.}
 
-\item{regions}{a named list of character vectors containing the names of countries
-in \code{country_data}, which should be combined to a region. The name of a
-list element will become the name of the region.}
+\item{regions}{a named list of character vectors containing specifications for countries
+in \code{country_data}, which should be combined to a region. The name of the
+respective list element will become the name of the region.}
 
 \item{period}{either a single integer or a numeric vector specifiying the periods in
 \code{region_weights}, which should be used to construct weights.}
 }
 \value{
 A list containing the following elements:
-\item{country_data}{a named list of updated time-series objects.}
-\item{weight_data}{a named list of named time-series objects or a named matrix
-containing data for the construction of weights.}
+\item{country_data}{a named list of updated time-series objects with country data.}
+\item{weight_data}{a named list of named time-series objects for the
+generation of country-specific weight matrices.}
 }
 \description{
 Combines multiple country-specific time series to regional series.
 }
 \details{
-If a numeric vector is provided for argument \code{period}, the function will weight
+If a numeric vector is provided for argument \code{period}, the function weights
 country-specific observations based on the sums over the specified periods.
-If an integer is proved, the country-specific observations will be weighted
+If an integer is proved, the country-specific observations are weighted
 according to rolling sums over the last \code{period} periods. If country
 data start earlier than the series in \code{region_weights}, the sums over
-the first \code{period} observations of \code{region_weights} will be used
+the first \code{period} observations of \code{region_weights} are used
 until the periods match.
 
-If \code{weight_data} is a list, its elements should be time-series objects,
-where colums should be named after the trading partner. The names of the list
-elements should match the country names in \code{country_data}. For each country
-list element the time-series object should contain zeros in the column of the
-respective country. For examle, the column "US" in the "US"-element of the list
-should contain zeros.
+The elements of \code{weight_data} should be time-series objects,
+where colums are named after the trading partners of the respective country
+and the names of the elements should match the country names in
+\code{country_data}. For each country list element the time-series object should
+contain zeros in the column of the respective country. For examle, the column
+"US" in the "US"-element of the list should only contain zeros.
 }
 \examples{
+
+# Load gvar2016 dataset
 data("gvar2016")
 
-country_data <- gvar2016$country_data
-global_data <- gvar2016$global_data
-region_weights <- gvar2016$region_weights
-weight_data <- gvar2016$weight_data
+# Data objects
+country_data <- gvar2016[["country_data"]]
+global_data <- gvar2016[["global_data"]]
+region_weights <- gvar2016[["region_weights"]]
+weight_data <- gvar2016[["weight_data"]]
 
-# Generate Euro area region with 2 year rolling window weights
+# Define region for the euro area
 ea <- c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")
+
+# Create regions
 temp <- create_regions(country_data = country_data,
                        regions = list("EA" = ea),
-                       period = 2,
+                       period = 3,
                        region_weights = region_weights,
                        weight_data = weight_data)
-
-country_data <- temp$country_data # New country data
-weight_data <- temp$weight_data # New weight data
 
 }

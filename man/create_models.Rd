@@ -6,7 +6,7 @@
 \usage{
 create_models(
   country_data,
-  gvar_weights,
+  weight_data,
   global_data = NULL,
   model_specs = NULL
 )
@@ -14,45 +14,49 @@ create_models(
 \arguments{
 \item{country_data}{a named list of time-series objects of country-specific data.}
 
-\item{gvar_weights}{a matrix or an array of weights, usually, the output of a call to \code{\link{create_weights}}.}
+\item{weight_data}{a matrix or an array of weights, usually, the output of a call to \code{\link{create_weights}}.}
 
 \item{global_data}{a named time-series object of global data.}
 
-\item{model_specs}{a list of model specifications as produced by \code{\link{create_specifications}}.}
+\item{model_specs}{a list of model specifications, usuall, the output of a call to \code{\link{create_specifications}}.}
 }
 \value{
-A list of country model input.
+A list of country data and model specifications.
 }
 \description{
 Produces a list of country models for each model specification that should be estimated.
 }
 \examples{
+
+# Load gvar2016 dataset
 data("gvar2016")
 
-country_data <- gvar2016$country_data
-global_data <- gvar2016$global_data
-region_weights <- gvar2016$region_weights
-weight_data <- gvar2016$weight_data
+# Data objects
+country_data <- gvar2016[["country_data"]]
+global_data <- gvar2016[["global_data"]]
+region_weights <- gvar2016[["region_weights"]]
+weight_data <- gvar2016[["weight_data"]]
 
-# Take first difference of all variables y and Dp
-country_data <- diff_variables(country_data, variables = c("y", "Dp"))
+# Obtain weights
+weight_data <- create_weights(weight_data = weight_data, period = 3,
+                              country_data = country_data)
 
-# Generate weight matrices as 2 year, rolling window averages
-gvar_weights <- create_weights(weight_data = weight_data, period = 2,
-                               country_data = country_data)
-
-# Create an object with country model specifications
+# Generate specifications
 model_specs <- create_specifications(country_data = country_data,
                                      global_data = global_data,
-                                     variables = c("y", "Dp", "poil"),
-                                     p_domestic = 2,
-                                     p_foreign = 2,
-                                     type = "VAR")
+                                     countries = c("US", "JP", "CA", "NO", "GB"), 
+                                     domestic = list(variables = c("y", "Dp", "r"), lags = 1:2),
+                                     foreign = list(variables = c("y", "Dp", "r"), lags = 1:2),
+                                     global = list(variables = c("poil"), lags = 1:2),
+                                     deterministic = list(const = TRUE, trend = FALSE, seasonal = FALSE),
+                                     iterations = 10,
+                                     burnin = 10,
+                                     thin = 1)
 
-# Create estimable objects
-object <- create_models(country_data = country_data,
-                        gvar_weights = gvar_weights,
-                        global_data = global_data,
-                        model_specs = model_specs)
+# Create list element for each model
+country_models <- create_models(country_data = country_data,
+                                weight_data = weight_data,
+                                global_data = global_data,
+                                model_specs = model_specs)
 
 }

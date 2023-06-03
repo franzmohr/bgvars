@@ -1,0 +1,209 @@
+#' Test Statistics for Model Selection of VARX Submodels
+#'
+#' Calculates test stistics for the the selection of country-specific VARX models
+#' of a GVAR model.
+#'
+#' @param object an object of class \code{"bgvarest"}, usually, a result of a call to
+#' \code{\link{draw_posterior}}.
+#' @param ... further arguments passed to or from other methods.
+#' 
+#' @details The log-likelihood for the calculation of the information criteria is obtained by
+#' \deqn{LL = \frac{1}{R} \sum_{i = 1}^{R} \left( \sum_{t = 1}^{T} -\frac{K^{dom}}{2} \ln 2\pi - \frac{1}{2} \ln |\Sigma_t^{(i)}| -\frac{1}{2} (u_t^{{(i)}\prime} (\Sigma_t^{(i)})^{-1} u_t^{(i)} \right)},
+#' where \eqn{u_t = y_t - \mu_t}. The Akaike, Bayesian and Hannan–Quinn (HQ) information criteria are calculated as
+#' \deqn{AIC = 2 (K^{d}p^{d} + K^{f}p^{f} + Ms + N) - 2 LL},
+#' \deqn{BIC = (K^{d}p^{d} + K^{f}p^{f} + Ms + N) ln(T) - 2 LL} and 
+#' \deqn{HQ = 2  (K^{d}p^{d} + K^{f}p^{f} + Ms + N) ln(ln(T)) - 2 LL}, respectively,
+#' where \eqn{K^{d}} is the number of endogenous domestic variables, \eqn{p^{d}} the number of lags of endogenous domestic variables,
+#' \eqn{K^{f}} is the number of foreign variables, \eqn{p^{f}} the number of lags of foreign variables,
+#' \eqn{M} the number of global variables, \eqn{s} the number of lags of global variables,
+#' \eqn{N} the number of deterministic terms and \eqn{T} the number of observations.
+#'
+#' @return A data frame.
+#'
+#' @export
+submodel_test_satistics <- function(object, ...){
+  
+  n_models <- length(object)
+  
+  teststats <- data.frame(ctry = rep(NA, n_models),
+                          p_domestic = rep(NA, n_models),
+                          p_foreign = rep(NA, n_models),
+                          s = rep(NA, n_models),
+                          r = rep(NA, n_models),
+                          LL = rep(NA, n_models),
+                          AIC = rep(NA, n_models),
+                          BIC = rep(NA, n_models),
+                          HQ = rep(NA, n_models),
+                          stringsAsFactors = FALSE)
+  
+  for (i in 1:n_models) {
+    
+    teststats[i, "ctry"] <- names(object)[i]
+    structural <- object[[i]][["model"]][["structural"]]
+    tvp <- object[[i]][["model"]][["tvp"]]
+    sv <- object[[i]][["model"]][["sv"]]
+    tt <- NROW(object[[i]][["data"]][["Y"]])
+    k_domestic <- length(object[[i]][["model"]][["domestic"]][["variables"]])
+    p_domestic <- object[[i]][["model"]][["domestic"]][["lags"]]
+    k_foreign <- length(object[[i]][["model"]][["foreign"]][["variables"]])
+    p_foreign <- object[[i]][["model"]][["foreign"]][["lags"]]
+    global <- !is.null(object[[i]][["model"]][["global"]])
+    if (global) {
+      k_global <- length(object[[i]][["model"]][["global"]][["variables"]])
+      s <- object[[i]][["model"]][["global"]][["lags"]]
+    }
+    
+    teststats[i, "p_domestic"] <- p_domestic
+    teststats[i, "p_foreign"] <- p_foreign 
+    if (global) {
+      teststats[i, "s"] <- s 
+    }
+    
+    if (tvp) {
+      temp_pars <- list()
+      length(temp_pars) <- tt
+    } else {
+      temp_pars <- NULL
+    }
+    x <- NULL
+    
+    if ("ctryvarest" %in% class(object[[i]])) {
+      
+      x <- t(object[[i]][["data"]][["Z"]])
+      tot_pars <- NCOL(object[[i]][["data"]][["Z"]])
+      
+      vars <- c("domestic", "foreign", "global", "deterministic")
+      for (j in vars) {
+        if (!is.null(object[[i]][["posteriors"]][[j]])) {
+          if (is.list(object[[i]][["posteriors"]][[j]])) {
+            for (period in 1:tt) {
+              temp_pars[[period]] <- cbind(temp_pars[[period]], object[[i]][["posteriors"]][[j]][[period]]) 
+            }
+          } else {
+            temp_pars <- cbind(temp_pars, object[[i]][["posteriors"]][[j]]) 
+          }
+        }
+      }
+    }
+    
+    # if ("bvec" %in% class(object[[i]])) {
+    #   
+    #   type <- "VEC"
+    #   if (is.null(object[[i]][["r"]])) {
+    #     if (is.null(object[[i]][["alpha"]])) {
+    #       r <- 0
+    #       teststats[i, "r"] <- 0
+    #     } else {
+    #       r <- NCOL(object[[i]][["alpha"]]) / k
+    #       teststats[i, "r"] <- r
+    #     } 
+    #   } else {
+    #     r <- object[[i]][["r"]]
+    #   }
+    #   tot_pars <- r
+    #   
+    #   vars <- c("Pi", "Pi_x", "Pi_d", "Gamma", "Upsilon", "C")
+    #   for (j in vars) {
+    #     if (!is.null(object[[i]][[j]])) {
+    #       
+    #       if (is.list(object[[i]][[j]])) {
+    #         for (period in 1:tt) {
+    #           temp_pars[[period]] <- cbind(temp_pars[[period]], object[[i]][[j]][[period]]) 
+    #         }
+    #       } else {
+    #         temp_pars <- cbind(temp_pars, object[[i]][[j]]) 
+    #       }
+    #       
+    #       if (j == "Pi") {
+    #         x <- cbind(x, object[[i]][["w"]])
+    #         ect_vars <- c(ect_vars, dimnames(object[[i]][["w"]])[[2]])
+    #       }
+    #       if (j == "Pi_x") {
+    #         x <- cbind(x, object[[i]][["w_x"]])
+    #         ect_vars <- c(ect_vars, dimnames(object[[i]][["w_x"]])[[2]])
+    #       }
+    #       if (j == "Pi_d") {
+    #         x <- cbind(x, object[[i]][["w_d"]])
+    #         ect_vars <- c(ect_vars, dimnames(object[[i]][["w_d"]])[[2]])
+    #       }
+    #       if (j == "Gamma") {
+    #         x <- cbind(x, object[[i]][["x"]])
+    #         exog_vars <- c(exog_vars, dimnames(object[[i]][["x"]])[[2]])
+    #       }
+    #       if (j == "Upsilon") {
+    #         x <- cbind(x, object[[i]][["x_x"]])
+    #         exog_vars <- c(exog_vars, dimnames(object[[i]][["x_x"]])[[2]])
+    #       }
+    #       if (j == "C") {
+    #         x <- cbind(x, object[[i]][["x_d"]])
+    #         exog_vars <- c(exog_vars, dimnames(object[[i]][["x_d"]])[[2]])
+    #       }
+    #     }        
+    #   }
+    #   
+    #   tot_pars <- tot_pars + NCOL(x)
+    #   x <- t(x)
+    # }
+    
+    if (tvp) {
+      draws <- nrow(temp_pars[[1]])
+    } else {
+      draws <- nrow(temp_pars) 
+    }
+    LL <- matrix(NA, tt, draws) # Get LogLik
+    y <- t(object[[i]][["data"]][["Y"]])
+    u <- y * 0
+    if (sv) {
+      sigma <- matrix(NA_real_, k_domestic * tt, k_domestic)
+    } else {
+      sigma <- matrix(NA_real_, k_domestic, k_domestic)
+    }
+    
+    for (j in 1:draws) {
+      # Residuals
+      if (tvp) {
+        for (period in 1:tt) {
+          u[, period] <- y[, period] - matrix(temp_pars[[period]][j, ], k_domestic) %*% x[, period] 
+        }
+      } else {
+        if (structural) {
+          A0 <- matrix(object[[i]][["posteriors"]][["a0"]][j, ], k_domestic)
+        } else {
+          A0 <- diag(k_domestic)
+        }
+        u <- A0 %*% y - matrix(temp_pars[j, ], k_domestic) %*% x 
+      }
+      
+      if (sv) {
+        for (period in 1:tt) {
+          sigma[(period - 1) * k_domestic + 1:k_domestic,] <- matrix(object[[i]][["posteriors"]][["sigma"]][[period]][j,], k_domestic)
+        }
+      } else {
+        sigma <- matrix(object[[i]][["posteriors"]][["sigma"]][j,], k_domestic)
+      }
+      
+      # LogLik
+      LL[, j] <- bvartools::loglik_normal(u, sigma)
+    }
+    
+    ll <- sum(rowMeans(LL))
+    teststats[i, "LL"] <- ll
+    teststats[i, "AIC"] <- 2 * tot_pars - 2 * ll
+    teststats[i, "BIC"] <- log(tt) * tot_pars - 2 * ll
+    teststats[i, "HQ"] <- 2 * log(log(tt)) * tot_pars - 2 * ll
+  }
+  
+  # Omit unnecessary columns
+  teststats <- teststats[, which(!apply(teststats, 2, function(x) {all(is.na(x))}))]
+  
+  # Final output with one list element per country
+  result <- NULL
+  ctry_names <- unique(teststats[, "ctry"])
+  for (i in 1:length(ctry_names)) {
+    result[[i]] <- teststats[teststats[, "ctry"] == ctry_names[i], -1]
+    rownames(result[[i]]) <- NULL
+    names(result)[i] <- ctry_names[i]
+  }
+  
+  return(result)
+}

@@ -180,7 +180,8 @@ temp <- create_regions(country_data = country_data,
 country_data <- temp$country_data
 weight_data <- temp$weight_data
 
-# Generate weight matrices as 3 year, rolling window averages
+
+  # Generate weight matrices as 3 year, rolling window averages
 gvar_weights <- create_weights(weight_data = weight_data, period = 1999:2001,
                                country_data = country_data)
 
@@ -188,72 +189,77 @@ gvar_weights <- create_weights(weight_data = weight_data, period = 1999:2001,
 #### Specs ####
 country_data <- diff_variables(country_data, variables = c("p"))
 
+# Take values directly form 
+country_data$EA[, "ep"] <- read.csv("data-raw/dees2007/Euroarea26.csv", stringsAsFactors = FALSE)[, "ep"]
+
 # Create an object with country model specifications
 model_specs <- create_specifications(country_data = country_data,
                                      global_data = global_data,
-                                     variables = c("y", "p", "rs", "rl", "q", "ep", "poil"),
+                                     domestic = list(variables = c("y", "p", "rs", "rl", "q", "ep"), lags = 1),
+                                     foreign = list(variables = c("y", "p", "rs", "rl", "q", "ep", "poil"), lags = 1),                                     
+                                     deterministic = list(const = "unrestricted", trend = "restricted"),
                                      countries = NULL,
+                                     iterations = 10000,
+                                     burnin = 5000,
                                      r = 1,
-                                     p_domestic = 1,
-                                     p_foreign = 1,
                                      type = "VEC")
 
 # Argentina
 model_specs$AR$domestic$variables <- c("y", "p", "rs", "q", "ep")
 model_specs$AR$foreign$variables <- c("y", "p", "q", "rs", "rl")
 model_specs$AR$domestic$lags <- 2
-model_specs$AR$cointegration$rank <- 2
+model_specs$AR$rank <- 2
 
 # Australia
 model_specs$AU$domestic$variables <- c("y", "p", "rs", "rl", "q", "ep")
 model_specs$AU$foreign$variables <- c("y", "p", "q", "rs", "rl")
-model_specs$AU$cointegration$rank <- 4
+model_specs$AU$rank <- 4
 
 # Brazil
 model_specs$BR$domestic$variables <- c("y", "p", "rs", "ep")
 model_specs$BR$foreign$variables <- c("y", "p", "q", "rs", "rl")
 model_specs$BR$domestic$lags <- 2
-model_specs$BR$cointegration$rank <- 1
+model_specs$BR$rank <- 1
 
 # Canada
 model_specs$CA$domestic$variables <- c("y", "p", "rs", "rl", "q", "ep")
 model_specs$CA$foreign$variables <- c("y", "p", "q", "rs", "rl")
-model_specs$CA$cointegration$rank <- 4
+model_specs$CA$rank <- 4
 
 # China
 model_specs$CN$domestic$variables <- c("y", "p", "rs", "ep")
 model_specs$CN$foreign$variables <- c("y", "p", "q", "rs", "rl")
 model_specs$CN$domestic$lags <- 2
-model_specs$CN$cointegration$rank <- 1
+model_specs$CN$rank <- 1
 
 # Chile
 model_specs$CL$domestic$variables <- c("y", "p", "rs", "q", "ep")
 model_specs$CL$foreign$variables <- c("y", "p", "q", "rs", "rl")
 model_specs$CL$domestic$lags <- 2
-model_specs$CL$cointegration$rank <- 2
+model_specs$CL$rank <- 2
 
 # India
 model_specs$IN$domestic$variables <- c("y", "p", "rs", "q", "ep")
 model_specs$IN$foreign$variables <- c("y", "p", "q", "rs", "rl")
 model_specs$IN$domestic$lags <- 2
-model_specs$IN$cointegration$rank <- 2
+model_specs$IN$rank <- 2
 
 # Indonesia
 model_specs$ID$domestic$variables <- c("y", "p", "rs", "ep")
 model_specs$ID$foreign$variables <- c("y", "p", "q", "rs", "rl")
 model_specs$ID$domestic$lags <- 2
-model_specs$ID$cointegration$rank <- 3
+model_specs$ID$rank <- 3
 
 # Japan
 model_specs$JP$domestic$variables <- c("y", "p", "rs", "rl", "q", "ep")
 model_specs$JP$foreign$variables <- c("y", "p", "q", "rs", "rl")
-model_specs$JP$cointegration$rank <- 4
+model_specs$JP$rank <- 4
 
 # South Korea
 model_specs$KR$domestic$variables <- c("y", "p", "rs", "rl", "q", "ep")
 model_specs$KR$foreign$variables <- c("y", "p", "q", "rs", "rl")
 model_specs$KR$domestic$lags <- 2
-model_specs$KR$cointegration$rank <- 4
+model_specs$KR$rank <- 4
 
 # Malaysia
 model_specs$MY$domestic$variables <- c("y", "p", "rs", "q", "ep")
@@ -263,31 +269,31 @@ model_specs$MY$domestic$lags <- 2
 # Mexico
 model_specs$MX$domestic$variables <- c("y", "p", "rs", "ep")
 model_specs$MX$foreign$variables <- c("y", "p", "q", "rs", "rl")
-model_specs$MX$cointegration$rank <- 3
+model_specs$MX$rank <- 3
 
 # Norway
 model_specs$NO$domestic$variables <- c("y", "p", "rs", "rl", "q", "ep")
 model_specs$NO$foreign$variables <- c("y", "p", "q", "rs", "rl")
 model_specs$NO$domestic$lags <- 2
-model_specs$NO$cointegration$rank <- 2
+model_specs$NO$rank <- 2
 
 # New Zealand
 model_specs$NZ$domestic$variables <- c("y", "p", "rs", "rl", "q", "ep")
 model_specs$NZ$foreign$variables <- c("y", "p", "q", "rs", "rl")
 model_specs$NZ$domestic$lags <- 2
-model_specs$NZ$cointegration$rank <- 3
+model_specs$NZ$rank <- 3
 
 # Peru
 model_specs$PE$domestic$variables <- c("y", "p", "rs", "ep")
 model_specs$PE$foreign$variables <- c("y", "p", "q", "rs", "rl")
 model_specs$PE$domestic$lags <- 2
-model_specs$PE$cointegration$rank <- 3
+model_specs$PE$rank <- 3
 
 # Phillipines
 model_specs$PH$domestic$variables <- c("y", "p", "rs", "q", "ep")
 model_specs$PH$foreign$variables <- c("y", "p", "q", "rs", "rl")
 model_specs$PH$domestic$lags <- 2
-model_specs$PH$cointegration$rank <- 2
+model_specs$PH$rank <- 2
 
 # South Africa
 model_specs$ZA$domestic$variables <- c("y", "p", "rs", "rl", "q", "ep")
@@ -303,23 +309,23 @@ model_specs$SA$domestic$lags <- 2
 model_specs$SG$domestic$variables <- c("y", "p", "rs", "q", "ep")
 model_specs$SG$foreign$variables <- c("y", "p", "q", "rs", "rl")
 model_specs$SG$domestic$lags <- 2
-model_specs$SG$cointegration$rank <- 3
+model_specs$SG$rank <- 3
 
 # Sweden
 model_specs$SE$domestic$variables <- c("y", "p", "rs", "rl", "q", "ep")
 model_specs$SE$foreign$variables <- c("y", "p", "q", "rs", "rl")
 model_specs$SE$domestic$lags <- 2
-model_specs$SE$cointegration$rank <- 3
+model_specs$SE$rank <- 3
 
 # Switzerland
 model_specs$CH$domestic$variables <- c("y", "p", "rs", "rl", "q", "ep")
 model_specs$CH$foreign$variables <- c("y", "p", "q", "rs", "rl")
-model_specs$CH$cointegration$rank <- 3
+model_specs$CH$rank <- 3
 
 # Thailand
 model_specs$TH$domestic$variables <- c("y", "p", "rs", "q", "ep")
 model_specs$TH$foreign$variables <- c("y", "p", "q", "rs", "rl")
-model_specs$TH$cointegration$rank <- 3
+model_specs$TH$rank <- 3
 
 # Turkey
 model_specs$TR$domestic$variables <- c("y", "p", "rs", "ep")
@@ -330,27 +336,27 @@ model_specs$TR$domestic$lags <- 2
 model_specs$GB$domestic$variables <- c("y", "p", "rs", "rl", "q", "ep")
 model_specs$GB$foreign$variables <- c("y", "p", "q", "rs", "rl")
 model_specs$GB$domestic$lags <- 2
-model_specs$GB$cointegration$rank <- 3
+model_specs$GB$rank <- 3
 
 # Euro area
 model_specs$EA$domestic$variables <- c("y", "p", "rs", "rl", "q", "ep")
 model_specs$EA$foreign$variables <- c("y", "p", "q", "rs", "rl")
 model_specs$EA$domestic$lags <- 2
 model_specs$EA$foreign$lags <- 2
-model_specs$EA$cointegration$rank <- 2
+model_specs$EA$rank <- 2
 
 # United States
 model_specs$US$domestic$variables <- c("y", "p", "rs", "rl", "q", "poil")
 model_specs$US$foreign$variables <- c("y", "p", "ep")
 model_specs$US$domestic$lags <- 2
 model_specs$US$foreign$lags <- 2
-model_specs$US$cointegration$rank <- 2
+model_specs$US$rank <- 2
 
 
 dees2007 <- list("country_data" = country_data,
                  "global_data" = global_data,
-                 "region_weights" = region_weights,
-                 "gvar_weights" = gvar_weights,
+                 #"region_weights" = region_weights,
+                 "weight_data" = gvar_weights,
                  "dees_specs" = model_specs)
 
-save(dees2007, file = "data/dees2007.rda", version = 2)
+usethis::use_data(dees2007, overwrite = TRUE, version = 2)

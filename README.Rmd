@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
 # bgvars
 
 [![CRAN status](https://www.r-pkg.org/badges/version/bgvars)](https://cran.r-project.org/package=bgvars)
-[![Travis build status](https://travis-ci.org/franzmohr/bgvars.svg?branch=master)](https://travis-ci.org/franzmohr/bgvars)
+[![R-CMD-check](https://github.com/franzmohr/bgvars/workflows/R-CMD-check/badge.svg)](https://github.com/franzmohr/bgvars/actions)
 
 ## Overview
 
@@ -52,14 +52,14 @@ The `bgvars` packages comes with the updated GVAR database of Mohaddes and Raiss
 library(bgvars)
 data("gvar2016")
 
-country_data <- lapply(gvar2016$country_data, function(x) {x * 100}) # Country series
-global_data <- gvar2016$global_data * 100 # Global commodities data
+country_data <- gvar2016$country_data # Country series
+global_data <- gvar2016$global_data # Global commodities data
 region_weights <- gvar2016$region_weights # Data for regional weights
 weight_data <- gvar2016$weight_data # Data for trade weights
 
 # Take first differences of non-stationary series  
-country_data <- diff_variables(country_data, variables = c("y", "eq", "ep"))
-global_data <- diff_variables(global_data)
+country_data <- diff_variables(country_data, variables = c("y", "Dp", "r"), multi = 100)
+global_data <- diff_variables(global_data, multi = 100)
 ```
 
 ### Preparation
@@ -96,10 +96,12 @@ gvar_weights <- create_weights(weight_data = weight_data, period = 3,
 # Create an object with country model specifications
 model_specs <- create_specifications(country_data = country_data,
                                      global_data = global_data,
-                                     variables = c("y", "Dp", "r", "poil"),
+                                     domestic = list(variables = c("y", "Dp", "r"), lags = 2),
+                                     foreign = list(variables = c("y", "Dp", "r"), lags = 1),
+                                     global = list(variables = c("poil"), lags = 1),
+                                     deterministic = list(const = TRUE),
                                      countries = c("EA", "US", "JP", "CA", "GB", "CN"),
-                                     p_domestic = 2,
-                                     p_foreign = 1,
+                                     iterations = 3000, burnin = 1000,
                                      type = "VAR")
 ```
 
@@ -110,25 +112,15 @@ model_specs$US$domestic$variables <- c("y", "Dp", "r")
 model_specs$US$foreign$variables <- c("y", "Dp")
 ```
 
-`create_models` produces all country models, which should be estimated. This allows for easy parallelisation. The number of elements of the resulting list depends on the specification of domestic lags `p_domestic`, foreign lags `p_foreign`, lags of global lags `s`, and the rank of the cointegration matrix `r`, if sepecified. For example, if `p_domestic = 1:2` was set in `create_specifications`, the function produces two elements for each country in the resulting list.
+`create_models` produces all country models, which should be estimated. This allows for easy parallelisation. The number of elements of the resulting list depends on the specification of domestic lags, foreign lags, global lags, and the rank of the cointegration matrix `r`, if sepecified. For example, if the lags of domestic variables were set to `lags = 1:2`, the function produces two country submodels for each specification.
 
 ```{r, eval = TRUE}
 # Create estimable objects
 object <- create_models(country_data = country_data,
-                        gvar_weights = gvar_weights,
+                        weight_data = gvar_weights,
                         global_data = global_data,
                         model_specs = model_specs)
 ```
-
-Additional elmements can be added by using `add_` functions. A standard addition would be deterministic terms:
-
-```{r, eval = TRUE}
-# Add deterministic terms
-object <- add_deterministics(object, const = TRUE)
-```
-
-It is also possible to estimated the models using the SSVS algorithm of George et al. (2008) or the BVS algorithm of Korobilis (2013) by using `add_ssvs` and `add_bvs`, respectively.
-
 
 Finally, priors must be specified with `add_priors`.
 
@@ -136,19 +128,18 @@ Finally, priors must be specified with `add_priors`.
 object <- add_priors(object)
 ```
 
-
 ### Estimate and solve the model
 
 `estimate_gvar` can be used to estimate the country models. Parallel computating can be activated by specifying the argument `mc.cores`.
 
-```{r, eval = TRUE}
-object <- estimate_gvar(object, iterations = 5000, burnin = 1000, thin = 5)
+```{r, eval = TRUE, message=FALSE, results='hide'}
+object <- draw_posterior(object)
 ```
 
-The estimated country models can be combined and solved with the function `solve_gvar`.
+The estimated country models can be combined and solved with the function `combine_submodels`.
 
-```{r}
-gvar <- solve_gvar(object)
+```{r, message=FALSE, results='hide'}
+gvar <- combine_submodels(object)
 ```
 
 ### Impulse response analysis
@@ -156,7 +147,7 @@ gvar <- solve_gvar(object)
 Impulse response analysis can be done with the `girf` function.
 
 ```{r, eval = TRUE, fig.width=5.5, fig.height=4.5}
-gvar_irf <- girf(gvar, impulse = c("US", "y"),
+gvar_irf <- girf(gvar, impulse = c("US", "r"),
                  response = c("EA", "y"),
                  n.ahead = 20, ci = .68)
 
