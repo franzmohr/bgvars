@@ -548,6 +548,28 @@ create_models <- function(country_data, weight_data, global_data = NULL,
   }
   names(data) <- countries
   
+  # Check rank specifications ----
+  msg <- FALSE
+  for (i in 1:length(data)) {
+    if (data[[i]][["model"]][["type"]] == "VEC") {
+      k_temp <- length(data[[i]][["model"]][["domestic"]][["variables"]])
+      r_temp <- data[[i]][["model"]][["rank"]]
+      if (any(r_temp > k_temp)) {
+        if (length(r_temp) > 1) {
+          r_temp <- r_temp[r_temp <= k_temp]
+        } else {
+          r_temp <- k_temp
+        }
+        data[[i]][["model"]][["rank"]] <- r_temp
+        msg <- TRUE
+      }
+      rm(list = c("k_temp", "r_temp"))
+    }
+  }
+  if (msg) {
+   warning("For at least one VECX model the specified cointegration rank was specified higher than the number of endogenous variables. Reducing the cointegration rank automatically.") 
+  }
+  
   #### Generate country model for each lag and rank specification ####
   data_temp <- NULL
   names_temp <- NULL
