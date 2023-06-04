@@ -98,7 +98,7 @@ The variables in \code{country_data} were constructed as
 See Mohaddes and Raissi (2018) for further details on the sources and compilation of the data set.
 }
 \references{
-Mohaddes, K., \& Raissi, M. (2018). \emph{Compilation, revision and updating of the global VAR (GVAR) database, 1979Q2--2016Q4} (mimeo). University of Cambridge: Faculty of Economics.
+Mohaddes, K., & Raissi, M. (2018). \emph{Compilation, revision and updating of the global VAR (GVAR) database, 1979Q2--2016Q4} (mimeo). University of Cambridge: Faculty of Economics.
 The paper and dataset can be downloaded from \href{https://www.mohaddes.org/gvar}{https://www.mohaddes.org/gvar}.
 }
 \keyword{datasets}

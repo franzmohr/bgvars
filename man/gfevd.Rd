@@ -10,7 +10,7 @@ gfevd(object, response, n.ahead = 5, normalise_gir = FALSE, mc.cores = NULL)
 \method{plot}{bgvarfevd}(x, top_n = 5L, group = "variable", ...)
 }
 \arguments{
-\item{object}{an object of class \code{"bgvar"}, usually, a result of a call to \code{\link{solve_gvar}}.}
+\item{object}{an object of class \code{"bgvar"}, usually, a result of a call to \code{\link{combine_submodels}}.}
 
 \item{response}{a character vector of the response country and variable, respectively.}
 

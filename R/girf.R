@@ -3,7 +3,7 @@
 #' Computes the generalised impulse response coefficients of an object of class \code{"bgvar"} for
 #' `n.ahead` steps.
 #' 
-#' @param object an object of class \code{"bgvar"}, usually, a result of a call to \code{\link{solve_gvar}}.
+#' @param object an object of class \code{"bgvar"}, usually, a result of a call to \code{\link{combine_submodels}}.
 #' @param impulse a character vector of the impulse country and variable, respectively.
 #' @param response a character vector of the response country and variable, respectively.y.
 #' @param n.ahead number of steps ahead.
@@ -112,7 +112,7 @@ girf <- function(object, impulse, response, n.ahead = 5,
     a[[i]] <- list(a0 = matrix(object$a0[i, ], k),
                    a = matrix(object$a[i, ], k),
                    sigma = matrix(object$sigma[i, ], k))
-    if (class(shock) == "character") {
+    if ("character" %in% class(shock)) {
       if (shock == "sd") {
         a[[i]]$shock <- sqrt(a[[i]]$sigma[impulse, impulse])
       }

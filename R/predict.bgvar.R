@@ -2,7 +2,7 @@
 #' 
 #' Forecasting a Bayesian Global VAR object of class "bgvar" with credible bands.
 #' 
-#' @param object an object of class "bgvar", usually, a result of a call to \code{\link{combine_models}}.
+#' @param object an object of class "bgvar", usually, a result of a call to \code{\link{combine_submodels}}.
 #' @param n.ahead number of steps ahead at which to predict.
 #' @param new_x a matrix of new non-deterministic, exogenous variables. Must have \code{n.ahead} rows.
 #' @param new_d a matrix of new deterministic variables. Must have \code{n.ahead} rows.

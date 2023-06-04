@@ -2,7 +2,7 @@
 #' 
 #' Produces the generalised forecast error variance decomposition of a Bayesian GVAR model.
 #' 
-#' @param object an object of class \code{"bgvar"}, usually, a result of a call to \code{\link{solve_gvar}}.
+#' @param object an object of class \code{"bgvar"}, usually, a result of a call to \code{\link{combine_submodels}}.
 #' @param response a character vector of the response country and variable, respectively.
 #' @param n.ahead number of steps ahead.
 #' @param normalise_gir logical. Should the GFEVD be normalised?

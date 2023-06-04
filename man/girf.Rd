@@ -16,7 +16,7 @@ girf(
 )
 }
 \arguments{
-\item{object}{an object of class \code{"bgvar"}, usually, a result of a call to \code{\link{solve_gvar}}.}
+\item{object}{an object of class \code{"bgvar"}, usually, a result of a call to \code{\link{combine_submodels}}.}
 
 \item{impulse}{a character vector of the impulse country and variable, respectively.}
 

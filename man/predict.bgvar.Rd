@@ -7,7 +7,7 @@
 \method{predict}{bgvar}(object, ..., n.ahead = 10, new_x = NULL, new_d = NULL, ci = 0.95)
 }
 \arguments{
-\item{object}{an object of class "bgvar", usually, a result of a call to \code{\link{combine_models}}.}
+\item{object}{an object of class "bgvar", usually, a result of a call to \code{\link{combine_submodels}}.}
 
 \item{...}{additional arguments.}
 

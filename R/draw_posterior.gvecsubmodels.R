@@ -6,8 +6,7 @@
 #' models, which should be passed on to function \code{FUN}. Usually, the
 #' output of a call to \code{\link{create_models}} in combination with \code{\link{add_priors}}.
 #' @param FUN the function to be applied to each country model in argument \code{object}.
-#' If \code{NULL} (default), the internal functions \code{\link{countryvarx}} is used for
-#' VAR models and \code{\link{countryvecx}} for VEC models.
+#' If \code{NULL} (default), the internal functions \code{\link{bvecxpost}} is used.
 #' @param mc.cores the number of cores to use, i.e. at most how many child
 #' processes will be run simultaneously. The option is initialized from
 #' environment variable MC_CORES if set. Must be at least one, and

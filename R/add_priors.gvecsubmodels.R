@@ -161,41 +161,6 @@
 #' 
 #' Lütkepohl, H. (2006). \emph{New introduction to multiple time series analysis} (2nd ed.). Berlin: Springer.
 #' 
-#' @examples
-#' 
-#' # Load gvar2016 dataset
-#' data("gvar2016")
-#'
-#' # Data objects
-#' country_data <- gvar2016[["country_data"]]
-#' global_data <- gvar2016[["global_data"]]
-#' region_weights <- gvar2016[["region_weights"]]
-#' weight_data <- gvar2016[["weight_data"]]
-#' 
-#' # Obtain weights
-#' weight_data <- create_weights(weight_data = weight_data, period = 3,
-#'                               country_data = country_data)
-#' 
-#' # Generate specifications
-#' model_specs <- create_specifications(country_data = country_data,
-#'                                      global_data = global_data,
-#'                                      countries = c("US", "JP", "CA", "NO", "GB"), 
-#'                                      domestic = list(variables = c("y", "Dp", "r"), lags = 1:2),
-#'                                      foreign = list(variables = c("y", "Dp", "r"), lags = 1:2),
-#'                                      global = list(variables = c("poil"), lags = 1:2),
-#'                                      deterministic = list(const = TRUE, trend = FALSE, seasonal = FALSE),
-#'                                      iterations = 10,
-#'                                      burnin = 10,
-#'                                      thin = 1)
-#' 
-#' # Create list element for each model
-#' country_models <- create_models(country_data = country_data,
-#'                                 weight_data = weight_data,
-#'                                 global_data = global_data,
-#'                                 model_specs = model_specs)
-#'                                 
-#' # Add priors
-#' country_models <- add_priors(country_models)
 #' 
 #' @export
 add_priors.gvecsubmodels <- function(object, ...,
@@ -223,7 +188,7 @@ add_priors.gvecsubmodels <- function(object, ...,
   }
   
   if (!is.null(coef[["const"]])) {
-    if (class(coef[["const"]]) == "character") {
+    if ("character" %in% class(coef[["const"]])) {
       if (!coef[["const"]] %in% c("first", "mean")) {
         stop("Invalid specificatin of coef$const.")
       }
@@ -484,7 +449,7 @@ add_priors.gvecsubmodels <- function(object, ...,
           pos <- which(dimnames(object[[i]][["data"]][["X"]])[[2]] == "const")
           
           if (length(pos) == 1) {
-            if (class(coef[["const"]]) == "character") {
+            if ("character" %in% class(coef[["const"]])) {
               if (coef[["const"]] == "first") {
                 mu[, pos] <- object[[i]][["data"]][["Y"]][1, ]
               }
@@ -492,7 +457,7 @@ add_priors.gvecsubmodels <- function(object, ...,
                 mu[, pos] <- colMeans(object[[i]][["data"]][["Y"]])
               }
             }
-            if (class(coef[["const"]]) == "numeric") {
+            if ("numeric" %in% class(coef[["const"]])) {
               mu[, pos] <- coef[["const"]]
             } 
           }
@@ -874,7 +839,7 @@ add_priors.gvecsubmodels <- function(object, ...,
         object[[i]][["priors"]][["sigma"]][["rate"]] = matrix(sigma[["rate"]], k_domestic)
       }
       
-      if (class(help_df) == "character") {
+      if ("character" %in% class(help_df)) {
         if (grepl("k", help_df)) {
           k <- k_domestic
           # Transform character specification to expression and evaluate

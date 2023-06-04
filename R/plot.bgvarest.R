@@ -22,7 +22,7 @@ plot.bgvarest <- function(x, ci = 0.95, type = "hist", model = NULL, ...) {
     
   } else {
     
-    if (class(model) == "character") {
+    if ("character" %in% class(model)) {
       model <- which(names(x) %in% model)
       if (length(model) == 0) {
         stop("There is no output for the specified country.")

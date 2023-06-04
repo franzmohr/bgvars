@@ -204,7 +204,7 @@ add_priors.gvarsubmodels <- function(object, ...,
   }
   
   if (!is.null(coef[["const"]])) {
-    if (class(coef[["const"]]) == "character") {
+    if ("character" %in% class(coef[["const"]])) {
       if (!coef[["const"]] %in% c("first", "mean")) {
         stop("Invalid specificatin of coef$const.")
       }
@@ -755,7 +755,7 @@ add_priors.gvarsubmodels <- function(object, ...,
         object[[i]][["priors"]][["sigma"]][["sigma_i"]] = solve(ols_sigma)
       }
       
-      if (class(help_df) == "character") {
+      if ("character" %in% class(help_df)) {
         if (grepl("k", help_df)) {
           # Transform character specification to expression and evaluate
           help_df <- eval(parse(text = help_df))

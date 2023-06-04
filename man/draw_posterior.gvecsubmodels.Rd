@@ -14,8 +14,7 @@ output of a call to \code{\link{create_models}} in combination with \code{\link{
 \item{...}{further arguments passed to or from other methods.}
 
 \item{FUN}{the function to be applied to each country model in argument \code{object}.
-If \code{NULL} (default), the internal functions \code{\link{countryvarx}} is used for
-VAR models and \code{\link{countryvecx}} for VEC models.}
+If \code{NULL} (default), the internal functions \code{\link{bvecxpost}} is used.}
 
 \item{mc.cores}{the number of cores to use, i.e. at most how many child
 processes will be run simultaneously. The option is initialized from

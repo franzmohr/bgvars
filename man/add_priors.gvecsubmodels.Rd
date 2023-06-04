@@ -162,43 +162,6 @@ are calculated in a Minnesota-like fashion as
 for lag \eqn{l} with \eqn{\kappa_1}, \eqn{\kappa_2}, \eqn{\kappa_3}, \eqn{\kappa_4} as the first, second,
 third and forth element in \code{ssvs$minnesota} or \code{bvs$minnesota}, respectively.
 }
-\examples{
-
-# Load gvar2016 dataset
-data("gvar2016")
-
-# Data objects
-country_data <- gvar2016[["country_data"]]
-global_data <- gvar2016[["global_data"]]
-region_weights <- gvar2016[["region_weights"]]
-weight_data <- gvar2016[["weight_data"]]
-
-# Obtain weights
-weight_data <- create_weights(weight_data = weight_data, period = 3,
-                              country_data = country_data)
-
-# Generate specifications
-model_specs <- create_specifications(country_data = country_data,
-                                     global_data = global_data,
-                                     countries = c("US", "JP", "CA", "NO", "GB"), 
-                                     domestic = list(variables = c("y", "Dp", "r"), lags = 1:2),
-                                     foreign = list(variables = c("y", "Dp", "r"), lags = 1:2),
-                                     global = list(variables = c("poil"), lags = 1:2),
-                                     deterministic = list(const = TRUE, trend = FALSE, seasonal = FALSE),
-                                     iterations = 10,
-                                     burnin = 10,
-                                     thin = 1)
-
-# Create list element for each model
-country_models <- create_models(country_data = country_data,
-                                weight_data = weight_data,
-                                global_data = global_data,
-                                model_specs = model_specs)
-                                
-# Add priors
-country_models <- add_priors(country_models)
-
-}
 \references{
 Chan, J., Koop, G., Poirier, D. J., & Tobias J. L. (2019). \emph{Bayesian econometric methods}
 (2nd ed.). Cambridge: Cambridge University Press.

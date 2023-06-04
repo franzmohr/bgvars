@@ -55,7 +55,7 @@ create_regions <- function(country_data, weight_data, region_weights, regions, p
   tt <- unique(unlist(lapply(country_data, NROW)))
   if (length(tt) > 1) {stop("Country data must have the same numbers of observations.")}
   
-  if ((class(regions) != "list") | is.null(names(regions))) {stop("Object 'regions' must be a named list.")}
+  if ((!"list" %in% class(regions)) | is.null(names(regions))) {stop("Object 'regions' must be a named list.")}
   
   if (length(unique(unlist(regions))) < length(unlist(regions))) {
     stop("The same country is not allowed to be in more than one region.") 
