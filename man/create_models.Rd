@@ -27,33 +27,44 @@ A list of country data and model specifications.
 Produces a list of country models for each model specification that should be estimated.
 }
 \examples{
-
-# Load gvar2016 dataset
+# Load data
 data("gvar2016")
 
-# Data objects
-country_data <- gvar2016[["country_data"]]
-global_data <- gvar2016[["global_data"]]
-region_weights <- gvar2016[["region_weights"]]
-weight_data <- gvar2016[["weight_data"]]
+# Create regions
+temp <- create_regions(country_data = gvar2016$country_data,
+                       weight_data = gvar2016$weight_data,
+                       region_weights = gvar2016$region_weights,
+                       regions = list(EA =  c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")), period = 3)
 
-# Obtain weights
-weight_data <- create_weights(weight_data = weight_data, period = 3,
-                              country_data = country_data)
+country_data <- temp$country_data
+weight_data <- temp$weight_data
+global_data = gvar2016$global_data
+
+# Difference series to make them stationary
+country_data <- diff_variables(country_data, variables = c("y", "Dp", "r"), multi = 100)
+global_data <- diff_variables(global_data, multi = 100)
+
+# Create time varying weights
+weight_data <- create_weights(weight_data, period = 3, country_data = country_data)
 
 # Generate specifications
-model_specs <- create_specifications(country_data = country_data,
-                                     global_data = global_data,
-                                     countries = c("US", "JP", "CA", "NO", "GB"), 
-                                     domestic = list(variables = c("y", "Dp", "r"), lags = 1:2),
-                                     foreign = list(variables = c("y", "Dp", "r"), lags = 1:2),
-                                     global = list(variables = c("poil"), lags = 1:2),
-                                     deterministic = list(const = TRUE, trend = FALSE, seasonal = FALSE),
-                                     iterations = 10,
-                                     burnin = 10,
-                                     thin = 1)
+model_specs <- create_specifications(
+                 country_data = country_data,
+                 global_data = global_data,
+                 countries = c("US", "JP", "CA", "NO", "GB", "EA"), 
+                 domestic = list(variables = c("y", "Dp", "r"), lags = 1:2),
+                 foreign = list(variables = c("y", "Dp", "r"), lags = 1:2),
+                 global = list(variables = c("poil"), lags = 1),
+                 deterministic = list(const = TRUE, trend = FALSE, seasonal = FALSE),
+                 iterations = 10,
+                 burnin = 10)
+# Note that the number of iterations and burnin draws should be much higher!
+                                     
+# Overwrite country-specific specifications
+model_specs[["US"]][["domestic"]][["variables"]] <- c("y", "Dp", "r")
+model_specs[["US"]][["foreign"]][["variables"]] <- c("y", "Dp")
 
-# Create list element for each model
+# Create estimation objects
 country_models <- create_models(country_data = country_data,
                                 weight_data = weight_data,
                                 global_data = global_data,

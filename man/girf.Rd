@@ -62,41 +62,39 @@ global_data = gvar2016$global_data
 country_data <- diff_variables(country_data, variables = c("y", "Dp", "r"), multi = 100)
 global_data <- diff_variables(global_data, multi = 100)
 
-# Create weights
+# Create time varying weights
 weight_data <- create_weights(weight_data, period = 3, country_data = country_data)
 
-# Create general model specifications
-model_specs <- create_specifications(country_data = country_data,
-                                     global_data = global_data,
-                                     domestic = list(variables = c("y", "Dp", "r"), lags = 1:2),
-                                     foreign = list(variables = c("y", "Dp", "r"), lags = 1:2),
-                                     global = list(variables = "poil", lags = 1:2),
-                                     deterministic = list("const" = TRUE),
-                                     countries = c("EA", "US", "GB", "CA", "JP", "IN"),
-                                     type = "VAR",
-                                     tvp = FALSE, sv = FALSE,
-                                     iterations = 10,
-                                     burnin = 10)
-# Note that the number of iterations and burnin should be much higher!
+# Generate specifications
+model_specs <- create_specifications(
+                 country_data = country_data,
+                 global_data = global_data,
+                 countries = c("US", "JP", "CA", "NO", "GB", "EA"), 
+                 domestic = list(variables = c("y", "Dp", "r"), lags = 1),
+                 foreign = list(variables = c("y", "Dp", "r"), lags = 1),
+                 global = list(variables = c("poil"), lags = 1),
+                 deterministic = list(const = TRUE, trend = FALSE, seasonal = FALSE),
+                 iterations = 10,
+                 burnin = 10)
+# Note that the number of iterations and burnin draws should be much higher!
                                      
-# Country-specific specifications
+# Overwrite country-specific specifications
 model_specs[["US"]][["domestic"]][["variables"]] <- c("y", "Dp", "r")
 model_specs[["US"]][["foreign"]][["variables"]] <- c("y", "Dp")
 
-# Create all country models
+# Create estimation objects
 country_models <- create_models(country_data = country_data,
                                 weight_data = weight_data,
                                 global_data = global_data,
                                 model_specs = model_specs)
 
-
 # Add priors
-temp_model <- add_priors(country_models,
-                         coef = list(v_i = 1 / 9, v_i_det = 1 / 10),
-                         sigma = list(df = 3, scale = 1))
+models_with_priors <- add_priors(country_models,
+                                 coef = list(v_i = 1 / 9, v_i_det = 1 / 10),
+                                 sigma = list(df = 3, scale = .0001))
 
 # Obtain posterior draws
-object <- draw_posterior(temp_model)
+object <- draw_posterior(models_with_priors)
 
 # Solve GVAR
 gvar <- combine_submodels(object)

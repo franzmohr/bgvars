@@ -54,36 +54,45 @@
 #' @return A list of model specifications for each country.
 #' 
 #' @examples
-#' 
-#' # Load gvar2016 dataset
+#' # Load data
 #' data("gvar2016")
-#'
-#' # Data objects
-#' country_data <- gvar2016[["country_data"]]
-#' global_data <- gvar2016[["global_data"]]
-#' region_weights <- gvar2016[["region_weights"]]
-#' weight_data <- gvar2016[["weight_data"]]
 #' 
-#' # Obtain weights
-#' weight_data <- create_weights(weight_data = weight_data, period = 3,
-#'                               country_data = country_data)
+#' # Create regions
+#' temp <- create_regions(country_data = gvar2016$country_data,
+#'                        weight_data = gvar2016$weight_data,
+#'                        region_weights = gvar2016$region_weights,
+#'                        regions = list(EA =  c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")), period = 3)
+#' 
+#' country_data <- temp$country_data
+#' weight_data <- temp$weight_data
+#' global_data = gvar2016$global_data
+#' 
+#' # Difference series to make them stationary
+#' country_data <- diff_variables(country_data, variables = c("y", "Dp", "r"), multi = 100)
+#' global_data <- diff_variables(global_data, multi = 100)
+#' 
+#' # Create time varying weights
+#' weight_data <- create_weights(weight_data, period = 3, country_data = country_data)
 #' 
 #' # Generate specifications
-#' model_specs <- create_specifications(country_data = country_data,
-#'                                      global_data = global_data,
-#'                                      countries = c("US", "JP", "CA", "NO", "GB"), 
-#'                                      domestic = list(variables = c("y", "Dp", "r"), lags = 1:2),
-#'                                      foreign = list(variables = c("y", "Dp", "r"), lags = 1:2),
-#'                                      global = list(variables = c("poil"), lags = 1:2),
-#'                                      deterministic = list(const = TRUE, trend = FALSE, seasonal = FALSE),
-#'                                      iterations = 10,
-#'                                      burnin = 10,
-#'                                      thin = 1)
+#' model_specs <- create_specifications(
+#'                  country_data = country_data,
+#'                  global_data = global_data,
+#'                  countries = c("US", "JP", "CA", "NO", "GB", "EA"), 
+#'                  domestic = list(variables = c("y", "Dp", "r"), lags = 1),
+#'                  foreign = list(variables = c("y", "Dp", "r"), lags = 1),
+#'                  global = list(variables = c("poil"), lags = 1),
+#'                  deterministic = list(const = TRUE, trend = FALSE, seasonal = FALSE),
+#'                  iterations = 10,
+#'                  burnin = 10)
+#' # Note that the number of iterations and burnin draws should be much higher!
 #' 
 #' @export
 create_specifications <- function(country_data, global_data = NULL,
                                   countries = NULL,
-                                  domestic = NULL, foreign = NULL, global = NULL,
+                                  domestic = NULL,
+                                  foreign = NULL,
+                                  global = NULL,
                                   deterministic = NULL,
                                   type = "VAR",
                                   r = NULL,
@@ -93,19 +102,15 @@ create_specifications <- function(country_data, global_data = NULL,
                                   iterations = 50000,
                                   burnin = 5000){
   
-  # rm(list = ls()[-which(ls() %in% c("country_data", "global_data"))]); type = "VAR";deterministics = list(const = TRUE, trend = FALSE, seasonal = FALSE); iterations = 10000; burnin = 5000; thin = 10
-  # domestic = NULL; foreign = NULL; global = NULL
-  #domestic = list(variables = c("y", "Dp", "r"), lags = 1); foreign = list(variables = c("y", "Dp"), lags = 1); global = list(variables = c("poil"), lags = 1);
-  
-  if (!type %in% c("VAR", "VEC")) {"Argument 'type' must be either 'VAR' or 'VEC'."}
+  if (all(!c("VAR", "VEC") %in% type)) {"Argument 'type' must be either 'VAR' or 'VEC'."}
   
   # Basic data checks ----
   # Check if country data is a list
-  if (class(country_data) != "list") {
+  if (!"list" %in% class(country_data)) {
     stop("Country data must be of class 'list'.")
   }
   # Check if data in country_data are of class ts
-  if(sum(unlist(lapply(country_data, class)) == "ts") != length(country_data)) {
+  if(any(!unlist(lapply(country_data, function(x) {"ts" %in% class(x)})))) {
     stop("Elements in 'country_data' must be of class 'ts'.")
   }
   # Check if global data is of class ts
@@ -133,7 +138,7 @@ create_specifications <- function(country_data, global_data = NULL,
   use_structural <- FALSE
   if (!is.null(structural)) {
     
-    if (class(structural) != "character") {
+    if (!"character" %in% class(structural)) {
       stop("Argument 'structural' must be of class character.")
     }
     
@@ -151,13 +156,6 @@ create_specifications <- function(country_data, global_data = NULL,
   if (burnin <= 0) {
     stop("Argument 'burnin' must be a positive integer.")
   }
-  # if (thin < 1) {
-  #   stop("Argument 'thin' must be at least 1.")
-  # }
-  # 
-  # if (iterations < thin) {
-  #   stop("Not enough posterior draws for the specified thinning factor. Consider increasing the value of argument 'iterations'.")
-  # }
   
   # Check deterministics ----
   if (!is.null(deterministic)) {
@@ -173,32 +171,32 @@ create_specifications <- function(country_data, global_data = NULL,
     if (type == "VAR") {
       
       if ("const" %in% names(deterministic)) {
-        if (class(deterministic$const) != "logical") {
+        if (!"logical" %in% class(deterministic[["const"]])) {
           stop("List element 'const' must be of class 'logical' for VAR models.")
         }
       }
       
       if ("trend" %in% names(deterministic)) {
-        if (class(deterministic$trend) != "logical") {
+        if (!"logical" %in% class(deterministic[["trend"]])) {
           stop("List element 'trend' must be of class 'logical' for VAR models.")
         }
       }
       
       if ("seasonal" %in% names(deterministic)) {
-        if (class(deterministic$seasonal) != "logical") {
+        if (!"logical" %in% class(deterministic[["seasonal"]])) {
           stop("List element 'seasonal' must be of class 'logical' for VAR models.")
         }
       }
     }
     
     if (type == "VEC") {
-      if (!is.null(deterministic$const) & class(deterministic$const) == "logical") {
+      if (!is.null(deterministic[["const"]]) & "logical" %in% class(deterministic[["const"]])) {
         stop("List element 'const' must not be logical for VEC models.")
       }
-      if (!is.null(deterministic$trend) & class(deterministic$trend) == "logical") {
+      if (!is.null(deterministic[["trend"]]) & "logical" %in% class(deterministic[["trend"]])) {
         stop("List element 'trend' must not be logical for VEC models.")
       }
-      if (!is.null(deterministic$seasonal) & class(deterministic$seasonal) == "logical") {
+      if (!is.null(deterministic[["seasonal"]]) & "logical" %in% class(deterministic[["seasonal"]])) {
         stop("List element 'seasonal' must not be logical for VEC models.")
       }
     }

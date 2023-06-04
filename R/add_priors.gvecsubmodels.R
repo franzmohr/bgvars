@@ -205,10 +205,6 @@ add_priors.gvecsubmodels <- function(object, ...,
                                      ssvs = NULL,
                                      bvs = NULL){
   
-  
-  # rm(list = ls()[-which(ls() == "object")]); coef = list(v_i = 1, v_i_det = 0.1, shape = 3, rate = 0.0001, rate_det = 0.0001); coint = list(v_i = 0, p_tau_i = 1, rho = c(0.999, 1)); sigma = list(df = "k + 3", scale = 1); ssvs <- NULL; bvs <- NULL
-  # coef$minnesota <- list(kappa0 = 2, kappa1 = .5, kappa2 = 1, kappa3 = 5)
-  
   # Checks - Coefficient priors ----
   if (!is.null(coef)) {
     if (!is.null(coef[["v_i"]])) {

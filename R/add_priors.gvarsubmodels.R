@@ -129,6 +129,56 @@
 #' Korobilis, D. (2013). VAR forecasting using Bayesian variable selection.
 #' \emph{Journal of Applied Econometrics, 28}(2), 204--230.
 #' 
+#' @examples
+#' # Load data
+#' data("gvar2016")
+#' 
+#' # Create regions
+#' temp <- create_regions(country_data = gvar2016$country_data,
+#'                        weight_data = gvar2016$weight_data,
+#'                        region_weights = gvar2016$region_weights,
+#'                        regions = list(EA =  c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")), period = 3)
+#' 
+#' country_data <- temp$country_data
+#' weight_data <- temp$weight_data
+#' global_data = gvar2016$global_data
+#' 
+#' # Difference series to make them stationary
+#' country_data <- diff_variables(country_data, variables = c("y", "Dp", "r"), multi = 100)
+#' global_data <- diff_variables(global_data, multi = 100)
+#' 
+#' # Create time varying weights
+#' weight_data <- create_weights(weight_data, period = 3, country_data = country_data)
+#' 
+#' # Generate specifications
+#' model_specs <- create_specifications(
+#'                  country_data = country_data,
+#'                  global_data = global_data,
+#'                  countries = c("US", "JP", "CA", "NO", "GB", "EA"), 
+#'                  domestic = list(variables = c("y", "Dp", "r"), lags = 1),
+#'                  foreign = list(variables = c("y", "Dp", "r"), lags = 1),
+#'                  global = list(variables = c("poil"), lags = 1),
+#'                  deterministic = list(const = TRUE, trend = FALSE, seasonal = FALSE),
+#'                  iterations = 10,
+#'                  burnin = 10)
+#' # Note that the number of iterations and burnin draws should be much higher!
+#'                                      
+#' # Overwrite country-specific specifications
+#' model_specs[["US"]][["domestic"]][["variables"]] <- c("y", "Dp", "r")
+#' model_specs[["US"]][["foreign"]][["variables"]] <- c("y", "Dp")
+#' 
+#' # Create estimation objects
+#' country_models <- create_models(country_data = country_data,
+#'                                 weight_data = weight_data,
+#'                                 global_data = global_data,
+#'                                 model_specs = model_specs)
+#' 
+#' # Add priors
+#' models_with_priors <- add_priors(country_models,
+#'                                  coef = list(v_i = 1 / 9, v_i_det = 1 / 10),
+#'                                  sigma = list(df = 3, scale = .0001))
+#' 
+#' 
 #' @export
 add_priors.gvarsubmodels <- function(object, ...,
                                      coef = list(v_i = 1, v_i_det = 0.1, shape = 3, rate = 0.0001, rate_det = 0.01),

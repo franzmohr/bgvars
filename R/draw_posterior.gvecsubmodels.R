@@ -20,47 +20,6 @@
 #' model specifications, priors, coefficient draws and information
 #' criteria for each estimated country model.
 #' 
-#' @examples 
-#' 
-#' # Load gvar2016 dataset
-#' data("gvar2016")
-#'
-#' # Data objects
-#' country_data <- gvar2016[["country_data"]]
-#' global_data <- gvar2016[["global_data"]]
-#' region_weights <- gvar2016[["region_weights"]]
-#' weight_data <- gvar2016[["weight_data"]]
-#' 
-#' # Obtain weights
-#' weight_data <- create_weights(weight_data = weight_data, period = 3,
-#'                               country_data = country_data)
-#' 
-#' # Generate specifications
-#' model_specs <- create_specifications(country_data = country_data,
-#'                                      global_data = global_data,
-#'                                      countries = c("US", "JP", "CA", "NO", "GB"), 
-#'                                      domestic = list(variables = c("y", "Dp", "r"), lags = 1),
-#'                                      foreign = list(variables = c("y", "Dp", "r"), lags = 1),
-#'                                      global = list(variables = c("poil"), lags = 1),
-#'                                      deterministic = list(const = TRUE, trend = FALSE, seasonal = FALSE),
-#'                                      iterations = 10,
-#'                                      burnin = 10,
-#'                                      thin = 1)
-#'                                      
-#' # Note that the number of iterations and burnin draws is usually much higher.
-#' 
-#' # Create list element for each model
-#' country_models <- create_models(country_data = country_data,
-#'                                 weight_data = weight_data,
-#'                                 global_data = global_data,
-#'                                 model_specs = model_specs)
-#'                                 
-#' # Add priors
-#' country_models <- add_priors(country_models)
-#' 
-#' # Draw from posterior distribution
-#' gvar_est <- draw_posterior(country_models, mc.cores = 1)
-#' 
 #' @export
 draw_posterior.gvecsubmodels <- function(object, ..., FUN = NULL, mc.cores = NULL, ctry = NULL){
   

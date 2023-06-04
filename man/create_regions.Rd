@@ -47,24 +47,17 @@ contain zeros in the column of the respective country. For examle, the column
 "US" in the "US"-element of the list should only contain zeros.
 }
 \examples{
-
-# Load gvar2016 dataset
+# Load data
 data("gvar2016")
 
-# Data objects
-country_data <- gvar2016[["country_data"]]
-global_data <- gvar2016[["global_data"]]
-region_weights <- gvar2016[["region_weights"]]
-weight_data <- gvar2016[["weight_data"]]
-
-# Define region for the euro area
-ea <- c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")
-
 # Create regions
-temp <- create_regions(country_data = country_data,
-                       regions = list("EA" = ea),
-                       period = 3,
-                       region_weights = region_weights,
-                       weight_data = weight_data)
+temp <- create_regions(country_data = gvar2016$country_data,
+                       weight_data = gvar2016$weight_data,
+                       region_weights = gvar2016$region_weights,
+                       regions = list(EA =  c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")), period = 3)
+
+# New data sets
+country_data <- temp$country_data
+weight_data <- temp$weight_data 
 
 }

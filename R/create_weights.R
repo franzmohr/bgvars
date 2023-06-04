@@ -32,14 +32,11 @@
 #' @return A named matrix or an array containing country-specific weight matrices.
 #' 
 #' @examples
-#' 
-#' # Load gvar2016 dataset
+#' # Load data
 #' data("gvar2016")
 #'
 #' # Data objects
 #' country_data <- gvar2016[["country_data"]]
-#' global_data <- gvar2016[["global_data"]]
-#' region_weights <- gvar2016[["region_weights"]]
 #' weight_data <- gvar2016[["weight_data"]]
 #' 
 #' weight_data <- create_weights(weight_data = weight_data, period = 3,
