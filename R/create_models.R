@@ -146,7 +146,7 @@ create_models <- function(country_data, weight_data, global_data = NULL,
     # In case global data has different length than country data
     if (t < nrow(global_data)) {
       n_global <- NCOL(global_data)
-      global_data <- na.omit(cbind(global_data, country_data[[1]]))[, 1:n_global]
+      global_data <- stats::na.omit(cbind(global_data, country_data[[1]]))[, 1:n_global]
       tsp_temp <- stats::tsp(global_data)
       global_data <- stats::as.ts(as.matrix(global_data))
       dimnames(global_data)[[2]] <- global_vars_temp
@@ -157,7 +157,7 @@ create_models <- function(country_data, weight_data, global_data = NULL,
       pos_global <- 1:NCOL(global_data)
       for (i in names(country_data)) {
         temp_names <- dimnames(country_data[[i]])
-        c_data <- na.omit(cbind(country_data[[i]], global_data))[, 1:length(temp_names[[2]])]
+        c_data <- stats::na.omit(cbind(country_data[[i]], global_data))[, 1:length(temp_names[[2]])]
         tsp_temp <- stats::tsp(c_data)
         c_data <- stats::as.ts(as.matrix(c_data))
         dimnames(c_data)[[2]] <- temp_names[[2]]
