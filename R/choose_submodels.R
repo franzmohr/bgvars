@@ -15,6 +15,8 @@
 #' @export
 choose_submodels <- function(object, ic = "BIC", select = "order") {
   
+  obj_class <- class(object)
+  
   if (!ic %in% c("AIC", "BIC", "HQ")) {
     stop("Invalid specification of argument 'ic'.")
   }
@@ -28,14 +30,25 @@ choose_submodels <- function(object, ic = "BIC", select = "order") {
   for (i in 1:length(criteria)) {
     # Order selection
     if (select == "order") {
-      pos <- which(names_object == names(criteria)[i])[which.min(criteria[[i]][, ic])]
-      result[[i]] <- object[[pos]]
+      sub_pos <- which.min(criteria[[i]][, ic])
     }
     # Add rank selection here
-    
+    if (select == "rank") {
+      crit <- criteria[[i]][, ic]
+      sub_pos <- 1
+      if (length(crit) > 1) {
+        crit <- crit[-1] - crit[-length(crit)]
+        crit <- which(crit < 0)
+        if (length(crit) > 0) {
+          sub_pos <- crit[1] + 1
+        }
+      }
+      pos <- which(names_object == names(criteria)[i])[sub_pos]
+      result[[i]] <- object[[pos]]
+    }
   }
   names(result) <- names(criteria)
   
-  class(result) <- c("bgvarest", "list")
+  class(result) <- obj_class
   return(result)
 }
