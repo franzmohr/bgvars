@@ -8,6 +8,7 @@
 #' @param ... further graphical parameters.
 #' 
 #' @export
+#' @rdname predict.bgvar
 plot.bgvarprd <- function(x, variable = NULL, ...) {
   
   tt <- nrow(x[["y"]])
