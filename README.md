@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# bgvars
+# bgvars: Bayesian Inference for Global Vector Autoregressive (GVAR) and Global Vector Error Correction (GVEC) Models
 
 [![CRAN
 status](https://www.r-pkg.org/badges/version/bgvars)](https://cran.r-project.org/package=bgvars)
