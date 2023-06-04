@@ -4,12 +4,14 @@
 \alias{draw_posterior.gvarsubmodels}
 \title{Posterior simulation}
 \usage{
-\method{draw_posterior}{gvarsubmodels}(object, FUN = NULL, mc.cores = NULL, ctry = NULL)
+\method{draw_posterior}{gvarsubmodels}(object, ..., FUN = NULL, mc.cores = NULL, ctry = NULL)
 }
 \arguments{
 \item{object}{a list of data and model specifications for country-specific
 models, which should be passed on to function \code{FUN}. Usually, the
 output of a call to \code{\link{create_models}} in combination with \code{\link{add_priors}}.}
+
+\item{...}{further arguments passed to or from other methods.}
 
 \item{FUN}{the function to be applied to each country model in argument \code{object}.
 If \code{NULL} (default), the internal functions \code{\link{countryvarx}} is used for
@@ -22,8 +24,6 @@ parallelization requires at least two cores.}
 
 \item{ctry}{character vector specifying for which countries posterior distributions
 should be drawn. If \code{NULL} (default), draws are generated for all country models.}
-
-\item{...}{further arguments passed to or from other methods.}
 }
 \value{
 An object of class \code{bgvarest}, which contains a list of data,

@@ -6,15 +6,17 @@
 \usage{
 \method{add_priors}{gvarsubmodels}(
   object,
+  ...,
   coef = list(v_i = 1, v_i_det = 0.1, shape = 3, rate = 1e-04, rate_det = 0.01),
   sigma = list(df = "k", scale = 1, mu = 0, v_i = 0.01, sigma_h = 0.05),
   ssvs = NULL,
-  bvs = NULL,
-  ...
+  bvs = NULL
 )
 }
 \arguments{
 \item{object}{a named list, usually, the output of a call to \code{\link{create_models}}.}
+
+\item{...}{further arguments passed to or from other methods.}
 
 \item{coef}{a named list of prior specifications for the coefficients of the country-specific
 models. For the default specification all prior means are set to zero and the diagonal elements of
@@ -31,8 +33,6 @@ the prior variances to 1. See 'Details'.}
 \item{ssvs}{a named list of prior specifications for the SSVS algorithm. See 'Details'.}
 
 \item{bvs}{a named list of prior specifications for the BVS algorithm. See 'Details'.}
-
-\item{...}{further arguments passed to or from other methods.}
 }
 \value{
 A list of country models.

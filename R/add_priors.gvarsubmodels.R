@@ -130,12 +130,11 @@
 #' \emph{Journal of Applied Econometrics, 28}(2), 204--230.
 #' 
 #' @export
-add_priors.gvarsubmodels <- function(object,
+add_priors.gvarsubmodels <- function(object, ...,
                                      coef = list(v_i = 1, v_i_det = 0.1, shape = 3, rate = 0.0001, rate_det = 0.01),
                                      sigma = list(df = "k", scale = 1, mu = 0, v_i = 0.01, sigma_h = 0.05),
                                      ssvs = NULL,
-                                     bvs = NULL,
-                                     ...){
+                                     bvs = NULL){
   
   # Checks - Coefficient priors ----
   if (!is.null(coef)) {

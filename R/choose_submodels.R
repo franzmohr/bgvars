@@ -21,6 +21,14 @@ choose_submodels <- function(object, ic = "BIC", select = "order") {
     stop("Invalid specification of argument 'ic'.")
   }
   
+  if (length(select) > 1) {
+    stop("Invalid specification of argument 'select'.")
+  }
+  
+  if (!select %in% c("order", "rank")) {
+    stop("Invalid specification of argument 'select'.")
+  }
+  
   # Obtain test statistics
   criteria <- submodel_test_satistics(object)
   names_object <- names(object)

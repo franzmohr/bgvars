@@ -198,13 +198,12 @@
 #' country_models <- add_priors(country_models)
 #' 
 #' @export
-add_priors.gvecsubmodels <- function(object,
+add_priors.gvecsubmodels <- function(object, ...,
                                      coef = list(v_i = 1, v_i_det = 0.1, shape = 3, rate = 0.0001, rate_det = 0.01),
                                      coint = list(v_i = 0, p_tau_i = 1, shape = 3, rate = 0.0001, rho = 0.999),
                                      sigma = list(df = "k", scale = 1, mu = 0, v_i = 0.01, sigma_h = 0.05),
                                      ssvs = NULL,
-                                     bvs = NULL,
-                                     ...){
+                                     bvs = NULL){
   
   
   # rm(list = ls()[-which(ls() == "object")]); coef = list(v_i = 1, v_i_det = 0.1, shape = 3, rate = 0.0001, rate_det = 0.0001); coint = list(v_i = 0, p_tau_i = 1, rho = c(0.999, 1)); sigma = list(df = "k + 3", scale = 1); ssvs <- NULL; bvs <- NULL

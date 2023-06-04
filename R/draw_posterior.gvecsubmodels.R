@@ -62,7 +62,7 @@
 #' gvar_est <- draw_posterior(country_models, mc.cores = 1)
 #' 
 #' @export
-draw_posterior.gvecsubmodels <- function(object, FUN = NULL, mc.cores = NULL, ctry = NULL){
+draw_posterior.gvecsubmodels <- function(object, ..., FUN = NULL, mc.cores = NULL, ctry = NULL){
   
   names_obj <- names(object)
   names_temp <- names_obj
