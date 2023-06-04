@@ -874,11 +874,6 @@ add_priors.gvecsubmodels <- function(object, ...,
         object[[i]][["priors"]][["sigma"]][["rate"]] = matrix(sigma[["rate"]], k_domestic)
       }
       
-      if (minnesota) {
-        # Store LS estimate of variance coviariance matrix for analytical solution
-        object[[i]][["priors"]][["sigma"]][["sigma_i"]] = minn[["sigma_i"]]
-      }
-      
       if (class(help_df) == "character") {
         if (grepl("k", help_df)) {
           k <- k_domestic
