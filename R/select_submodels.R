@@ -11,6 +11,8 @@
 #' specified information criterion per country is selected. If \code{"rank"}, the
 #' function selects the model, after which the selected information criterion increases
 #' for the first time.
+#' @param teststats optional. A named list of test statistics for each model in `object`. Usually,
+#' the result of a call to \code{\link{submodel_test_statistics}}.
 #' 
 #' @examples
 #' # Load data
@@ -70,7 +72,7 @@
 #' 
 #' 
 #' @export
-select_submodels <- function(object, ic = "BIC", select = "order") {
+select_submodels <- function(object, ic = "BIC", select = "order", teststats = NULL) {
   
   obj_class <- class(object)
   
@@ -87,7 +89,15 @@ select_submodels <- function(object, ic = "BIC", select = "order") {
   }
   
   # Obtain test statistics
-  criteria <- submodel_test_statistics(object)
+  if (is.null(teststats)) {
+    criteria <- submodel_test_statistics(object) 
+  } else {
+    # Basic checks
+    if (length(teststats) != length(unique(names(object)))) {
+      stop("Number of countries in argument 'object' differs from number of countries in argument 'teststats'.")
+    }
+    criteria <- teststats
+  }
   names_object <- names(object)
   
   # Select final country models

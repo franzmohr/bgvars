@@ -4,7 +4,7 @@
 \alias{select_submodels}
 \title{Susbmodel Selection}
 \usage{
-select_submodels(object, ic = "BIC", select = "order")
+select_submodels(object, ic = "BIC", select = "order", teststats = NULL)
 }
 \arguments{
 \item{object}{a list containing the results of the country estimates, usually, the
@@ -18,6 +18,9 @@ If \code{"order"} (default), the country model with the overall minimum value of
 specified information criterion per country is selected. If \code{"rank"}, the
 function selects the model, after which the selected information criterion increases
 for the first time.}
+
+\item{teststats}{optional. A named list of test statistics for each model in `object`. Usually,
+the result of a call to \code{\link{submodel_test_statistics}}.}
 }
 \description{
 Selects the best country-specific submodel of a GVAR model.

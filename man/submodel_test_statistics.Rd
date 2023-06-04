@@ -2,13 +2,14 @@
 % Please edit documentation in R/submodel_test_statistics.R
 \name{submodel_test_statistics}
 \alias{submodel_test_statistics}
-\title{Test Statistics for Model Selection of VARX Submodels}
+\title{Test Statistics for the Selection of Submodels of GVAR Model}
 \usage{
 submodel_test_statistics(object, ...)
 }
 \arguments{
-\item{object}{an object of class \code{"bgvarest"}, usually, a result of a call to
-\code{\link{draw_posterior}}.}
+\item{object}{an object of class \code{"bgvarest"} or \code{"bgvecest"}, usually,
+a result of a call to \code{\link{draw_posterior.gvarsubmodels}} or 
+\code{\link{draw_posterior.gvecsubmodels}}, respectively.}
 
 \item{...}{further arguments passed to or from other methods.}
 }
@@ -16,13 +17,15 @@ submodel_test_statistics(object, ...)
 A data frame.
 }
 \description{
-Calculates test stistics for the the selection of country-specific VARX models
-of a GVAR model.
+Calculates test statistics for the the selection of country-specific VARX or 
+VECX models of a GVAR model.
 }
 \details{
 The log-likelihood for the calculation of the information criteria is obtained by
 \deqn{LL = \frac{1}{R} \sum_{i = 1}^{R} \left( \sum_{t = 1}^{T} -\frac{K^{dom}}{2} \ln 2\pi - \frac{1}{2} \ln |\Sigma_t^{(i)}| -\frac{1}{2} (u_t^{{(i)}\prime} (\Sigma_t^{(i)})^{-1} u_t^{(i)} \right)},
-where \eqn{u_t = y_t - \mu_t}. The Akaike, Bayesian and Hannan–Quinn (HQ) information criteria are calculated as
+where \eqn{u_t = y_t - \mu_t}.
+
+For VAR models the Akaike, Bayesian and Hannan–Quinn (HQ) information criteria are calculated as
 \deqn{AIC = 2 (K^{d}p^{d} + K^{f}p^{f} + Ms + N) - 2 LL},
 \deqn{BIC = (K^{d}p^{d} + K^{f}p^{f} + Ms + N) ln(T) - 2 LL} and 
 \deqn{HQ = 2  (K^{d}p^{d} + K^{f}p^{f} + Ms + N) ln(ln(T)) - 2 LL}, respectively,
