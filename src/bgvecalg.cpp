@@ -1,6 +1,7 @@
 #include <RcppArmadillo.h>
 #include <bvartools.h>
 // [[Rcpp::depends(RcppArmadillo)]]
+// [[Rcpp::depends(bvartools)]]
 
 // [[Rcpp::export(.bgvecalg)]]
 Rcpp::List bgvecalg(Rcpp::List object) {
