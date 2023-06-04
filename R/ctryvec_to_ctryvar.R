@@ -209,7 +209,7 @@ ctryvec_to_ctryvar <- function(object) {
         if (!is.null(object[["posteriors"]][["pi_global"]])) {
           B[, draw] <- cbind(matrix(object[["posteriors"]][["pi_global"]][draw, ], k), matrix(object[["posteriors"]][["gamma_global"]][draw, ], k)) %*% W 
         } else {
-          B[, draw] <- cbind(matrix(0, k, k_for), matrix(object[["posteriors"]][["gamma_global"]][draw, ], k)) %*% W 
+          B[, draw] <- cbind(matrix(0, k, k_glo), matrix(object[["posteriors"]][["gamma_global"]][draw, ], k)) %*% W 
         }
       } 
       
@@ -243,7 +243,7 @@ ctryvec_to_ctryvar <- function(object) {
   
   ## Deterministic ----
   k_det_r <- 0
-  if (!is.null(object[["model"]][["deterministic"]][["restricted"]])) {
+  if (r > 0 & !is.null(object[["model"]][["deterministic"]][["restricted"]])) {
     k_det_r <- length(object[["model"]][["deterministic"]][["restricted"]])
   }
   k_det_ur <- 0
