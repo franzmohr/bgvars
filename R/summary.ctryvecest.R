@@ -200,7 +200,7 @@ summary.ctryvecest <- function(object, ci = .95, period = NULL, ...){
                               q_upper = q_high)
     
     if ("sigma_lambda" %in% names(object[["posteriors"]])) {
-      incl <- matrix(colMeans(object[["posteriors"]][["sigma_lambda"]]), k)
+      incl <- matrix(colMeans(object[["posteriors"]][["sigma_lambda"]]), k_domestic)
       dimnames(incl) <- dim_names
       result[["sigma"]][["lambda"]] = incl
     }
