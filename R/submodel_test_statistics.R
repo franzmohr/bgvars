@@ -58,6 +58,9 @@ submodel_test_satistics <- function(object, ...){
     if (global) {
       teststats[i, "s"] <- s 
     }
+    if (!is.null(object[[i]][["model"]][["rank"]])) {
+      teststats[i, "r"] <- object[[i]][["model"]][["rank"]]
+    }
     
     if (tvp) {
       temp_pars <- list()
@@ -86,71 +89,38 @@ submodel_test_satistics <- function(object, ...){
       }
     }
     
-    # if ("bvec" %in% class(object[[i]])) {
-    #   
-    #   type <- "VEC"
-    #   if (is.null(object[[i]][["r"]])) {
-    #     if (is.null(object[[i]][["alpha"]])) {
-    #       r <- 0
-    #       teststats[i, "r"] <- 0
-    #     } else {
-    #       r <- NCOL(object[[i]][["alpha"]]) / k
-    #       teststats[i, "r"] <- r
-    #     } 
-    #   } else {
-    #     r <- object[[i]][["r"]]
-    #   }
-    #   tot_pars <- r
-    #   
-    #   vars <- c("Pi", "Pi_x", "Pi_d", "Gamma", "Upsilon", "C")
-    #   for (j in vars) {
-    #     if (!is.null(object[[i]][[j]])) {
-    #       
-    #       if (is.list(object[[i]][[j]])) {
-    #         for (period in 1:tt) {
-    #           temp_pars[[period]] <- cbind(temp_pars[[period]], object[[i]][[j]][[period]]) 
-    #         }
-    #       } else {
-    #         temp_pars <- cbind(temp_pars, object[[i]][[j]]) 
-    #       }
-    #       
-    #       if (j == "Pi") {
-    #         x <- cbind(x, object[[i]][["w"]])
-    #         ect_vars <- c(ect_vars, dimnames(object[[i]][["w"]])[[2]])
-    #       }
-    #       if (j == "Pi_x") {
-    #         x <- cbind(x, object[[i]][["w_x"]])
-    #         ect_vars <- c(ect_vars, dimnames(object[[i]][["w_x"]])[[2]])
-    #       }
-    #       if (j == "Pi_d") {
-    #         x <- cbind(x, object[[i]][["w_d"]])
-    #         ect_vars <- c(ect_vars, dimnames(object[[i]][["w_d"]])[[2]])
-    #       }
-    #       if (j == "Gamma") {
-    #         x <- cbind(x, object[[i]][["x"]])
-    #         exog_vars <- c(exog_vars, dimnames(object[[i]][["x"]])[[2]])
-    #       }
-    #       if (j == "Upsilon") {
-    #         x <- cbind(x, object[[i]][["x_x"]])
-    #         exog_vars <- c(exog_vars, dimnames(object[[i]][["x_x"]])[[2]])
-    #       }
-    #       if (j == "C") {
-    #         x <- cbind(x, object[[i]][["x_d"]])
-    #         exog_vars <- c(exog_vars, dimnames(object[[i]][["x_d"]])[[2]])
-    #       }
-    #     }        
-    #   }
-    #   
-    #   tot_pars <- tot_pars + NCOL(x)
-    #   x <- t(x)
-    # }
+    if ("ctryvecest" %in% class(object[[i]])) {
+      
+      object[[i]] <- .create_pi_matrices(object[[i]])
+      
+      x <- t(object[[i]][["data"]][["X"]])
+      tot_pars <- object[[i]][["model"]][["rank"]] + nrow(x)
+      if (object[[i]][["model"]][["rank"]] > 0) {
+        x <- rbind(t(object[[i]][["data"]][["W"]]), x)
+      }
+      
+      vars <- c("pi_domestic", "pi_foreign", "pi_global", "pi_deterministic",
+                "gamma_domestic", "gamma_foreign", "gamma_global", "gamma_deterministic")
+      for (j in vars) {
+        if (!is.null(object[[i]][["posteriors"]][[j]])) {
+          if (is.list(object[[i]][["posteriors"]][[j]])) {
+            for (period in 1:tt) {
+              temp_pars[[period]] <- cbind(temp_pars[[period]], object[[i]][["posteriors"]][[j]][[period]]) 
+            }
+          } else {
+            temp_pars <- cbind(temp_pars, object[[i]][["posteriors"]][[j]]) 
+          }
+        }
+      }
+      
+    }
     
     if (tvp) {
       draws <- nrow(temp_pars[[1]])
     } else {
       draws <- nrow(temp_pars) 
     }
-    LL <- matrix(NA, tt, draws) # Get LogLik
+    LL <- matrix(NA, tt, draws)
     y <- t(object[[i]][["data"]][["Y"]])
     u <- y * 0
     if (sv) {
@@ -162,6 +132,7 @@ submodel_test_satistics <- function(object, ...){
     for (j in 1:draws) {
       # Residuals
       if (tvp) {
+        stop("TVP not implemented yet.")
         for (period in 1:tt) {
           u[, period] <- y[, period] - matrix(temp_pars[[period]][j, ], k_domestic) %*% x[, period] 
         }
@@ -182,8 +153,7 @@ submodel_test_satistics <- function(object, ...){
         sigma <- matrix(object[[i]][["posteriors"]][["sigma"]][j,], k_domestic)
       }
       
-      # LogLik
-      LL[, j] <- bvartools::loglik_normal(u, sigma)
+      LL[, j] <- bvartools::loglik_normal(u, sigma) # LogLik
     }
     
     ll <- sum(rowMeans(LL))
