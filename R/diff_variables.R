@@ -11,7 +11,7 @@
 #' @return A differenced time-series object or a list of differenced time-series objects.
 #' 
 #' @examples 
-#' Load data
+#' # Load data
 #' data("gvar2016")
 #' country_data <- gvar2016$country_data
 #' 

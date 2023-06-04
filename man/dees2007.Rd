@@ -38,7 +38,7 @@ The data set of Dees et al. (2007) contains economic time series for
 26 economies and oil prices from 1979Q2 to 2003Q4.
 }
 \references{
-Dees, S., di Mauro, F., Pesaran, M. H., & Smith, V. (2007). Exploring the
+Dees, S., di Mauro, F., Pesaran, M. H., \& Smith, V. (2007). Exploring the
 international linkages of the euro area: A global VAR analysis.
 \emph{Journal of Applied Econometrics, 22}(1), 1--38.
 \url{https://doi.org/10.1002/jae.932}

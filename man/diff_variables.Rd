@@ -22,7 +22,7 @@ Produces the first difference of variables in a time-series object or in a
 list of named time-series objects.
 }
 \examples{
-Load data
+# Load data
 data("gvar2016")
 country_data <- gvar2016$country_data
 

@@ -4,17 +4,10 @@
 #' 
 #' @param object a list containing the results of the country estimates, usually, the
 #' result of a call to \code{\link{draw_posterior}}.
-#' @param ic a character specifying the information criterion used for model selection.
-#' Available options are "AIC", "BIC" (default) and "HQ".
 #' @param period an integer of the time index for which the GVAR should be solved. Only used
 #' when time varying weights or parameters are used.
 #' @param thin an integer specifying the thinning factor for the MCMC output.
 #' Defaults to 1 to obtain the full MCMC sequence.
-#' @param select a character specifying how the best country model is selected.
-#' If \code{"order"} (default), the country model with the overall minimum value of the
-#' specified information criterion per country is selected. If \code{"rank"}, the
-#' function selects the model, after which the selected information crition increases
-#' for the first time.
 #' 
 #' @return An object of class \code{"bgvar"}.
 #' 
@@ -24,9 +17,10 @@
 #' 
 #' # Create regions
 #' temp <- create_regions(country_data = gvar2016$country_data,
-#'                        weight_data = gvar2016$weight_data,
-#'                        region_weights = gvar2016$region_weights,
-#'                        regions = list(EA =  c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")), period = 3)
+#'              weight_data = gvar2016$weight_data,
+#'              region_weights = gvar2016$region_weights,
+#'              regions = list(EA =  c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")),
+#'              period = 3)
 #' 
 #' country_data <- temp$country_data
 #' weight_data <- temp$weight_data

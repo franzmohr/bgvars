@@ -92,7 +92,7 @@
 #' 
 #' @references
 #' 
-#' Mohaddes, K., & Raissi, M. (2018). \emph{Compilation, revision and updating of the global VAR (GVAR) database, 1979Q2--2016Q4} (mimeo). University of Cambridge: Faculty of Economics.
+#' Mohaddes, K., \& Raissi, M. (2018). \emph{Compilation, revision and updating of the global VAR (GVAR) database, 1979Q2--2016Q4} (mimeo). University of Cambridge: Faculty of Economics.
 #' The paper and dataset can be downloaded from \href{https://www.mohaddes.org/gvar}{https://www.mohaddes.org/gvar}.
 #' 
 "gvar2016"
@@ -131,7 +131,7 @@
 #' 
 #' @references
 #' 
-#' Dees, S., di Mauro, F., Pesaran, M. H., & Smith, V. (2007). Exploring the
+#' Dees, S., di Mauro, F., Pesaran, M. H., \& Smith, V. (2007). Exploring the
 #' international linkages of the euro area: A global VAR analysis.
 #' \emph{Journal of Applied Econometrics, 22}(1), 1--38.
 #' \url{https://doi.org/10.1002/jae.932}

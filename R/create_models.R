@@ -15,9 +15,10 @@
 #' 
 #' # Create regions
 #' temp <- create_regions(country_data = gvar2016$country_data,
-#'                        weight_data = gvar2016$weight_data,
-#'                        region_weights = gvar2016$region_weights,
-#'                        regions = list(EA =  c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")), period = 3)
+#'              weight_data = gvar2016$weight_data,
+#'              region_weights = gvar2016$region_weights,
+#'              regions = list(EA =  c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")),
+#'              period = 3)
 #' 
 #' country_data <- temp$country_data
 #' weight_data <- temp$weight_data
