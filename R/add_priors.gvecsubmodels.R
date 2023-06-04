@@ -221,7 +221,7 @@ add_priors.gvecsubmodels <- function(object, ...,
           error_prior <- "wishart"
         } 
       }
-
+      
       if (is.null(error_prior)) {
         stop("Invalid specification for argument 'sigma'.")
       }
@@ -303,21 +303,21 @@ add_priors.gvecsubmodels <- function(object, ...,
   use_bvs_error <- FALSE
   if (!is.null(bvs)) {
     use_bvs <- TRUE
-    if (is.null(bvs$inprior)) {
+    if (is.null(bvs[["inprior"]])) {
       stop("If BVS should be applied, argument 'bvs$inprior' must be specified.")
     }
-    if (is.null(bvs$exclude_det)) {
-      bvs$exclude_det <- FALSE
+    if (is.null(bvs[["exclude_det"]])) {
+      bvs[["exclude_det"]] <- FALSE
     }
-    if (!is.null(bvs$covar)) {
-      if (bvs$covar) {
+    if (!is.null(bvs[["covar"]])) {
+      if (bvs[["covar"]]) {
         if (error_prior == "wishart") {
           stop("If BVS should be applied to error covariances, argument 'sigma$shape' must be specified.")
         }
         use_bvs_error <- TRUE 
       }
     }
-    if (coef$v_i == 0 | (coef$v_i_det == 0 & !bvs$exclude_det)) {
+    if (coef[["v_i"]] == 0 | (coef[["v_i_det"]] == 0 & !bvs[["exclude_det"]])) {
       warning("Using BVS with an uninformative prior is not recommended.")
     }
   }
@@ -419,15 +419,15 @@ add_priors.gvecsubmodels <- function(object, ...,
             warning("Value of rho appears very small.")
           }
         }
-        object[[i]][["priors"]][["cointegration"]]$alpha <- list(mu = matrix(0, n_alpha),
-                                                                 v_i = diag(1 / (1 - rho^2), n_alpha),
-                                                                 shape = matrix(coint[["shape"]], n_alpha),
-                                                                 rate = matrix(coint[["rate"]], n_alpha))
-        object[[i]][["priors"]][["cointegration"]]$beta <- list(mu = matrix(0, n_beta),
-                                                                v_i = diag(1 - rho^2, n_beta))
+        object[[i]][["priors"]][["cointegration"]][["alpha"]] <- list(mu = matrix(0, n_alpha),
+                                                                      v_i = diag(1 / (1 - rho^2), n_alpha),
+                                                                      shape = matrix(coint[["shape"]], n_alpha),
+                                                                      rate = matrix(coint[["rate"]], n_alpha))
+        object[[i]][["priors"]][["cointegration"]][["beta"]] <- list(mu = matrix(0, n_beta),
+                                                                     v_i = diag(1 - rho^2, n_beta))
       } else {
-        object[[i]][["priors"]]$cointegration <- list(v_i = coint[["v_i"]],
-                                                      p_tau_i = diag(coint[["p_tau_i"]], n_ect / k_domestic)) 
+        object[[i]][["priors"]][["cointegration"]] <- list(v_i = coint[["v_i"]],
+                                                           p_tau_i = diag(coint[["p_tau_i"]], n_ect / k_domestic)) 
       }
     } else {
       if (r_temp == 0 & tot_par == 0) {
@@ -475,263 +475,224 @@ add_priors.gvecsubmodels <- function(object, ...,
       # Minnesota prior here 
       # Obtain OLS estimates for the calculation of the
       # Minnesota prior or the semi-automatic SSVS approach
-      #   if (minnesota | use_ssvs_semi) {
-      #     # Get data
-      #     if (object[[i]]$model$type == "VAR") {
-      #       y <- t(object[[i]]$data$Y)
-      #       x <- t(object[[i]]$data$Z)
-      #     }
-      #     if (object[[i]]$model$type == "VEC") {
-      #       y <- t(object[[i]]$data$Y)
-      #       x <- t(cbind(object[[i]]$data$W, object[[i]]$data$X))
-      #       n_ect <- ncol(object[[i]]$data$W)
-      #     }
-      #     
-      #     tt <- ncol(y)
-      #     ols_sigma <- y %*% (diag(1, tt) - t(x) %*% solve(tcrossprod(x)) %*% x) %*% t(y) / (tt - nrow(x))
-      #     
-      #     if (minnesota) {
-      #       # Determine positions of deterministic terms for calculation of sigma
-      #       pos_det <- NULL
-      #       if (!is.null(object[[i]]$model$deterministic)) {
-      #         if (object[[i]]$model$type == "VAR") {
-      #           pos_det <- k * p_domestic + m * p_foreign + n * p_global + 1:length(object[[i]]$model$deterministic)
-      #         }
-      #         if (object[[i]]$model$type == "VEC") {
-      #           if (!is.null(object[[i]]$model$deterministic$restricted)) {
-      #             pos_det <- c(pos_det, k + m + n + 1:length(object[[i]]$model$deterministic$restricted))
-      #           }
-      #           if (!is.null(object[[i]]$model$deterministic$unrestricted)) {
-      #             pos_det <- c(pos_det, n_ect + k * p_domestic + m * p_foreign + n * p_global + 1:length(object[[i]]$model$deterministic$unrestricted))
-      #           }
-      #         }
-      #       }
-      #       
-      #       # Obtain sigmas for V_i via estimation of AR model for each endogenous variable
-      #       s_domestic <- diag(0, k)
-      #       for (j in 1:k) {
-      #         if (object[[i]]$model$type == "VAR") {
-      #           pos <- c(j + k * ((1:p_domestic) - 1), pos_det)
-      #         }
-      #         if (object[[i]]$model$type == "VEC") {
-      #           if (p_domestic > 0) {
-      #             pos <- c(j, n_ect + j + k * ((1:p_domestic) - 1), pos_det)
-      #           } else {
-      #             pos <- c(j, pos_det)
-      #           }
-      #         }
-      #         y_temp <- matrix(y[j, ], 1)
-      #         x_temp <- matrix(x[pos, ], length(pos))
-      #         s_domestic[j, j] <- y_temp %*% (diag(1, tt) - t(x_temp) %*% solve(tcrossprod(x_temp)) %*% x_temp) %*% t(y_temp) / (tt - length(pos))
-      #       }
-      #       s_domestic <- sqrt(diag(s_domestic)) # Residual standard deviations (OLS)
-      #       
-      #       # Generate prior matrices ----
-      #       
-      #       # Minnesota prior ----
-      #       V <- matrix(rep(NA, tot_par - n_struct), k) # Set up matrix for variances
-      #       
-      #       # Endogenous variables
-      #       if (p_domestic > 0) {
-      #         for (r in 1:p_domestic) {
-      #           for (l in 1:k) {
-      #             for (j in 1:k) {
-      #               if (l == j) {
-      #                 V[l, (r - 1) * k + j] <- coef$minnesota$kappa0 / r^2
-      #               } else {
-      #                 V[l, (r - 1) * k + j] <- coef$minnesota$kappa0 * coef$minnesota$kappa1 / r^2 * s_domestic[l]^2 / s_domestic[j]^2
-      #               }
-      #             }
-      #           }
-      #         }
-      #       }
-      #       
-      #       # Weakly exogenous variables
-      #       if (object[[i]]$model$type == "VAR") {
-      #         s_foreign <- sqrt(apply(matrix(x[k * p_domestic + 1:m, ], m), 1, stats::var))
-      #       }
-      #       if (object[[i]]$model$type == "VEC") {
-      #         s_foreign <- sqrt(apply(matrix(x[n_ect / k + k * p_domestic + 1:m, ], m), 1, stats::var))
-      #       }
-      #       
-      #       for (r in 1:p_foreign) {
-      #         for (l in 1:k) {
-      #           for (j in 1:m) {
-      #             # Note that r starts at 1, so that this is equivalent to l + 1
-      #             if (is.null(coef$minnesota$kappa2)) {
-      #               V[l, p_domestic * k + (r - 1) * m + j] <- coef$minnesota$kappa0 * coef$minnesota$kappa3 * s_domestic[l]^2
-      #             } else {
-      #               V[l, p_domestic * k + (r - 1) * m + j] <- coef$minnesota$kappa0 * coef$minnesota$kappa2 / r^2 * s_domestic[l]^2 / s_foreign[j]^2
-      #             }
-      #           }
-      #         }
-      #       }
-      #       
-      #       # Glogal variables
-      #       if (global) {
-      #         if (object[[i]]$model$type == "VAR") {
-      #           s_global <- sqrt(apply(matrix(x[k * p_domestic + m * p_foreign + 1:n, ], n), 1, stats::var))
-      #         } else {
-      #           s_global <- sqrt(apply(matrix(x[n_ect / k + k * p_domestic + m * p_foreign + 1:n, ], n), 1, stats::var))
-      #         }
-      #         for (r in 1:p_global) {
-      #           for (l in 1:k) {
-      #             for (j in 1:n) {
-      #               # Note that r starts at 1, so that this is equivalent to l + 1
-      #               if (is.null(coef$minnesota$kappa2)) {
-      #                 V[l, p_domestic * k + m * p_foreign + (r - 1) * n + j] <- coef$minnesota$kappa0 * coef$minnesota$kappa3 * s_domestic[l]^2
-      #               } else {
-      #                 V[l, p_domestic * k + m * p_foreign + (r - 1) * n + j] <- coef$minnesota$kappa0 * coef$minnesota$kappa2 / r^2 * s_domestic[l]^2 / s_global[j]^2
-      #               }
-      #             }
-      #           }
-      #         }
-      #       }
-      #       
-      #       # Restrict prior variances
-      #       if (!is.null(coef$max_var)) {
-      #         if (any(stats::na.omit(V) > coef$max_var)) {
-      #           V[which(V > coef$max_var)] <- coef$max_var
-      #         }
-      #       }
-      #       
-      #       # Deterministic variables
-      #       if (!is.null(object[[i]]$data$deterministic)){
-      #         V[, -(1:(k * p_domestic + m * p_foreign + n * p_global))] <- coef$minnesota$kappa0 * coef$minnesota$kappa3 * s_domestic^2
-      #       }
-      #       
-      #       V <- matrix(V)
-      #       
-      #       # Structural parameters
-      #       if (structural & k > 1) {
-      #         V_struct <- matrix(NA, k, k)
-      #         for (j in 1:(k - 1)) {
-      #           V_struct[(j + 1):k, j] <- coef$minnesota$kappa0 * coef$minnesota$kappa1 * s_domestic[(j + 1):k]^2 / s_domestic[j]^2  
-      #         }
-      #         V_struct <- matrix(V_struct[lower.tri(V_struct)])
-      #         V <- rbind(V, V_struct)
-      #       }
-      #       
-      #       v_i <- diag(c(1 / V))
-      #       
-      #       if (object[[i]]$model$type == "VAR") {
-      #         object[[i]]$priors$coefficients$v_i <- v_i   
-      #       }
-      #       if (object[[i]]$model$type == "VEC") {
-      #         object[[i]]$priors$noncointegration$v_i <- v_i
-      #       }
-      #     } # End of minnesota condition
-      #   } # Ende of minnesota/ssvs_semi condition
-      #   
-      #   # Inclusion priors
-      #   if (use_ssvs | use_bvs) {
-      #     inprior <- matrix(NA, k, (tot_par - n_struct) / k)
-      #     include <- matrix(1:tot_par)
-      #     if (use_ssvs) {
-      #       prob <- ssvs$inprior
-      #       kappa <- ssvs$minnesota
-      #       exclude_det <- ssvs$exclude_det
-      #     }
-      #     if (use_bvs) {
-      #       prob <- bvs$inprior
-      #       kappa <- bvs$minnesota
-      #       exclude_det <- bvs$exclude_det
-      #     }
-      #     # For Minnesota-like inclusion parameters
-      #     if (!is.null(kappa)) {
-      #       # Domestic
-      #       if (p_domestic > 0) {
-      #         for (r in 1:p_domestic) {
-      #           inprior[, (r - 1) * k + 1:k] <- kappa[2] / r
-      #           if (k > 1) {
-      #             diag(inprior[, (r - 1) * k + 1:k]) <- kappa[1] / r
-      #           } else {
-      #             inprior[, (r - 1) * k + 1] <- kappa[1] / r
-      #           }
-      #         }
-      #       }
-      #       
-      #       # Foreign
-      #       if (m > 0) {
-      #         inprior[, p_domestic * k + 1:m] <- kappa[3]
-      #         if (p_foreign > 0) {
-      #           for (r in 1:p_foreign) {
-      #             inprior[, p_domestic * k + (r - 1) * m + 1:m] <- kappa[3] / (1 + r)
-      #           }
-      #         }
-      #       }
-      #       
-      #       # Global
-      #       if (global) {
-      #         inprior[, p_domestic * k + p_foreign * m + 1:n] <- kappa[3]
-      #         if (p_global > 0) {
-      #           for (r in 1:p_global) {
-      #             inprior[, p_domestic * k + p_foreign * m + (r - 1) * n + 1:n] <- kappa[3] / (1 + r)
-      #           }
-      #         }
-      #       }
-      #       
-      #       if (n_det > 0) {
-      #         inprior[, p_domestic * k + p_foreign * m + p_global * n + 1:(n_det / k)] <- kappa[4]
-      #       }
-      #     } else {
-      #       inprior[,] <- prob
-      #     }
-      #     
-      #     inprior <- matrix(inprior)
-      #     if (structural & k > 1) {
-      #       inprior <- rbind(inprior, matrix(prob, n_struct))
-      #     }
-      #     
-      #     if (n_det > 0 & exclude_det) {
-      #       pos_det <- tot_par - n_det - n_struct + 1:n_det
-      #       include <- matrix(include[-pos_det])
-      #     }
-      #   }
-      #   
-      #   # SSVS
-      #   if (use_ssvs) {
-      #     if (use_ssvs_semi) {
-      #       # Semiautomatic approach
-      #       cov_ols <- kronecker(solve(tcrossprod(x)), ols_sigma)
-      #       se_ols <- sqrt(diag(cov_ols)) # OLS standard errors
-      #       
-      #       if (object[[i]]$model$type == "VEC") {
-      #         se_ols <- se_ols[-(1:n_ect)]
-      #       }
-      #       se_ols <- matrix(se_ols)
-      #       
-      #       tau0 <- se_ols * ssvs$semiautomatic[1] # Prior if excluded
-      #       tau1 <- se_ols * ssvs$semiautomatic[2] # Prior if included
-      #       
-      #       if (structural & k > 1) {
-      #         warning("Semiautomatic approach for SSVS not available for structural variables. Using values of argument 'ssvs$tau' instead.")
-      #         tau0 <- rbind(tau0, matrix(ssvs$tau[1], n_struct))
-      #         tau1 <- rbind(tau1, matrix(ssvs$tau[2], n_struct))
-      #       }
-      #     } else {
-      #       tau0 <- matrix(rep(ssvs$tau[1], tot_par))
-      #       tau1 <- matrix(rep(ssvs$tau[2], tot_par))
-      #     }
-      #     
-      #     object[[i]]$model$varselect <- "SSVS"
-      #     
-      #     if (object[[i]]$model$type == "VAR") {
-      #       object[[i]]$priors$coefficients$v_i <- diag(1 / tau1[, 1]^2, tot_par)
-      #       object[[i]]$priors$coefficients$ssvs$inprior <- inprior
-      #       object[[i]]$priors$coefficients$ssvs$include <- include
-      #       object[[i]]$priors$coefficients$ssvs$tau0 <- tau0
-      #       object[[i]]$priors$coefficients$ssvs$tau1 <- tau1
-      #     }
-      #     if (object[[i]]$model$type == "VEC") {
-      #       object[[i]]$priors$noncointegration$v_i <- diag(1 / tau1[, 1]^2, tot_par)
-      #       object[[i]]$priors$noncointegration$ssvs$inprior <- inprior
-      #       object[[i]]$priors$noncointegration$ssvs$include <- include
-      #       object[[i]]$priors$noncointegration$ssvs$tau0 <- tau0
-      #       object[[i]]$priors$noncointegration$ssvs$tau1 <- tau1
-      #     }
-      #   }
-      # }
+      if (minnesota | use_ssvs_semi) {
+        # Get data
+        y <- t(object[[i]][["data"]][["Y"]])
+        x <- t(cbind(object[[i]][["data"]][["W"]], object[[i]][["data"]][["X"]]))
+        k_ect <- ncol(object[[i]][["data"]][["W"]])
+        
+        tt <- ncol(y)
+        ols_sigma <- y %*% (diag(1, tt) - t(x) %*% solve(tcrossprod(x)) %*% x) %*% t(y) / (tt - nrow(x))
+        
+        if (minnesota) {
+          # Determine positions of deterministic terms for calculation of sigma
+          pos_det <- NULL
+          if (!is.null(object[[i]][["model"]][["deterministic"]])) {
+            if (!is.null(object[[i]][["model"]][["deterministic"]][["restricted"]])) {
+              pos_det <- c(pos_det, k_domestic + k_foreign + k_global + 1:length(object[[i]][["model"]][["deterministic"]][["restricted"]]))
+            }
+            if (!is.null(object[[i]][["model"]][["deterministic"]][["unrestricted"]])) {
+              pos_det <- c(pos_det, k_ect + k_domestic * p_domestic + k_foreign * p_foreign + k_global * p_global + 1:length(object[[i]][["model"]][["deterministic"]][["unrestricted"]]))
+            }
+          }
+          
+          # Obtain sigmas for V_i via estimation of AR model for each endogenous variable
+          s_domestic <- diag(0, k_domestic)
+          for (j in 1:k_domestic) {
+            if (p_domestic > 0) {
+              pos <- c(j, k_ect + j + k_domestic * ((1:p_domestic) - 1), pos_det)
+            } else {
+              pos <- c(j, pos_det)
+            }
+            y_temp <- matrix(y[j, ], 1)
+            x_temp <- matrix(x[pos, ], length(pos))
+            s_domestic[j, j] <- y_temp %*% (diag(1, tt) - t(x_temp) %*% solve(tcrossprod(x_temp)) %*% x_temp) %*% t(y_temp) / (tt - length(pos))
+          }
+          s_domestic <- sqrt(diag(s_domestic)) # Residual standard deviations (OLS)
+          
+          # Generate prior matrices ----
+          
+          # Minnesota prior ----
+          V <- matrix(rep(NA, tot_par - n_struct), k_domestic) # Set up matrix for variances
+          
+          # Endogenous variables
+          if (p_domestic > 0) {
+            for (r in 1:p_domestic) {
+              for (l in 1:k_domestic) {
+                for (j in 1:k_domestic) {
+                  if (l == j) {
+                    V[l, (r - 1) * k_domestic + j] <- coef$minnesota$kappa0 / r^2
+                  } else {
+                    V[l, (r - 1) * k_domestic + j] <- coef$minnesota$kappa0 * coef$minnesota$kappa1 / r^2 * s_domestic[l]^2 / s_domestic[j]^2
+                  }
+                }
+              }
+            }
+          }
+          
+          # Weakly exogenous variables
+          s_foreign <- sqrt(apply(matrix(x[k_ect + k_domestic * p_domestic + 1:k_foreign, ], k_foreign), 1, stats::var))
+          
+          for (r in 1:p_foreign) {
+            for (l in 1:k_domestic) {
+              for (j in 1:k_foreign) {
+                # Note that r starts at 1, so that this is equivalent to l + 1
+                if (is.null(coef$minnesota$kappa2)) {
+                  V[l, p_domestic * k_domestic + (r - 1) * k_foreign + j] <- coef$minnesota$kappa0 * coef$minnesota$kappa3 * s_domestic[l]^2
+                } else {
+                  V[l, p_domestic * k_domestic + (r - 1) * k_foreign + j] <- coef$minnesota$kappa0 * coef$minnesota$kappa2 / r^2 * s_domestic[l]^2 / s_foreign[j]^2
+                }
+              }
+            }
+          }
+          
+          # Glogal variables
+          if (global) {
+            s_global <- sqrt(apply(matrix(x[k_ect + k_domestic * p_domestic + k_foreign * p_foreign + 1:k_global, ], k_global), 1, stats::var))
+            for (r in 1:p_global) {
+              for (l in 1:k_domestic) {
+                for (j in 1:k_global) {
+                  # Note that r starts at 1, so that this is equivalent to l + 1
+                  if (is.null(coef$minnesota$kappa2)) {
+                    V[l, k_domestic * p_domestic + k_foreign * p_foreign + (r - 1) * k_global + j] <- coef$minnesota$kappa0 * coef$minnesota$kappa3 * s_domestic[l]^2
+                  } else {
+                    V[l, k_domestic * p_domestic + k_foreign * p_foreign + (r - 1) * k_global + j] <- coef$minnesota$kappa0 * coef$minnesota$kappa2 / r^2 * s_domestic[l]^2 / s_global[j]^2
+                  }
+                }
+              }
+            }
+          }
+          
+          # Restrict prior variances
+          if (!is.null(coef[["max_var"]])) {
+            if (any(stats::na.omit(V) > coef[["max_var"]])) {
+              V[which(V > coef[["max_var"]])] <- coef[["max_var"]]
+            }
+          }
+          
+          # Deterministic variables
+          if (!is.null(object[[i]][["data"]][["deterministic"]][["unrestricted"]])){
+            V[, -(1:(k_domestic * p_domestic + k_foreign * p_foreign + k_global * p_global))] <- coef$minnesota$kappa0 * coef$minnesota$kappa3 * s_domestic^2
+          }
+          
+          V <- matrix(V)
+          
+          # Structural parameters
+          if (structural & k_domestic > 1) {
+            V_struct <- matrix(NA, k_domestic, k_domestic)
+            for (j in 1:(k_domestic - 1)) {
+              V_struct[(j + 1):k_domestic, j] <- coef$minnesota$kappa0 * coef$minnesota$kappa1 * s_domestic[(j + 1):k_domestic]^2 / s_domestic[j]^2
+            }
+            V_struct <- matrix(V_struct[lower.tri(V_struct)])
+            V <- rbind(V, V_struct)
+          }
+          
+          v_i <- diag(c(1 / V))
+          
+          object[[i]][["priors"]][["noncointegration"]][["v_i"]] <- v_i
+        } # End of minnesota condition
+      } # Ende of minnesota/ssvs_semi condition
+      
+      # Inclusion priors
+      if (use_ssvs | use_bvs) {
+        inprior <- matrix(NA, k_domestic, (tot_par - n_struct) / k_domestic)
+        include <- matrix(1:tot_par)
+        if (use_ssvs) {
+          prob <- ssvs[["inprior"]]
+          kappa <- ssvs[["minnesota"]]
+          exclude_det <- ssvs[["exclude_det"]]
+        }
+        if (use_bvs) {
+          prob <- bvs[["inprior"]]
+          kappa <- bvs[["minnesota"]]
+          exclude_det <- bvs[["exclude_det"]]
+        }
+        
+        # For Minnesota-like inclusion parameters
+        if (!is.null(kappa)) {
+          # Domestic
+          if (p_domestic > 0) {
+            for (r in 1:p_domestic) {
+              inprior[, (r - 1) * k_domestic + 1:k_domestic] <- kappa[2] / r
+              if (k_domestic > 1) {
+                diag(inprior[, (r - 1) * k_domestic + 1:k_domestic]) <- kappa[1] / r
+              } else {
+                inprior[, (r - 1) * k_domestic + 1] <- kappa[1] / r
+              }
+            }
+          }
+          
+          # Foreign
+          if (k_foreign > 0) {
+            inprior[, p_domestic * k_domestic + 1:k_foreign] <- kappa[3]
+            if (p_foreign > 1) {
+              for (r in 1:(p_foreign - 1)) {
+                inprior[, k_domestic * p_domestic + k_foreign + (r - 1) * k_foreign + 1:k_foreign] <- kappa[3] / (1 + r)
+              }
+            }
+          }
+          
+          # Global
+          if (global) {
+            inprior[, k_domestic * p_domestic + k_foreign * p_foreign + 1:k_global] <- kappa[3]
+            if (p_global > 1) {
+              for (r in 1:(p_global - 1)) {
+                inprior[, k_domestic * p_domestic + k_foreign * p_foreign + k_global + (r - 1) * k_global + 1:k_global] <- kappa[3] / (1 + r)
+              }
+            }
+          }
+          
+          if (n_det > 0) {
+            inprior[, k_domestic * p_domestic + k_foreign * p_foreign + k_global * p_global + 1:(n_det / k_domestic)] <- kappa[4]
+          }
+        } else {
+          inprior[,] <- prob
+        }
+        
+        inprior <- matrix(inprior)
+        if (structural & k_domestic > 1) {
+          inprior <- rbind(inprior, matrix(prob, n_struct))
+        }
+        
+        if (n_det > 0 & exclude_det) {
+          pos_det <- tot_par - n_det - n_struct + 1:n_det
+          include <- matrix(include[-pos_det])
+        }
+        
+        # SSVS
+        if (use_ssvs) {
+          if (use_ssvs_semi) {
+            # Semiautomatic approach
+            cov_ols <- kronecker(solve(tcrossprod(x)), ols_sigma)
+            se_ols <- sqrt(diag(cov_ols)) # OLS standard errors
+            
+            se_ols <- se_ols[-(1:k_ect)]
+            se_ols <- matrix(se_ols)
+            
+            tau0 <- se_ols * ssvs[["semiautomatic"]][1] # Prior if excluded
+            tau1 <- se_ols * ssvs[["semiautomatic"]][2] # Prior if included
+            
+            if (structural & k_domestic > 1) {
+              warning("Semiautomatic approach for SSVS not available for structural variables. Using values of argument 'ssvs$tau' instead.")
+              tau0 <- rbind(tau0, matrix(ssvs[["tau"]][1], n_struct))
+              tau1 <- rbind(tau1, matrix(ssvs[["tau"]][2], n_struct))
+            }
+          } else {
+            tau0 <- matrix(rep(ssvs[["tau"]][1], tot_par))
+            tau1 <- matrix(rep(ssvs[["tau"]][2], tot_par))
+          }
+          
+          object[[i]][["model"]][["varselect"]] <- "SSVS"
+          
+          
+          object[[i]][["priors"]][["noncointegration"]][["v_i"]] <- diag(1 / tau1[, 1]^2, tot_par)
+          object[[i]][["priors"]][["noncointegration"]][["ssvs"]][["inprior"]] <- inprior
+          object[[i]][["priors"]][["noncointegration"]][["ssvs"]][["include"]] <- include
+          object[[i]][["priors"]][["noncointegration"]][["ssvs"]][["tau0"]] <- tau0
+          object[[i]][["priors"]][["noncointegration"]][["ssvs"]][["tau1"]] <- tau1
+          
+        }
+      }
       
       # Regular prior ----
       if (!minnesota & !use_ssvs) {
@@ -744,41 +705,13 @@ add_priors.gvecsubmodels <- function(object, ...,
         object[[i]][["priors"]][["noncointegration"]][["v_i"]] <- v_i
       }
       
-      # # BVS
-      # if (use_bvs) {
-      #   object[[i]]$model$varselect <- "BVS"
-      #   
-      #   if (object[[i]]$model$type == "VAR") {
-      #     object[[i]]$priors$coefficients$bvs$inprior <- inprior
-      #     object[[i]]$priors$coefficients$bvs$include <- include
-      #   }
-      #   if (object[[i]]$model$type == "VEC") {
-      #     object[[i]]$priors$noncointegration$bvs$inprior <- inprior
-      #     object[[i]]$priors$noncointegration$bvs$include <- include
-      #   }
-      # }
-      
-      # BVARTOOLS-Code...
-      # if (use_bvs) {
-      #   object[[i]]$model$varselect <- "BVS"
-      #   temp <- inclusion_prior(object[[i]], prob = bvs[["inprior"]], exclude_deterministics = bvs[["exclude_det"]],
-      #                           minnesota_like = !is.null(bvs[["minnesota"]]), kappa = bvs[["minnesota"]])
-      #   
-      #   # Drop ECT output from inclusion and BVS output
-      #   if (r_temp > 0) {
-      #     pos_omit <- 1:(k * NCOL(object[[i]]$data$W)) # Positions of Pi values
-      #     temp[["prior"]] <- matrix(temp[["prior"]][-pos_omit,]) # Incl prior w/o Pi values
-      #     pos_incl <- which(temp[["include"]] %in% pos_omit) # Drop Pi values
-      #     if (length(pos_incl) > 0) {
-      #       temp[["include"]] <- matrix(temp[["include"]][-pos_incl])
-      #     }
-      #     temp[["include"]] <- temp[["include"]] - (temp[["include"]][1] - 1)
-      #     rm(pos_omit)
-      #     rm(pos_incl)  
-      #   }
-      #   object[[i]][["priors"]][["noncointegration"]][["bvs"]][["inprior"]] <- temp[["prior"]]
-      #   object[[i]][["priors"]][["noncointegration"]][["bvs"]][["include"]] <- temp[["include"]]
-      # }
+      # BVS
+      if (use_bvs) {
+        object[[i]][["model"]][["varselect"]] <- "BVS"
+        
+        object[[i]][["priors"]][["noncointegration"]][["bvs"]][["inprior"]] <- inprior
+        object[[i]][["priors"]][["noncointegration"]][["bvs"]][["include"]] <- include
+      }
       
       ## TVP prior - variances of the state equations ----
       if (object[[i]][["model"]][["tvp"]]) {
