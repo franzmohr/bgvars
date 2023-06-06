@@ -43,6 +43,7 @@ Collate:
     'gen_varx.R'
     'gen_vecx.R'
     'get_regressor_names.R'
+    'get_submodel_specifications.R'
     'gfevd.R'
     'girf.R'
     'plot.bgvarest.R'
