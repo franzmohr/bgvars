@@ -23,16 +23,23 @@
 #' @export
 summary.bgvecest <- function(object, ci = .95, period = NULL, ctry = NULL, ...){
   
-  if (is.null(ctry)) {
-    pos <- 1:length(object)
-  } else {
+  pos <- 1:length(object)
+  if (!is.null(ctry)) {
     pos <- which(names(object) %in% ctry) 
   }
   
-  for (i in pos) {
-    object[[i]] <- summary.ctryvecest(object[[i]], ci = ci, period = period, ...)
+  if (length(pos) == 0) {
+    stop("Specified countries not available.")
   }
   
-  class(object) <- c("summary.bgvecest", "list")
-  return(object)
+  result <- NULL
+  for (i in pos) {
+    temp <- summary.ctryvecest(object[[i]], ci = ci, period = period, ...) 
+    result <- c(result, list(temp))
+    rm(temp)
+  }
+  names(result) <- names(object)[pos]
+  
+  class(result) <- c("summary.bgvecest", "list")
+  return(result)
 }
