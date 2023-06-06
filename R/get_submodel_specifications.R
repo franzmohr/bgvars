@@ -102,10 +102,16 @@ get_submodel_specifications <- function(object){
     result[i, "lag_domestic"] <- object[[i]][["model"]][["domestic"]][["lags"]]
     result[i, "var_foreign"] <- paste(object[[i]][["model"]][["foreign"]][["variables"]], collapse = ", ")
     result[i, "lag_foreign"] <- object[[i]][["model"]][["foreign"]][["lags"]]
-    result[i, "var_global"] <- paste(object[[i]][["model"]][["global"]][["variables"]], collapse = ", ")
-    result[i, "lag_global"] <- object[[i]][["model"]][["global"]][["lags"]]
-    result[i, "r"] <- object[[i]][["model"]][["rank"]]
-    result[i, "varselect"] <- object[[i]][["model"]][["varselect"]]
+    if (!is.null(object[[i]][["model"]][["global"]])) {
+      result[i, "var_global"] <- paste(object[[i]][["model"]][["global"]][["variables"]], collapse = ", ")
+      result[i, "lag_global"] <- object[[i]][["model"]][["global"]][["lags"]] 
+    }
+    if (!is.null(object[[i]][["model"]][["rank"]])) {
+      result[i, "r"] <- object[[i]][["model"]][["rank"]] 
+    }
+    if (!is.null(object[[i]][["model"]][["varselect"]])) {
+      result[i, "varselect"] <- object[[i]][["model"]][["varselect"]] 
+    }
   }
   
   result <- result[, !unlist(lapply(result, function(x) {all(is.na(x))}))]
