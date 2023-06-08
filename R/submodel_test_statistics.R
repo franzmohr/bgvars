@@ -192,8 +192,12 @@ submodel_test_statistics <- function(object, ...){
     for (j in 1:draws) {
       # Residuals
       if (tvp) {
-        stop("TVP not implemented yet.")
         for (period in 1:tt) {
+          if (structural) {
+            A0 <- matrix(object[[i]][["posteriors"]][["a0"]][[period]][j, ], k_domestic)
+          } else {
+            A0 <- diag(k_domestic)
+          }
           u[, period] <- y[, period] - matrix(temp_pars[[period]][j, ], k_domestic) %*% x[, period] 
         }
       } else {
@@ -213,7 +217,8 @@ submodel_test_statistics <- function(object, ...){
         sigma <- matrix(object[[i]][["posteriors"]][["sigma"]][j,], k_domestic)
       }
       
-      LL[, j] <- bvartools::loglik_normal(u, sigma) # LogLik
+      # Calculate log-likelihood
+      LL[, j] <- bvartools::loglik_normal(u, sigma)
     }
     
     ll <- sum(rowMeans(LL))

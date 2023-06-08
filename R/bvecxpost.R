@@ -52,13 +52,30 @@
 #' @export
 bvecxpost <- function(object) {
   
+  # Use C++ functions to draw posteriors 
   if (object[["model"]][["tvp"]]) {
-    #object <- .bvecxtvpalg(object) # Use C++ code to draw posteriors 
+    object <- .bgvectvpalg(object)
   } else {
     object <- .bgvecalg(object)
   }
   
-  k <- NCOL(object[["data"]][["Y"]])
+  k_dom <- NCOL(object[["data"]][["Y"]])
+  k_for <- length(object[["model"]][["foreign"]][["variables"]])
+  if (is.null(object[["model"]][["global"]])) {
+    k_glo <- 0
+  } else {
+    k_glo <- length(object[["model"]][["global"]][["variables"]]) 
+  }
+  if (is.null(object[["model"]][["deterministic"]][["restricted"]])) {
+    k_det_r <- 0
+  } else {
+    k_det_r <- length(object[["model"]][["deterministic"]][["restricted"]]) 
+  }
+  if (is.null(object[["model"]][["deterministic"]][["unrestricted"]])) {
+    k_det_ur <- 0
+  } else {
+    k_det_ur <- length(object[["model"]][["deterministic"]][["unrestricted"]]) 
+  }
   tt <- NROW(object[["data"]][["Y"]])
   
   tvp_a0 <- FALSE
@@ -77,9 +94,9 @@ bvecxpost <- function(object) {
   mc_spec <- c(object[["model"]][["burnin"]] + 1, object[["model"]][["burnin"]] + object[["model"]][["iterations"]], 1)
   
   if (!is.null(object[["posteriors"]][["sigma"]][["lambda"]])) {
-    sigma_lambda <- matrix(diag(NA_real_, k), k * k, object[["model"]][["iterations"]])
-    sigma_lambda[which(lower.tri(diag(1, k))), ] <- object[["posteriors"]][["sigma"]][["lambda"]]
-    sigma_lambda[which(upper.tri(diag(1, k))), ] <- object[["posteriors"]][["sigma"]][["lambda"]]
+    sigma_lambda <- matrix(diag(NA_real_, k_dom), k_dom * k_dom, object[["model"]][["iterations"]])
+    sigma_lambda[which(lower.tri(diag(1, k_dom))), ] <- object[["posteriors"]][["sigma"]][["lambda"]]
+    sigma_lambda[which(upper.tri(diag(1, k_dom))), ] <- object[["posteriors"]][["sigma"]][["lambda"]]
     object[["posteriors"]][["sigma"]][["lambda"]] <- sigma_lambda
     rm(sigma_lambda)
   }
@@ -89,34 +106,34 @@ bvecxpost <- function(object) {
   A0 <- NULL
   if (object[["model"]][["structural"]]) {
     
-    pos <- which(lower.tri(diag(1, k)))
+    pos <- which(lower.tri(diag(1, k_dom)))
     draws <- object[["model"]][["iterations"]]
     
     if (is.list(object[["posteriors"]][["a0"]])) {
       
       if ("coeffs" %in% names(object[["posteriors"]][["a0"]])) {
         if (object[["model"]][["tvp"]]) {
-          A0[["coeffs"]] <- matrix(diag(1, k), k * k * tt, draws)
-          A0[["coeffs"]][rep(0:(tt - 1) * k * k, each = length(pos)) + rep(pos, tt), ] <- object[["posteriors"]][["a0"]][["coeffs"]]
+          A0[["coeffs"]] <- matrix(diag(1, k_dom), k_dom * k_dom * tt, draws)
+          A0[["coeffs"]][rep(0:(tt - 1) * k_dom * k_dom, each = length(pos)) + rep(pos, tt), ] <- object[["posteriors"]][["a0"]][["coeffs"]]
         } else {
-          A0[["coeffs"]] <- matrix(diag(1, k), k * k, draws)
-          A0[["coeffs"]][rep(0:(draws - 1) * k * k, each = length(pos)) + pos ] <- object[["posteriors"]][["a0"]][["coeffs"]]
+          A0[["coeffs"]] <- matrix(diag(1, k_dom), k_dom * k_dom, draws)
+          A0[["coeffs"]][rep(0:(draws - 1) * k_dom * k_dom, each = length(pos)) + pos ] <- object[["posteriors"]][["a0"]][["coeffs"]]
         }
       }
       
       if ("sigma" %in% names(object[["posteriors"]][["a0"]])) {
-        A0[["sigma"]] <- matrix(0, k * k, draws)
+        A0[["sigma"]] <- matrix(0, k_dom * k_dom, draws)
         A0[["sigma"]][pos, ] <- object[["posteriors"]][["a0"]][["sigma"]]
       }
       
       if ("lambda" %in% names(object[["posteriors"]][["a0"]])) {
-        A0[["lambda"]] <- matrix(diag(1, k), k * k, draws)
+        A0[["lambda"]] <- matrix(diag(1, k_dom), k_dom * k_dom, draws)
         A0[["lambda"]][pos, ] <- object[["posteriors"]][["a0"]][["lambda"]]
         A0[["lambda"]][-pos, ] <- NA_real_
       }
       
     } else {
-      A0 <- matrix(diag(1, k), k * k, draws)
+      A0 <- matrix(diag(1, k_dom), k_dom * k_dom, draws)
       A0[pos, ] <- object[["posteriors"]][["a0"]]
     }
     
@@ -134,7 +151,7 @@ bvecxpost <- function(object) {
         tvp_a0 <- TRUE
         n_a0 <- n_a0 / tt
       }
-      if (n_a0 %% (k * k) != 0) {
+      if (n_a0 %% (k_dom * k_dom) != 0) {
         stop("Row number of coefficient draws of 'A0' is not k^2 or multiples thereof.")
       }
       structural <- TRUE
@@ -149,7 +166,7 @@ bvecxpost <- function(object) {
     if ("coeffs" %in% names(object[["posteriors"]][["alpha"]])) {
       n_alpha <- nrow(object[["posteriors"]][["alpha"]][["coeffs"]])
     }
-    if ((n_alpha / tt) %% k^2 == 0 & n_alpha / tt >= 1) {
+    if ((n_alpha / tt) %% k_dom == 0 & n_alpha / tt >= 1) {
       tvp_alpha <- TRUE
       n_alpha <- n_alpha / tt
     }
@@ -166,7 +183,7 @@ bvecxpost <- function(object) {
     if ("coeffs" %in% names(object[["posteriors"]][["beta_dom"]])) {
       n_beta_dom <- nrow(object[["posteriors"]][["beta_dom"]][["coeffs"]])
     }
-    if ((n_beta_dom / tt) %% k^2 == 0 & n_beta_dom / tt >= 1) {
+    if ((n_beta_dom / tt) %% k_dom == 0 & n_beta_dom / tt >= 1) {
       tvp_beta_dom <- TRUE
       n_beta_dom <- n_beta_dom / tt
     }
@@ -185,7 +202,7 @@ bvecxpost <- function(object) {
     if ("coeffs" %in% names(object[["posteriors"]][["beta_for"]])) {
       n_beta_for <- nrow(object[["posteriors"]][["beta_for"]][["coeffs"]])
     }
-    if ((n_beta_for / tt) %% k^2 == 0 & n_beta_for / tt >= 1) {
+    if ((n_beta_for / tt) %% k_for == 0 & n_beta_for / tt >= 1) {
       tvp_beta_for <- TRUE
       n_beta_for <- n_beta_for / tt
     }
@@ -204,7 +221,7 @@ bvecxpost <- function(object) {
     if ("coeffs" %in% names(object[["posteriors"]][["beta_glo"]])) {
       n_beta_glo <- nrow(object[["posteriors"]][["beta_glo"]][["coeffs"]])
     }
-    if ((n_beta_glo / tt) %% k^2 == 0 & n_beta_glo / tt >= 1) {
+    if ((n_beta_glo / tt) %% k_glo == 0 & n_beta_glo / tt >= 1) {
       tvp_beta_glo <- TRUE
       n_beta_glo <- n_beta_glo / tt
     }
@@ -218,34 +235,30 @@ bvecxpost <- function(object) {
   }
   
   # Beta deterministic ----
-  if(!is.null(object[["posteriors"]][["beta_d"]])) {
+  if(!is.null(object[["posteriors"]][["beta_det"]])) {
     
-    if ("coeffs" %in% names(object[["posteriors"]][["beta_d"]])) {
-      n_beta_det <- nrow(object[["posteriors"]][["beta_d"]][["coeffs"]])
+    if ("coeffs" %in% names(object[["posteriors"]][["beta_det"]])) {
+      n_beta_det <- nrow(object[["posteriors"]][["beta_det"]][["coeffs"]])
     }
-    if ((n_beta_det / tt) %% k^2 == 0 & n_beta_det / tt >= 1) {
+    if ((n_beta_det / tt) %% k_det_r == 0 & n_beta_det / tt >= 1) {
       tvp_beta_det <- TRUE
       n_beta_det <- n_beta_det / tt
     }
     
-    beta_d <- object[["posteriors"]][["beta_d"]]
-    object[["posteriors"]][["beta_d"]] <- NULL
+    beta_d <- object[["posteriors"]][["beta_det"]]
+    object[["posteriors"]][["beta_det"]] <- NULL
     object[["posteriors"]] <- c(object[["posteriors"]], .country_fill_helper(beta_d, tvp_beta_det, n_beta_det, tt, "beta_deterministic"))
     rm(beta_d)
   } else {
-    object[["posteriors"]][["beta_d"]] <- NULL
+    object[["posteriors"]][["beta_det"]] <- NULL
   }
   
   # Gamma domestic ----
   if(!is.null(object[["posteriors"]][["gamma_dom"]])) {
-    if (is.list(object[["posteriors"]][["gamma_dom"]])) {
-      if ("coeffs" %in% names(object[["posteriors"]][["gamma_dom"]])) {
-        n_gamma_dom <- nrow(object[["posteriors"]][["gamma_dom"]][["coeffs"]])
-      }
-    } else {
-      n_gamma_dom <- nrow(object[["posteriors"]][["gamma_dom"]])
+    if ("coeffs" %in% names(object[["posteriors"]][["gamma_dom"]])) {
+      n_gamma_dom <- nrow(object[["posteriors"]][["gamma_dom"]][["coeffs"]])
     }
-    if ((n_gamma_dom / tt) %% k^2 == 0 & n_gamma_dom / tt >= 1) {
+    if ((n_gamma_dom / tt) %% k_dom == 0 & n_gamma_dom / tt >= 1) {
       tvp_gamma_dom <- TRUE
       n_gamma_dom <- n_gamma_dom / tt
     }
@@ -260,14 +273,10 @@ bvecxpost <- function(object) {
   
   # Gamma foreign ----
   if(!is.null(object[["posteriors"]][["gamma_for"]])) {
-    if (is.list(object[["posteriors"]][["gamma_for"]])) {
-      if ("coeffs" %in% names(object[["posteriors"]][["gamma_for"]])) {
-        n_gamma_for <- nrow(object[["posteriors"]][["gamma_for"]][["coeffs"]])
-      }
-    } else {
-      n_gamma_for <- nrow(object[["posteriors"]][["gamma_for"]])
+    if ("coeffs" %in% names(object[["posteriors"]][["gamma_for"]])) {
+      n_gamma_for <- nrow(object[["posteriors"]][["gamma_for"]][["coeffs"]])
     }
-    if ((n_gamma_for / tt) %% k^2 == 0 & n_gamma_for / tt >= 1) {
+    if ((n_gamma_for / tt) %% k_for == 0 & n_gamma_for / tt >= 1) {
       tvp_gamma_for <- TRUE
       n_gamma_for <- n_gamma_for / tt
     }
@@ -279,62 +288,50 @@ bvecxpost <- function(object) {
   }
   
   # Gamma global ----
-  if(!is.null(object[["posteriors"]][["upsilon"]])) {
-    if (is.list(object[["posteriors"]][["upsilon"]])) {
-      if ("coeffs" %in% names(object[["posteriors"]][["upsilon"]])) {
-        n_gamma_glo <- nrow(object[["posteriors"]][["upsilon"]][["coeffs"]])
-      }
-    } else {
-      n_gamma_glo <- nrow(object[["posteriors"]][["gamma_glo"]])
+  if(!is.null(object[["posteriors"]][["gamma_glo"]])) {
+    if ("coeffs" %in% names(object[["posteriors"]][["gamma_glo"]])) {
+      n_gamma_glo <- nrow(object[["posteriors"]][["gamma_glo"]][["coeffs"]])
     }
-    if ((n_gamma_glo / tt) %% k^2 == 0 & n_gamma_glo / tt >= 1) {
+    if ((n_gamma_glo / tt) %% k_glo == 0 & n_gamma_glo / tt >= 1) {
       tvp_gamma_glo <- TRUE
       n_gamma_glo <- n_gamma_glo / tt
     }
     
-    gamma_glo <- object[["posteriors"]][["upsilon"]]
-    object[["posteriors"]][["upsilon"]] <- NULL
+    gamma_glo <- object[["posteriors"]][["gamma_glo"]]
+    object[["posteriors"]][["gamma_glo"]] <- NULL
     object[["posteriors"]] <- c(object[["posteriors"]], .country_fill_helper(gamma_glo, tvp_gamma_glo, n_gamma_glo, tt, "gamma_global"))
     rm(gamma_glo)
   } else {
-    object[["posteriors"]][["upsilon"]] <- NULL
+    object[["posteriors"]][["gamma_glo"]] <- NULL
   }
   
   # Gamma deterministic ----
-  if(!is.null(object[["posteriors"]][["c"]])) {
-    if (is.list(object[["posteriors"]][["c"]])) {
-      if ("coeffs" %in% names(object[["posteriors"]][["c"]])) {
-        n_gamma_det <- nrow(object[["posteriors"]][["c"]][["coeffs"]])
-      }
-    } else {
-      n_gamma_det <- nrow(object[["posteriors"]][["c"]])
+  if(!is.null(object[["posteriors"]][["gamma_det"]])) {
+    if ("coeffs" %in% names(object[["posteriors"]][["gamma_det"]])) {
+      n_gamma_det <- nrow(object[["posteriors"]][["gamma_det"]][["coeffs"]])
     }
-    if ((n_gamma_det / tt) %% k^2 == 0 & n_gamma_det / tt >= 1) {
+    if ((n_gamma_det / tt) %% k_det_ur == 0 & n_gamma_det / tt >= 1) {
       tvp_gamma_det <- TRUE
       n_gamma_det <- n_gamma_det / tt
     }
     
-    gamma_det <- object[["posteriors"]][["c"]]
-    object[["posteriors"]][["c"]] <- NULL
+    gamma_det <- object[["posteriors"]][["gamma_det"]]
+    object[["posteriors"]][["gamma_det"]] <- NULL
     object[["posteriors"]] <- c(object[["posteriors"]], .country_fill_helper(gamma_det, tvp_gamma_det, n_gamma_det, tt, "gamma_deterministic"))
     rm(gamma_det)
   } else {
-    object[["posteriors"]][["c"]] <- NULL
+    object[["posteriors"]][["gamma_det"]] <- NULL
   }
   
   if(!is.null(object[["posteriors"]][["sigma"]])) {
-    if (is.list(object[["posteriors"]][["sigma"]])) {
-      if ("coeffs" %in% names(object[["posteriors"]][["sigma"]])) {
-        n_sigma <- nrow(object[["posteriors"]][["sigma"]][["coeffs"]])
-      }
-    } else {
-      n_sigma <- nrow(object[["posteriors"]][["sigma"]])
+    if ("coeffs" %in% names(object[["posteriors"]][["sigma"]])) {
+      n_sigma <- nrow(object[["posteriors"]][["sigma"]][["coeffs"]])
     }
-    if ((n_sigma / tt) %% k == 0 & n_sigma / tt >= 1) {
+    if ((n_sigma / tt) %% k_dom == 0 & n_sigma / tt >= 1) {
       tvp_sigma <- TRUE
       n_sigma <- n_sigma / tt
     }
-    if (n_sigma %% (k * k) != 0) {
+    if (n_sigma %% (k_dom * k_dom) != 0) {
       stop("Row number of coefficient draws of 'Sigma' is not k^2 or multiples thereof.")
     }
     
@@ -356,7 +353,7 @@ bvecxpost <- function(object) {
     }
   }
   
-  class(object) <- append("ctryvecest", class(object))
+  class(object) <- c("ctryvecest", "list")
   
   return(object)
 }

@@ -13,6 +13,10 @@
     .Call(`_bgvars_bgvecalg`, object)
 }
 
+.bgvectvpalg <- function(object) {
+    .Call(`_bgvars_bgvectvpalg`, object)
+}
+
 .ir <- function(A, h, impulse, response) {
     .Call(`_bgvars_ir`, A, h, impulse, response)
 }

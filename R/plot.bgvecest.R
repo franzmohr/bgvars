@@ -6,7 +6,7 @@
 #' @param ci interval used to calculate credible bands for time-varying parameters.
 #' @param type either \code{"hist"} (default) for histograms, \code{"trace"} for a trace plot,
 #' or \code{"boxplot"} for a boxplot. Only used for parameter draws of constant coefficients.
-#' @param model indicates, for which model plots should be produced. Can be a character
+#' @param model indicates, for which models plots should be produced. Can be a character
 #' vector of country names or an integer vector of the positions of the elements in
 #' argument \code{x}.
 #' @param ... further graphical parameters.

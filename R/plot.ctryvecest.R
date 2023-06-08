@@ -178,9 +178,9 @@ plot.ctryvecest <- function(x, ci = 0.95, type = "hist", variables = "all", ctry
       var_pos <- 1:(k_domestic * k_domestic)
       if (tvp) {
         for (j in var_pos) {
-          # draws <- .tvpribbon(x[["A"]], j, ci_low, ci_high)
-          # stats::tsp(draws) <- tsp_info
-          # stats::ts.plot(draws, xlab = "")
+          draws <- .tvpribbon(x[["posteriors"]][["pi_domestic"]], j, ci_low, ci_high)
+          stats::tsp(draws) <- tsp_info
+          stats::ts.plot(draws, xlab = "")
         }
       } else {
         for (j in var_pos) {
@@ -207,9 +207,9 @@ plot.ctryvecest <- function(x, ci = 0.95, type = "hist", variables = "all", ctry
       var_pos <- 1:(k_domestic * k_foreign)
       if (tvp) {
         for (j in var_pos) {
-          # draws <- .tvpribbon(x[["A"]], j, ci_low, ci_high)
-          # stats::tsp(draws) <- tsp_info
-          # stats::ts.plot(draws, xlab = "")
+          draws <- .tvpribbon(x[["posteriors"]][["pi_foreign"]], j, ci_low, ci_high)
+          stats::tsp(draws) <- tsp_info
+          stats::ts.plot(draws, xlab = "")
         }
       } else {
         for (j in var_pos) {
@@ -236,9 +236,9 @@ plot.ctryvecest <- function(x, ci = 0.95, type = "hist", variables = "all", ctry
       var_pos <- 1:(k_domestic * k_global)
       if (tvp) {
         for (j in var_pos) {
-          # draws <- .tvpribbon(x[["A"]], j, ci_low, ci_high)
-          # stats::tsp(draws) <- tsp_info
-          # stats::ts.plot(draws, xlab = "")
+          draws <- .tvpribbon(x[["posteriors"]][["pi_global"]], j, ci_low, ci_high)
+          stats::tsp(draws) <- tsp_info
+          stats::ts.plot(draws, xlab = "")
         }
       } else {
         for (j in var_pos) {
@@ -296,7 +296,7 @@ plot.ctryvecest <- function(x, ci = 0.95, type = "hist", variables = "all", ctry
           var_pos <- ((i - 1) * k_domestic * k_domestic) + 1:(k_domestic * k_domestic)
           if (tvp) {
             for (j in var_pos) {
-              draws <- .tvpribbon(x[["gamma_domestic"]], j, ci_low, ci_high)
+              draws <- .tvpribbon(x[["posteriors"]][["gamma_domestic"]], j, ci_low, ci_high)
               stats::tsp(draws) <- tsp_info
               stats::ts.plot(draws, xlab = "")
             }
@@ -328,7 +328,7 @@ plot.ctryvecest <- function(x, ci = 0.95, type = "hist", variables = "all", ctry
         var_pos <- ((i - 1) * k_domestic * k_foreign) + 1:(k_domestic * k_foreign)
         if (tvp) {
           for (j in var_pos) {
-            draws <- .tvpribbon(x[["gamma_foreign"]], j, ci_low, ci_high)
+            draws <- .tvpribbon(x[["posteriors"]][["gamma_foreign"]], j, ci_low, ci_high)
             stats::tsp(draws) <- tsp_info
             stats::ts.plot(draws, xlab = "")
           }
@@ -359,7 +359,7 @@ plot.ctryvecest <- function(x, ci = 0.95, type = "hist", variables = "all", ctry
         var_pos <- ((i - 1) * k_domestic * k_global) + 1:(k_domestic * k_global)
         if (tvp) {
           for (j in var_pos) {
-            draws <- .tvpribbon(x[["gamma_global"]], j, ci_low, ci_high)
+            draws <- .tvpribbon(x[["posteriors"]][["gamma_global"]], j, ci_low, ci_high)
             stats::tsp(draws) <- tsp_info
             stats::ts.plot(draws, xlab = "")
           }

@@ -212,8 +212,6 @@ combine_submodels <- function(object, period = NULL, thin = 1){
       
       a0_temp <- rbind(a0_temp, cbind(A0, -A0_for) %*% W[[i]])
     }
-    
-    
     result[["a0"]][, draw_i] <- a0_temp
     
     #### Put together G ####
@@ -399,6 +397,6 @@ combine_submodels <- function(object, period = NULL, thin = 1){
     stats::tsp(result[["data"]][["global"]]) <- temp_tsp
   }
   
-  class(result) <- append("bgvar", class(result))
+  class(result) <- list("bgvar", "list")
   return(result)
 }

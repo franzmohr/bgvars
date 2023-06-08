@@ -371,8 +371,7 @@ Rcpp::List bgvecalg(Rcpp::List object) {
   const int a0_pos_start = n_alpha + n_dom + n_for + n_glo + n_c_ur;
   const int a0_pos_end = n_alpha + n_dom + n_for + n_glo + n_c_ur + n_a0 - 1;
   
-  arma::mat draws_alpha;
-  arma::mat draws_beta;
+  arma::mat draws_alpha, draws_beta;
   if (use_rr) {
     draws_alpha = arma::zeros<arma::mat>(n_alpha, iter);
     draws_beta = arma::zeros<arma::mat>(n_beta, iter);
@@ -730,11 +729,11 @@ Rcpp::List bgvecalg(Rcpp::List object) {
                                              Rcpp::Named("beta_dom") = R_NilValue,
                                              Rcpp::Named("beta_for") = R_NilValue,
                                              Rcpp::Named("beta_glo") = R_NilValue,
-                                             Rcpp::Named("beta_d") = R_NilValue,
+                                             Rcpp::Named("beta_det") = R_NilValue,
                                              Rcpp::Named("gamma_dom") = R_NilValue,
                                              Rcpp::Named("gamma_for") = R_NilValue,
-                                             Rcpp::Named("upsilon") = R_NilValue,
-                                             Rcpp::Named("c") = R_NilValue,
+                                             Rcpp::Named("gamma_glo") = R_NilValue,
+                                             Rcpp::Named("gamma_det") = R_NilValue,
                                              Rcpp::Named("sigma") = R_NilValue);
   
   if (use_rr) {
@@ -760,7 +759,7 @@ Rcpp::List bgvecalg(Rcpp::List object) {
       posteriors["beta_glo"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_beta.rows(r * (k_dom + k_for), r * (k_dom + k_for + k_glo) - 1)));
     }
     if (n_r > 0) {
-      posteriors["beta_d"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_beta.rows(r * (k_dom + k_for + k_glo), r * (k_dom + k_for + k_glo + n_r) - 1)));
+      posteriors["beta_det"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_beta.rows(r * (k_dom + k_for + k_glo), r * (k_dom + k_for + k_glo + n_r) - 1)));
     }
   }
   
@@ -784,19 +783,19 @@ Rcpp::List bgvecalg(Rcpp::List object) {
   
   if (n_glo > 0) {
     if (varsel) {
-      posteriors["upsilon"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_glo,
+      posteriors["gamma_glo"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_glo,
                                                      Rcpp::Named("lambda") = draws_lambda_glo));
     } else {
-      posteriors["upsilon"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_glo));
+      posteriors["gamma_glo"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_glo));
     }
   }
   
   if (n_ur > 0) {
     if (varsel) {
-      posteriors["c"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_c,
+      posteriors["gamma_det"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_c,
                                                      Rcpp::Named("lambda") = draws_lambda_c));
     } else {
-      posteriors["c"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_c));
+      posteriors["gamma_det"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_c));
     }
   }
   

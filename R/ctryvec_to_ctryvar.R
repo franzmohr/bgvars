@@ -74,23 +74,13 @@ ctryvec_to_ctryvar <- function(object) {
     
     n_gamma <- k * k * p
     
-    if (!tvp) {
+    if (tvp) {
       
-      A <- matrix(NA, n_gamma, draws)
-      for (draw in 1:draws) {
-        if (is.null(object[["posteriors"]][["pi_domestic"]])) {
-          A[, draw] <- cbind(matrix(0, k, k), matrix(object[["posteriors"]][["gamma_domestic"]][draw, ], k)) %*% W + J
-        } else {
-          A[, draw] <- cbind(matrix(object[["posteriors"]][["pi_domestic"]][draw, ], k), matrix(object[["posteriors"]][["gamma_domestic"]][draw, ], k)) %*% W + J 
-        }
-      } 
-      
-    } else {
-      
-      A <- matrix(NA, n_gamma * tt, draws)
-      pi_temp <- matrix(0, k, k)
-      for (draw in 1:draws) {
-        for (i in 1:tt) {
+      A <- list()
+      for (i in 1:tt) {
+        pi_temp <- matrix(0, k, k)
+        A[[i]] <- matrix(NA, n_gamma, draws)
+        for (draw in 1:draws) {
           if (!is.null(object[["posteriors"]][["pi_domestic"]])) {
             if (tvp) {
               pi_temp <- matrix(object[["posteriors"]][["pi_domestic"]][[i]][draw, ], k)
@@ -103,10 +93,22 @@ ctryvec_to_ctryvar <- function(object) {
           } else {
             gamma_temp <- matrix(object[["posteriors"]][["gamma_domestic"]][draw, ], k)
           }
-          A[(i - 1) * n_gamma + 1:n_gamma, draw] <- cbind(pi_temp, gamma_temp) %*% W + J 
+          A[[i]][, draw] <- cbind(pi_temp, gamma_temp) %*% W + J 
         }
+        A[[i]] <- t(A[[i]])
       }
       
+    } else {
+      
+      A <- matrix(NA, n_gamma, draws)
+      for (draw in 1:draws) {
+        if (is.null(object[["posteriors"]][["pi_domestic"]])) {
+          A[, draw] <- cbind(matrix(0, k, k), matrix(object[["posteriors"]][["gamma_domestic"]][draw, ], k)) %*% W + J
+        } else {
+          A[, draw] <- cbind(matrix(object[["posteriors"]][["pi_domestic"]][draw, ], k), matrix(object[["posteriors"]][["gamma_domestic"]][draw, ], k)) %*% W + J 
+        }
+      }
+      A <- t(A)
     }
     
   } else {
@@ -114,24 +116,27 @@ ctryvec_to_ctryvar <- function(object) {
     if (!is.null(object[["posteriors"]][["pi_domestic"]])) {
       n_a <- k * k
       if (tvp) {
-        A <- matrix(NA, n_a * tt, draws)
-        for (draw in 1:draws) {
-          for (i in 1:tt) {
-            A[(i - 1) * n_a + 1:n_a, draw] <- matrix(object[["posteriors"]][["pi_domestic"]][[i]][draw, ], k) + matrix(diag(1, k), k)
+        A <- list()
+        for (i in 1:tt) {
+          A[[i]] <- matrix(NA, n_a, draws)
+          for (draw in 1:draws) {
+            A[[i]][, draw] <- matrix(object[["posteriors"]][["pi_domestic"]][[i]][draw, ], k) + matrix(diag(1, k), k)
           }
+          A[[i]] <- t(A[[i]])
         }
       } else {
         A <- matrix(NA, n_a, draws)
         for (draw in 1:draws) {
           A[, draw] <- matrix(object[["posteriors"]][["pi_domestic"]][draw, ], k) + matrix(diag(1, k), k)
         } 
+        A <- t(A)
       }
     } else {
       A <- matrix(0, k * k, draws)
     }
   }
   
-  object[["posteriors"]][["domestic"]] <- t(A)
+  object[["posteriors"]][["domestic"]] <- A
   rm(A)
   object[["posteriors"]][["pi_domestic"]] <- NULL
   object[["posteriors"]][["gamma_domestic"]] <- NULL
@@ -150,22 +155,12 @@ ctryvec_to_ctryvar <- function(object) {
     
     n_b <- k * k_for * (p_for + 1)
     
-    if (!tvp) {
-      B <- matrix(NA, n_b, draws)
-      for (draw in 1:draws){
-        if (!is.null(object[["posteriors"]][["pi_foreign"]])) {
-          B[, draw] <- cbind(matrix(object[["posteriors"]][["pi_foreign"]][draw, ], k), matrix(object[["posteriors"]][["gamma_foreign"]][draw, ], k)) %*% W 
-        } else {
-          B[, draw] <- cbind(matrix(0, k, k_for), matrix(object[["posteriors"]][["gamma_foreign"]][draw, ], k)) %*% W 
-        }
-      } 
-      
-    } else {
-      
-      B <- matrix(NA, n_b * tt, draws)
-      pix_temp <- matrix(0, k, k_for)
-      for (draw in 1:draws){
-        for (i in 1:tt) {
+    if (tvp) {
+      B <- list()
+      for (i in 1:tt) {
+        B[[i]] <- matrix(NA, n_b, draws)
+        for (draw in 1:draws){
+          pix_temp <- matrix(0, k, k_for)
           if (!is.null(object[["posteriors"]][["pi_foreign"]])) {
             if (tvp) {
               pix_temp <- matrix(object[["posteriors"]][["pi_foreign"]][[i]][draw, ], k)
@@ -178,13 +173,26 @@ ctryvec_to_ctryvar <- function(object) {
           } else {
             ups_temp <- matrix(object[["posteriors"]][["gamma_foreign"]][draw, ], k)
           }
-          B[(i - 1) * n_b + 1:n_b, draw] <- cbind(pix_temp, ups_temp) %*% W 
+          B[[i]][, draw] <- cbind(pix_temp, ups_temp) %*% W 
+        }
+        B[[i]] <- t(B[[i]])
+      }
+      
+    } else {
+      
+      B <- matrix(NA, n_b, draws)
+      for (draw in 1:draws){
+        if (!is.null(object[["posteriors"]][["pi_foreign"]])) {
+          B[, draw] <- cbind(matrix(object[["posteriors"]][["pi_foreign"]][draw, ], k), matrix(object[["posteriors"]][["gamma_foreign"]][draw, ], k)) %*% W 
+        } else {
+          B[, draw] <- cbind(matrix(0, k, k_for), matrix(object[["posteriors"]][["gamma_foreign"]][draw, ], k)) %*% W 
         }
       }
+      B <- t(B)
     }
   }
   
-  object[["posteriors"]][["foreign"]] <- t(B)
+  object[["posteriors"]][["foreign"]] <- B
   rm(B)
   object[["posteriors"]][["pi_foreign"]] <- NULL
   object[["posteriors"]][["gamma_foreign"]] <- NULL
@@ -203,22 +211,13 @@ ctryvec_to_ctryvar <- function(object) {
     
     n_b <- k * k_glo * (p_glo + 1)
     
-    if (!tvp) {
-      B <- matrix(NA, n_b, draws)
-      for (draw in 1:draws){
-        if (!is.null(object[["posteriors"]][["pi_global"]])) {
-          B[, draw] <- cbind(matrix(object[["posteriors"]][["pi_global"]][draw, ], k), matrix(object[["posteriors"]][["gamma_global"]][draw, ], k)) %*% W 
-        } else {
-          B[, draw] <- cbind(matrix(0, k, k_glo), matrix(object[["posteriors"]][["gamma_global"]][draw, ], k)) %*% W 
-        }
-      } 
+    if (tvp) {
       
-    } else {
-      
-      B <- matrix(NA, n_b * tt, draws)
-      pix_temp <- matrix(0, k, k_glo)
-      for (draw in 1:draws){
-        for (i in 1:tt) {
+      B <- list()
+      for (i in 1:tt) {
+        B[[i]] <- matrix(NA, n_b, draws)
+        for (draw in 1:draws){
+          pix_temp <- matrix(0, k, k_glo)
           if (!is.null(object[["posteriors"]][["pi_global"]])) {
             if (tvp) {
               pix_temp <- matrix(object[["posteriors"]][["pi_global"]][[i]][draw, ], k)
@@ -231,11 +230,24 @@ ctryvec_to_ctryvar <- function(object) {
           } else {
             ups_temp <- matrix(object[["posteriors"]][["gamma_global"]][draw, ], k)
           }
-          B[(i - 1) * n_b + 1:n_b, draw] <- cbind(pix_temp, ups_temp) %*% W 
+          B[[i]][, draw] <- cbind(pix_temp, ups_temp) %*% W 
         }
+        B[[i]] <- t(B[[i]])
       }
+      
+    } else {
+      
+      B <- matrix(NA, n_b, draws)
+      for (draw in 1:draws){
+        if (!is.null(object[["posteriors"]][["pi_global"]])) {
+          B[, draw] <- cbind(matrix(object[["posteriors"]][["pi_global"]][draw, ], k), matrix(object[["posteriors"]][["gamma_global"]][draw, ], k)) %*% W 
+        } else {
+          B[, draw] <- cbind(matrix(0, k, k_glo), matrix(object[["posteriors"]][["gamma_global"]][draw, ], k)) %*% W 
+        }
+      } 
+      B <- t(B)
     }
-    object[["posteriors"]][["global"]] <- t(B)
+    object[["posteriors"]][["global"]] <- B
   }
   rm(B)
   object[["posteriors"]][["pi_global"]] <- NULL
@@ -253,7 +265,19 @@ ctryvec_to_ctryvar <- function(object) {
   
   if (k_det_r + k_det_ur > 0) {
     if (tvp) {
-      # To be implemented
+      object[["posteriors"]][["deterministic"]] <- list()
+      for (i in 1:tt) {
+        object[["posteriors"]][["deterministic"]][[i]] <- matrix(NA, draws, (k_det_r + k_det_ur) * k)
+        if (k_det_r > 0) {
+          object[["posteriors"]][["deterministic"]][[i]][, 1:(k_det_r * k)] <- object[["posteriors"]][["pi_deterministic"]][[i]]
+        }
+        if (k_det_ur > 0) {
+          object[["posteriors"]][["deterministic"]][[i]][, (k_det_r * k) + 1:(k_det_ur * k)] <- object[["posteriors"]][["gamma_deterministic"]][[i]]
+        }
+      }
+      object[["posteriors"]][["beta_deterministic"]] <- NULL
+      object[["posteriors"]][["gamma_deterministic"]] <- NULL
+      
     } else {
       object[["posteriors"]][["deterministic"]] <- matrix(NA_real_, draws, (k_det_r + k_det_ur) * k)
       if (k_det_r > 0) {
@@ -269,8 +293,15 @@ ctryvec_to_ctryvar <- function(object) {
   
   for (i in c("a0", "domestic", "foreign", "global", "deterministic")) {
     if (!is.null(object[["posteriors"]][[i]])) {
-      object[["posteriors"]][[i]] <- coda::mcmc(object[["posteriors"]][[i]])
-      attr(object[["posteriors"]][[i]], "mcpar") <- specs
+      if (tvp) {
+        for (j in 1:tt) {
+          object[["posteriors"]][[i]][[j]] <- coda::mcmc(object[["posteriors"]][[i]][[j]])
+          attr(object[["posteriors"]][[i]][[j]], "mcpar") <- specs
+        }
+      } else {
+        object[["posteriors"]][[i]] <- coda::mcmc(object[["posteriors"]][[i]])
+        attr(object[["posteriors"]][[i]], "mcpar") <- specs 
+      }
     }
   }
   

@@ -44,6 +44,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// bgvectvpalg
+Rcpp::List bgvectvpalg(Rcpp::List object);
+RcppExport SEXP _bgvars_bgvectvpalg(SEXP objectSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::List >::type object(objectSEXP);
+    rcpp_result_gen = Rcpp::wrap(bgvectvpalg(object));
+    return rcpp_result_gen;
+END_RCPP
+}
 // ir
 arma::mat ir(Rcpp::List A, int h, int impulse, int response);
 RcppExport SEXP _bgvars_ir(SEXP ASEXP, SEXP hSEXP, SEXP impulseSEXP, SEXP responseSEXP) {
@@ -76,6 +87,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_bgvars_bgvaralg", (DL_FUNC) &_bgvars_bgvaralg, 1},
     {"_bgvars_bgvartvpalg", (DL_FUNC) &_bgvars_bgvartvpalg, 1},
     {"_bgvars_bgvecalg", (DL_FUNC) &_bgvars_bgvecalg, 1},
+    {"_bgvars_bgvectvpalg", (DL_FUNC) &_bgvars_bgvectvpalg, 1},
     {"_bgvars_ir", (DL_FUNC) &_bgvars_ir, 4},
     {"_bgvars_vardecomp", (DL_FUNC) &_bgvars_vardecomp, 3},
     {NULL, NULL, 0}

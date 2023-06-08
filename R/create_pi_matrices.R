@@ -27,59 +27,34 @@
     }
   }
   
-  k <- NCOL(object[["data"]][["Y"]])
+  k_dom <- NCOL(object[["data"]][["Y"]])
   k_for <- length(object[["model"]][["foreign"]][["variables"]])
   tt <- NROW(object[["data"]][["Y"]])
   tvp <- object[["model"]][["tvp"]]
   p <- object[["model"]][["domestic"]][["lags"]]
   r <- object[["model"]][["rank"]]
-
-  # use_dom <- !is.null(object[["posteriors"]][["beta_domestic"]])
-  # use_for <- !is.null(object[["posteriors"]][["beta_foreign"]])
-  # use_glo <- !is.null(object[["posteriors"]][["beta_global"]])
-  # if (use_glo) {
-  #   k_glo <- length(object[["model"]][["foreign"]][["variables"]])
-  # } else {
-  #   k_glo <- 0
-  # }
-  # use_det <- !is.null(object[["posteriors"]][["beta_deterministic"]])
-  # if (use_det) {
-  #   k_det <- length(object[["model"]][["deterministic"]][["restricted"]])
-  # } else {
-  #   k_det <- 0
-  # }
-  # 
-  # pos_dom <- 1:k
-  # pos_for <- k + 1:k_for
-  # if (use_glo) {
-  #   pos_glo <- k + k_for + 1:k_glo
-  # }
-  # if (use_det) {
-  #   pos_det <- k + k_for + k_glo + 1:k_det
-  # }
-  # 
-  # Pi <- matrix(NA, NCOL(object[["data"]][["W"]]) * k, draws)
-  # beta <- matrix(NA, NCOL(object[["data"]][["W"]]), r)
-  # if (is.null(object[["posteriors"]][["alpha"]])) {
-  #   stop("Posterior draws of 'alpha' are missing.")
-  # }
-  # 
-  # for (i in 1:draws) {
-  # 
-  #   beta[pos_dom,] <- object[["posteriors"]][["beta_domestic"]][i,]
-  # 
-  #   matrix(object[["posteriors"]][["alpha"]][i,], k) %*% t(matrix(, k))
-  # }
-  # 
+  
   ## Domestic ----
   if (is.null(object[["posteriors"]][["pi_domestic"]])) {
     if (!is.null(object[["posteriors"]][["alpha"]]) & !is.null(object[["posteriors"]][["beta_domestic"]])){
-      object[["posteriors"]][["pi_domestic"]] <- matrix(NA_real_, draws, k * k)
-      for (i in 1:draws) {
-        object[["posteriors"]][["pi_domestic"]][i,] <- matrix(object[["posteriors"]][["alpha"]][i,], k) %*% t(matrix(object[["posteriors"]][["beta_domestic"]][i,], k))
+      if (tvp) {
+        object[["posteriors"]][["pi_domestic"]] <- list()
+        for (j in 1:tt) {
+          object[["posteriors"]][["pi_domestic"]][[j]] <- matrix(NA_real_, draws, k_dom * k_dom)
+          for (i in 1:draws) {
+            object[["posteriors"]][["pi_domestic"]][[j]][i,] <- matrix(object[["posteriors"]][["alpha"]][[j]][i,], k_dom) %*% t(matrix(object[["posteriors"]][["beta_domestic"]][[j]][i,], k_dom)) 
+          }
+          object[["posteriors"]][["pi_domestic"]][[j]] <- coda::mcmc(object[["posteriors"]][["pi_domestic"]][[j]])
+          attr(object[["posteriors"]][["pi_domestic"]][[j]], "mcpar") <- specs
+        } 
+      } else {
+        object[["posteriors"]][["pi_domestic"]] <- matrix(NA_real_, draws, k_dom * k_dom)
+        for (i in 1:draws) {
+          object[["posteriors"]][["pi_domestic"]][i,] <- matrix(object[["posteriors"]][["alpha"]][i,], k_dom) %*% t(matrix(object[["posteriors"]][["beta_domestic"]][i,], k_dom))
+        }
+        object[["posteriors"]][["pi_domestic"]] <- coda::mcmc(object[["posteriors"]][["pi_domestic"]])
+        attr(object[["posteriors"]][["pi_domestic"]], "mcpar") <- specs
       }
-      object[["posteriors"]][["pi_domestic"]] <- coda::mcmc(object[["posteriors"]][["pi_domestic"]])
-      attr(object[["posteriors"]][["pi_domestic"]], "mcpar") <- specs
     }
     if (drop_beta) {
       object[["posteriors"]][["beta_domestic"]] <- NULL 
@@ -90,12 +65,24 @@
   
   if (is.null(object[["posteriors"]][["pi_foreign"]])) {
     if (!is.null(object[["posteriors"]][["alpha"]]) & !is.null(object[["posteriors"]][["beta_foreign"]])){
-      object[["posteriors"]][["pi_foreign"]] <- matrix(NA_real_, draws, k * k_for)
-      for (i in 1:draws) {
-        object[["posteriors"]][["pi_foreign"]][i,] <- matrix(object[["posteriors"]][["alpha"]][i,], k) %*% t(matrix(object[["posteriors"]][["beta_foreign"]][i,], k_for))
+      if (tvp) {
+        object[["posteriors"]][["pi_foreign"]] <- list()
+        for (j in 1:tt) {
+          object[["posteriors"]][["pi_foreign"]][[j]] <- matrix(NA_real_, draws, k_dom * k_for)
+          for (i in 1:draws) {
+            object[["posteriors"]][["pi_foreign"]][[j]][i,] <- matrix(object[["posteriors"]][["alpha"]][[j]][i,], k_dom) %*% t(matrix(object[["posteriors"]][["beta_foreign"]][[j]][i,], k_for)) 
+          }
+          object[["posteriors"]][["pi_foreign"]][[j]] <- coda::mcmc(object[["posteriors"]][["pi_foreign"]][[j]])
+          attr(object[["posteriors"]][["pi_foreign"]][[j]], "mcpar") <- specs
+        } 
+      } else {
+        object[["posteriors"]][["pi_foreign"]] <- matrix(NA_real_, draws, k_dom * k_for)
+        for (i in 1:draws) {
+          object[["posteriors"]][["pi_foreign"]][i,] <- matrix(object[["posteriors"]][["alpha"]][i,], k_dom) %*% t(matrix(object[["posteriors"]][["beta_foreign"]][i,], k_for))
+        }
+        object[["posteriors"]][["pi_foreign"]] <- coda::mcmc(object[["posteriors"]][["pi_foreign"]])
+        attr(object[["posteriors"]][["pi_foreign"]], "mcpar") <- specs 
       }
-      object[["posteriors"]][["pi_foreign"]] <- coda::mcmc(object[["posteriors"]][["pi_foreign"]])
-      attr(object[["posteriors"]][["pi_foreign"]], "mcpar") <- specs
     }
     if (drop_beta) {
       object[["posteriors"]][["beta_foreign"]] <- NULL 
@@ -108,12 +95,24 @@
     k_glo <- length(object[["model"]][["global"]][["variables"]])
     if (is.null(object[["posteriors"]][["pi_global"]])) {
       if (!is.null(object[["posteriors"]][["alpha"]]) & !is.null(object[["posteriors"]][["beta_global"]])){
-        object[["posteriors"]][["pi_global"]] <- matrix(NA_real_, draws, k * k_glo)
-        for (i in 1:draws) {
-          object[["posteriors"]][["pi_global"]][i,] <- matrix(object[["posteriors"]][["alpha"]][i,], k) %*% t(matrix(object[["posteriors"]][["beta_global"]][i,], k_glo))
+        if (tvp) {
+          object[["posteriors"]][["pi_global"]] <- list()
+          for (j in 1:tt) {
+            object[["posteriors"]][["pi_global"]][[j]] <- matrix(NA_real_, draws, k_dom * k_glo)
+            for (i in 1:draws) {
+              object[["posteriors"]][["pi_global"]][[j]][i,] <- matrix(object[["posteriors"]][["alpha"]][[j]][i,], k_dom) %*% t(matrix(object[["posteriors"]][["beta_global"]][[j]][i,], k_glo)) 
+            }
+            object[["posteriors"]][["pi_global"]][[j]] <- coda::mcmc(object[["posteriors"]][["pi_global"]][[j]])
+            attr(object[["posteriors"]][["pi_global"]][[j]], "mcpar") <- specs
+          } 
+        } else {
+          object[["posteriors"]][["pi_global"]] <- matrix(NA_real_, draws, k_dom * k_glo)
+          for (i in 1:draws) {
+            object[["posteriors"]][["pi_global"]][i,] <- matrix(object[["posteriors"]][["alpha"]][i,], k_dom) %*% t(matrix(object[["posteriors"]][["beta_global"]][i,], k_glo))
+          }
+          object[["posteriors"]][["pi_global"]] <- coda::mcmc(object[["posteriors"]][["pi_global"]])
+          attr(object[["posteriors"]][["pi_global"]], "mcpar") <- specs 
         }
-        object[["posteriors"]][["pi_global"]] <- coda::mcmc(object[["posteriors"]][["pi_global"]])
-        attr(object[["posteriors"]][["pi_global"]], "mcpar") <- specs
       }
       if (drop_beta) {
         object[["posteriors"]][["beta_global"]] <- NULL 
@@ -127,12 +126,24 @@
     k_det_r <- length(object[["model"]][["deterministic"]][["restricted"]])
     if (is.null(object[["posteriors"]][["pi_deterministic"]])) {
       if (!is.null(object[["posteriors"]][["alpha"]]) & !is.null(object[["posteriors"]][["beta_deterministic"]])){
-        object[["posteriors"]][["pi_deterministic"]] <- matrix(NA_real_, draws, k * k_det_r)
-        for (i in 1:draws) {
-          object[["posteriors"]][["pi_deterministic"]][i,] <- matrix(object[["posteriors"]][["alpha"]][i,], k) %*% t(matrix(object[["posteriors"]][["beta_deterministic"]][i,], k_det_r))
+        if (tvp) {
+          object[["posteriors"]][["pi_deterministic"]] <- list()
+          for (j in 1:tt) {
+            object[["posteriors"]][["pi_deterministic"]][[j]] <- matrix(NA_real_, draws, k_dom * k_det_r)
+            for (i in 1:draws) {
+              object[["posteriors"]][["pi_deterministic"]][[j]][i,] <- matrix(object[["posteriors"]][["alpha"]][[j]][i,], k_dom) %*% t(matrix(object[["posteriors"]][["beta_deterministic"]][[j]][i,], k_det_r)) 
+            }
+            object[["posteriors"]][["pi_deterministic"]][[j]] <- coda::mcmc(object[["posteriors"]][["pi_deterministic"]][[j]])
+            attr(object[["posteriors"]][["pi_deterministic"]][[j]], "mcpar") <- specs
+          } 
+        } else {
+          object[["posteriors"]][["pi_deterministic"]] <- matrix(NA_real_, draws, k_dom * k_det_r)
+          for (i in 1:draws) {
+            object[["posteriors"]][["pi_deterministic"]][i,] <- matrix(object[["posteriors"]][["alpha"]][i,], k_dom) %*% t(matrix(object[["posteriors"]][["beta_deterministic"]][i,], k_det_r))
+          }
+          object[["posteriors"]][["pi_deterministic"]] <- coda::mcmc(object[["posteriors"]][["pi_deterministic"]])
+          attr(object[["posteriors"]][["pi_deterministic"]], "mcpar") <- specs 
         }
-        object[["posteriors"]][["pi_deterministic"]] <- coda::mcmc(object[["posteriors"]][["pi_deterministic"]])
-        attr(object[["posteriors"]][["pi_deterministic"]], "mcpar") <- specs
       }
       if (drop_beta) {
         object[["posteriors"]][["beta_deterministic"]] <- NULL 
