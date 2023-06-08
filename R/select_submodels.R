@@ -112,10 +112,8 @@ select_submodels <- function(object, ic = "BIC", select = "order", teststats = N
       crit <- criteria[[i]][, ic]
       sub_pos <- 1
       if (length(crit) > 1) {
-        crit <- crit[-1] - crit[-length(crit)]
-        crit <- which(crit < 0)
-        if (length(crit) > 0) {
-          sub_pos <- crit[1] + 1
+        while (crit[sub_pos + 1] < crit[sub_pos]) {
+          sub_pos <- sub_pos + 1
         }
       }
     }
