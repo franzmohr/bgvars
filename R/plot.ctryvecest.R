@@ -140,7 +140,8 @@ plot.ctryvecest <- function(x, ci = 0.95, type = "hist", variables = "all", ctry
   if (tvp) {
     title_text <- paste0(title_text, "TVP-")
   }
-  if (x[["model"]][["sv"]]) {
+  sv <- x[["model"]][["sv"]]
+  if (sv) {
     title_text <- paste0(title_text, "SV-")
   }
   if (x[["model"]][["structural"]]) {
@@ -447,7 +448,7 @@ plot.ctryvecest <- function(x, ci = 0.95, type = "hist", variables = "all", ctry
   if (variables %in% c("all", "sigma")) {
     if (!is.null(x[["posteriors"]][["sigma"]])) {
       var_pos <- 1:(k_domestic * k_domestic)
-      if (x[["model"]][["structural"]]) {
+      if (sv) {
         for (j in var_pos) {
           draws <- .tvpribbon(x[["posteriors"]][["sigma"]], j, ci_low, ci_high)
           if (all(draws[, 1] == draws[1, 1])) {
