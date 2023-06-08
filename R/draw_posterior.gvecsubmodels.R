@@ -22,20 +22,6 @@
 #' @export
 draw_posterior.gvecsubmodels <- function(object, ..., FUN = NULL, mc.cores = NULL, ctry = NULL){
   
-  names_obj <- names(object)
-  names_temp <- names_obj
-  if (length(unique(names_temp)) != length(names_temp)) {
-    for (i in unique(names_temp)) {
-      pos_temp <- which(names_temp == i)
-      temp <- names_temp[pos_temp]
-      id <- paste0("0000", 1:length(temp))
-      id <- substring(id, nchar(id) - 3, nchar(id))
-      temp <- paste0(id, "-", temp)
-      names_temp[pos_temp] <- temp
-    }
-  }
-  names(object) <- names_temp
-  
   # If 'ctry' is specified, reduce list to relevant elements
   if (!is.null(ctry)) {
     pos <- which(names(object) %in% ctry)
@@ -49,6 +35,20 @@ draw_posterior.gvecsubmodels <- function(object, ..., FUN = NULL, mc.cores = NUL
     rm(temp)
     names_obj <- names(object)
   }
+  
+  names_obj <- names(object)
+  names_temp <- names_obj
+  if (length(unique(names_temp)) != length(names_temp)) {
+    for (i in unique(names_temp)) {
+      pos_temp <- which(names_temp == i)
+      temp <- names_temp[pos_temp]
+      id <- paste0("0000", 1:length(temp))
+      id <- substring(id, nchar(id) - 3, nchar(id))
+      temp <- paste0(id, "-", temp)
+      names_temp[pos_temp] <- temp
+    }
+  }
+  names(object) <- names_temp
   
   # Print estimation information
   cat("Estimating submodels...\n")
