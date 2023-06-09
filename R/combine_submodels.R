@@ -343,6 +343,11 @@ combine_submodels <- function(object, period = NULL, thin = 1){
                       stringsAsFactors = FALSE)
   result[["index"]] <- index
   
+  # Model specs
+  result[["model"]] <- list()
+  result[["model"]][["endogen"]] <- list(variables = data_names, lags = p)
+  
+  
   # Collect raw data ----
   ## Put together deterministic terms ----
   if (deter) {
@@ -375,6 +380,9 @@ combine_submodels <- function(object, period = NULL, thin = 1){
     result$data$deterministic <- stats::as.ts(as.matrix(result$data$deterministic[, pos_det]))
     dimnames(result$data$deterministic)[[2]] <- pos_det_name
     stats::tsp(result$data$deterministic) <- temp_tsp
+    
+    # Update specs
+    result[["model"]][["deterministic"]] <- list(variables = pos_det_name)
   }
   
   ## Put together global data ----
@@ -395,6 +403,9 @@ combine_submodels <- function(object, period = NULL, thin = 1){
     result[["data"]][["global"]] <- stats::as.ts(as.matrix(exogen))
     dimnames(result[["data"]][["global"]])[[2]] <- exogen_names
     stats::tsp(result[["data"]][["global"]]) <- temp_tsp
+  
+    # Update specs
+    result[["model"]][["global"]] <- list(variables = exogen_names, lags = s)  
   }
   
   class(result) <- list("bgvar", "list")
