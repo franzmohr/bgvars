@@ -1,8 +1,8 @@
 #' Predict Method for Objects of Class bgvar
 #' 
-#' Forecasting a Bayesian Global VAR object of class "bgvar" with credible bands.
+#' Forecasting a Bayesian Global VAR object of class \code{"bgvar"} with credible bands.
 #' 
-#' @param object an object of class "bgvar", usually, a result of a call to \code{\link{combine_submodels}}.
+#' @param object an object of class \code{"bgvar"}, usually, a result of a call to \code{\link{combine_submodels}}.
 #' @param n.ahead number of steps ahead at which to predict.
 #' @param new_x a matrix of new non-deterministic, exogenous variables. Must have \code{n.ahead} rows.
 #' @param new_d a matrix of new deterministic variables. Must have \code{n.ahead} rows.
@@ -14,7 +14,7 @@
 #' \deqn{y_t = \sum_{l = 1}^{p} G_{l} y_{t-i} + \sum_{l = 0}^{s} H_{l} x_{t-i} + D d_t + G^{-1}_{0} u_t,}
 #' with \eqn{u_t \sim N(0, \Sigma)}.
 #' 
-#' @return A time-series object of class "bgvarprd".
+#' @return A time-series object of class \code{"bgvarprd"}.
 #' 
 #' @examples
 #' # Load data
@@ -90,27 +90,43 @@ predict.bgvar <- function(object, ..., n.ahead = 10, new_x = NULL, new_d = NULL,
   # Dev specs
   # n.ahead = 10; new_x = NULL; new_d = rep(1, 10); ci = .95
   
-  k <- ncol(object[["data"]][["endogen"]])
-  p <- ncol(object[["a"]]) / k^2
-  tot <- k * p
+  k <- length(object[["model"]][["endogen"]][["variables"]]) # Endogenous variables
+  p <- object[["model"]][["endogen"]][["lags"]]  # Determine number of lags
+  tot <- k * p # Total number of endogenous regressors
+  
+  # Check if global
+  global <- !is.null(object[["model"]][["global"]])
+  s <- NULL
+  if (global) {
+    k_glo <- length(object[["model"]][["global"]][["variables"]]) # Endogenous variables
+    s <- object[["model"]][["global"]][["lags"]]  # Determine number of lags
+  }
+  
+  # Generate a simple VAR model
+  model_data <- bvartools::gen_var(data = object[["data"]][["endogen"]], p = p,
+                                   exogen = object[["data"]][["global"]], s = s)
+  tt <- nrow(model_data[["data"]][["Y"]]) # Number of observations
+  
+  # Endogenous variables
   a <- object[["a"]]
   
-  model_data <- bvartools::gen_var(object[["data"]][["endogen"]], p = p)
-  tt <- nrow(model_data[["data"]][["Y"]])
-  
+  # Global variables
   m <- 0
-  if (!is.null(object[["b"]])) {
+  if (global) {
     a <- cbind(a, object[["b"]])
-    m <- ncol(object[["b"]]) / k
-    tot <- tot + m
+    n_glo <- k_glo * (s + 1)
+    tot <- tot + n_glo
     if (is.null(new_x)) {
-      new_x <- matrix(0, n.ahead, m)
+      warning("Argument 'new_x' empty. Replacing it by a matrix of zeros.")
+      new_x <- matrix(0, n.ahead, n_glo)
     }
     if (NROW(new_x) != n.ahead) {
       stop("Length of argument 'new_x' must be equal to 'n.ahead'.")
     }
+    new_x <- rbind(model_data[["data"]][["Z"]][tt, k * p + 1:n_glo], new_x)
   }
   
+  # Determinisitc terms
   if ("c" %in% names(object)) {
     a <- cbind(a, object[["c"]])
     n <- ncol(object[["c"]]) / k
@@ -140,10 +156,9 @@ predict.bgvar <- function(object, ..., n.ahead = 10, new_x = NULL, new_d = NULL,
   
   # Add starting values
   pred[pos_y, 1] <- t(model_data[["data"]][["Y"]][tt:(tt - p + 1),])
-  if (m > 0) {
-    pos_x <- k * p + 1:m
-    pred[pos_x, ] <- 0
-    warning("Global variables cannot be used to obtain forecasts yet.")
+  if (global) {
+    pos_x <- k * p + 1:n_glo
+    pred[pos_x, ] <- t(new_x)
   }
   if ("c" %in% names(object)) {
     pos_d <- (tot - n + 1):tot
