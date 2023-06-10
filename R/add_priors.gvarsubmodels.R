@@ -547,7 +547,7 @@ add_priors.gvarsubmodels <- function(object, ...,
         
         # Restrict prior variances
         if (!is.null(coef[["max_var"]])) {
-          if (any(stats::na.omit(V) > coef[["max_var"]])) {
+          if (any(stats::na.omit(c(V)) > coef[["max_var"]])) {
             V[which(V > coef[["max_var"]])] <- coef[["max_var"]]
           }
         }
