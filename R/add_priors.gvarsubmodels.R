@@ -220,6 +220,9 @@ add_priors.gvarsubmodels <- function(object, ...,
       if (any(!c("mu", "v_i", "shape", "rate") %in% names(sigma))) {
         stop("Missing prior specifications for stochastic volatility prior.")
       }
+      if ("character" %in% class(sigma[["shape"]])) {
+        stop("Argument sigma$shape may not be a character when used with SV.")
+      }
       error_prior <- "sv"
     } else {
       
