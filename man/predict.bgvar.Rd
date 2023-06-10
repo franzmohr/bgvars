@@ -17,7 +17,7 @@ as its second element. If \code{NULL} (default) all series are plotted.}
 
 \item{...}{additional arguments.}
 
-\item{object}{an object of class "bgvar", usually, a result of a call to \code{\link{combine_submodels}}.}
+\item{object}{an object of class \code{"bgvar"}, usually, a result of a call to \code{\link{combine_submodels}}.}
 
 \item{n.ahead}{number of steps ahead at which to predict.}
 
@@ -29,12 +29,12 @@ as its second element. If \code{NULL} (default) all series are plotted.}
 credible intervals. Defaults to 0.95.}
 }
 \value{
-A time-series object of class "bgvarprd".
+A time-series object of class \code{"bgvarprd"}.
 }
 \description{
 A plot function for objects of class "bvarprd".
 
-Forecasting a Bayesian Global VAR object of class "bgvar" with credible bands.
+Forecasting a Bayesian Global VAR object of class \code{"bgvar"} with credible bands.
 }
 \details{
 The function produces \code{n.ahead} forecasts for the GVAR model
