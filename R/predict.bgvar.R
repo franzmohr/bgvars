@@ -135,13 +135,18 @@ predict.bgvar <- function(object, ..., n.ahead = 10, new_x = NULL, new_d = NULL,
       new_d <- matrix(0, n.ahead, n)
       # Try to find constants and trends automatically
       D_data <- object[["data"]][["deterministic"]]
+      # Check if any column of deterministic data contains only ones -> const
       const_check <- apply(D_data, 2, function(x){all(x == 1)})
       if (any(const_check)) {
+        # Fill respective column with ones
         new_d[, which(const_check)] <- 1
       }
+      # Check if any column of deterministic data contains a linear sequence -> trenc
       trend_check <- apply(D_data, 2, function(x){all(x == 1:length(x))})
       if (any(trend_check)) {
+        # Determine last value of trend
         start <- D_data[NROW(D_data), which(trend_check)]
+        # Add trend to respective column with correct starting period
         new_d[, which(trend_check)] <- start:(start + n.ahead - 1)
       }
     }
@@ -205,6 +210,6 @@ predict.bgvar <- function(object, ..., n.ahead = 10, new_x = NULL, new_d = NULL,
                  "fcst" = result,
                  "index" = object[["index"]])
   
-  class(result) <- append("bgvarprd", class(result))
+  class(result) <- c("bgvarprd", "list")
   return(result)
 }
