@@ -89,8 +89,11 @@ create_weights <- function(weight_data, period, country_data = NULL){
           t[i,] <- t_avail[1:period]
         }
         if (t_temp[i] >= t_avail[period]) {
-          pos_t <- which(floor(t_temp[i]) == t_avail)
-          pos_t <- (pos_t - period + 1):pos_t
+          if (any(floor(t_temp[i]) == t_avail)) {
+            pos_t <- which(floor(t_temp[i]) == t_avail)
+            pos_t <- (pos_t - period + 1):pos_t
+          }
+          # If condition is not met, the pos_t, from the last iteration will be used.
           t[i,] <- t_avail[pos_t]
         }
       }

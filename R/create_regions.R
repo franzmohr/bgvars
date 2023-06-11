@@ -78,9 +78,13 @@ create_regions <- function(country_data, weight_data, region_weights, regions, p
       if (t.temp[i] <= t.avail[period]) {
         t[i,] <- t.avail[1:period]
       }
+      # Use last available values of region weights if country data is more recent
       if (t.temp[i] >= t.avail[period]) {
-        pos_t <- which(floor(t.temp[i]) == t.avail)
-        pos_t <- (pos_t - period + 1):pos_t
+        if (any(floor(t.temp[i]) == t.avail)) {
+          pos_t <- which(floor(t.temp[i]) == t.avail)
+          pos_t <- (pos_t - period + 1):pos_t 
+        }
+        # If condition is not met, the pos_t, from the last iteration will be used.
         t[i,] <- t.avail[pos_t]
       }
     }
