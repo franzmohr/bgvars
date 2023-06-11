@@ -26,6 +26,18 @@ citEntry(header = "To cite the 'gvar2016' dataset in publications use:",
                 "University of Cambridge: Faculty of Economics (mimeo).")
 )
 
+citEntry(header = "To cite the 'gvar2020' dataset in publications use:",
+         entry = "manual",
+         title = "Compilation, Revision and Updating of the Global VAR (GVAR) Database, 1979Q2-2019Q4",
+         author = personList(as.person("Kamir Mohaddes"), as.person("Mehdi Raissi")),
+         year = "2020",
+         note = "University of Cambridge: Judge Business School (mimeo)",
+         url = "http://www.econ.cam.ac.uk/people-files/faculty/km418/GVAR%20Database%20(1979Q2-2019Q4).pdf",
+         textVersion = paste0("Kamiar Mohaddes and Mehdi Raissi (2020). ",
+                "Compilation, Revision and Updating of the Global VAR (GVAR) Database, 1979Q2-2019Q4 ",
+                "University of Cambridge: Judge Business School (mimeo).")
+)
+
 citEntry(header = "To cite the algortihm of Koop et al. (2010) use:",
          entry = "article",
          title = "Efficient posterior simulation for cointegrated models with priors on the cointegration space",
