@@ -80,7 +80,7 @@ draw_posterior.gvecsubmodels <- function(object, ..., FUN = NULL, mc.cores = NUL
   
   # Produce something if estimation fails
   if (inherits(object, "try-error")) {
-    object <- c(object, list(coefficients = NULL))
+    object <- c(object, list(error = TRUE))
   }
   
   return(object)
