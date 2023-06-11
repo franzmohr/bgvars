@@ -46,16 +46,16 @@ The `bgvars` package allows Bayesian inference of GVAR models. It separates a ty
 
 ### Data
 
-The `bgvars` packages comes with the updated GVAR database of Mohaddes and Raissi (2018), which contains economic time series for 33 countries and 3 commodities from 1979Q2 to 2016Q4.[^gvar2016]
+The `bgvars` packages comes with the updated GVAR database of Mohaddes and Raissi (2020), which contains economic time series for 33 countries and 3 commodities from 1979Q2 to 2019Q4.[^gvar2019]
 
 ```{r, eval = TRUE}
 library(bgvars)
-data("gvar2016")
+data("gvar2019")
 
-country_data <- gvar2016$country_data # Country series
-global_data <- gvar2016$global_data # Global commodities data
-region_weights <- gvar2016$region_weights # Data for regional weights
-weight_data <- gvar2016$weight_data # Data for trade weights
+country_data <- gvar2019$country_data # Country series
+global_data <- gvar2019$global_data # Global commodities data
+region_weights <- gvar2019$region_weights # Data for regional weights
+weight_data <- gvar2019$weight_data # Data for trade weights
 
 # Take first differences of non-stationary series  
 country_data <- diff_variables(country_data, variables = c("y", "Dp", "r"), multi = 100)
@@ -167,10 +167,10 @@ Koop, G., Pesaran, M. H., & Potter, S.M. (1996). Impulse response analysis in no
 
 Lütkepohl, H. (2007). *New introduction to multiple time series analysis* (2nd ed.). Berlin: Springer.
 
-Mohaddes, K., & Raissi, M. (2018). Compilation, revision and updating of the global VAR (GVAR) database, 1979Q2--2016Q4 (mimeo). <https://www.mohaddes.org/gvar>.
+Mohaddes, K., & Raissi, M. (2020). Compilation, revision and updating of the global VAR (GVAR) database, 1979Q2--2019Q4 (mimeo). <https://www.mohaddes.org/gvar>.
 
 Pesaran, H. H., & Shin, Y. (1998). Generalized impulse response analys is in linear multivariate models. *Economics Letters, 58*(1), 17-29. <https://doi.org/10.1016/S0165-1765(97)00214-0>
 
 Pesaran, M., Schuermann, T., & Weiner, S. M. (2004). Modeling regional interdependencies using a global error-correcting macroeconometric model. *Journal of Business & Economic Statistics 22*(2), 129-162. <https://doi.org/10.1198/073500104000000019>
 
-[^gvar2016]: The paper and dataset can be downloaded from <https://www.mohaddes.org/gvar>.
+[^gvar2019]: The paper and data set can be downloaded from <https://www.mohaddes.org/gvar>.

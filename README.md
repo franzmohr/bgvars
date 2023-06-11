@@ -46,19 +46,19 @@ separates a typical GVAR analysis into four steps:
 ### Data
 
 The `bgvars` packages comes with the updated GVAR database of Mohaddes
-and Raissi (2018), which contains economic time series for 33 countries
-and 3 commodities from 1979Q2 to 2016Q4.[^1]
+and Raissi (2020), which contains economic time series for 33 countries
+and 3 commodities from 1979Q2 to 2019Q4.[^1]
 
 ``` r
 library(bgvars)
 #> Loading required package: bvartools
 #> Loading required package: coda
-data("gvar2016")
+data("gvar2019")
 
-country_data <- gvar2016$country_data # Country series
-global_data <- gvar2016$global_data # Global commodities data
-region_weights <- gvar2016$region_weights # Data for regional weights
-weight_data <- gvar2016$weight_data # Data for trade weights
+country_data <- gvar2019$country_data # Country series
+global_data <- gvar2019$global_data # Global commodities data
+region_weights <- gvar2019$region_weights # Data for regional weights
+weight_data <- gvar2019$weight_data # Data for trade weights
 
 # Take first differences of non-stationary series  
 country_data <- diff_variables(country_data, variables = c("y", "Dp", "r"), multi = 100)
@@ -194,8 +194,8 @@ analysis in nonlinear multivariate models. *Journal of Econometrics
 Lütkepohl, H. (2007). *New introduction to multiple time series
 analysis* (2nd ed.). Berlin: Springer.
 
-Mohaddes, K., & Raissi, M. (2018). Compilation, revision and updating of
-the global VAR (GVAR) database, 1979Q2–2016Q4 (mimeo).
+Mohaddes, K., & Raissi, M. (2020). Compilation, revision and updating of
+the global VAR (GVAR) database, 1979Q2–2019Q4 (mimeo).
 <https://www.mohaddes.org/gvar>.
 
 Pesaran, H. H., & Shin, Y. (1998). Generalized impulse response analys
@@ -207,5 +207,5 @@ interdependencies using a global error-correcting macroeconometric
 model. *Journal of Business & Economic Statistics 22*(2), 129-162.
 <https://doi.org/10.1198/073500104000000019>
 
-[^1]: The paper and dataset can be downloaded from
+[^1]: The paper and data set can be downloaded from
     <https://www.mohaddes.org/gvar>.

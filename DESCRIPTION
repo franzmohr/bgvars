@@ -1,7 +1,7 @@
 Package: bgvars
-Title: Bayesian Inference for Global Vector Autoregressive (GVAR) and Global Vector Error Correction (GVEC) Models
-Version: 0.0.0.9002
-Date: 2023-06-03
+Title: Bayesian Inference of Global Vector Autoregressive and Gloal Vector Error Correction Models
+Version: 0.1.0
+Date: 2023-06-30
 Authors@R: person("Franz X.", "Mohr", email = "franz.x.mohr@outlook.com", role = c("aut","cre"))
 Description: Assists in the set-up and inference of Bayesian global vector autoregressive (BGVAR) and error correction (BGVEC) models.
 License: GPL (>= 2) 
