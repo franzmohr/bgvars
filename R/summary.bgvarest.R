@@ -34,10 +34,11 @@ summary.bgvarest <- function(object, ci = .95, period = NULL, ctry = NULL, ...){
   
   result <- NULL
   for (i in pos) {
-      temp <- summary.ctryvarest(object[[i]], ci = ci, period = period, ...)
-      result <- c(result, list(temp))
-      rm(temp)
-    }
+    temp <- summary.ctryvarest(object[[i]], ci = ci, period = period, ...)
+    result <- c(result, list(temp))
+    rm(temp)
+  }
+  names(result) <- names(object)[pos]
   
   class(result) <- c("summary.bgvarest", "list")
   return(result)
