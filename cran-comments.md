@@ -1,6 +1,8 @@
 ## Test environments
-ubuntu 14.04 (on travis-ci), R-devel, R 3.6.0, R 3.5.3, R 3.4.4, R 3.3.3
-win-builder (devel)
+
+ubuntu 22.04 (on GitHub Actions): R-devel, R-release, R 4.2.3
+win-builder: R-release
+macOS: R-release
 
 ## R CMD check results
 
