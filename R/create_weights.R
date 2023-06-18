@@ -33,11 +33,11 @@
 #' 
 #' @examples
 #' # Load data
-#' data("gvar2016")
+#' data("gvar2019")
 #'
 #' # Data objects
-#' country_data <- gvar2016[["country_data"]]
-#' weight_data <- gvar2016[["weight_data"]]
+#' country_data <- gvar2019[["country_data"]]
+#' weight_data <- gvar2019[["weight_data"]]
 #' 
 #' weight_data <- create_weights(weight_data = weight_data, period = 3,
 #'                               country_data = country_data)

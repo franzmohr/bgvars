@@ -18,7 +18,7 @@
 #' 
 #' @examples
 #' # Load data
-#' data("gvar2016")
+#' data("gvar2019")
 #' 
 #' # Create regions
 #' temp <- create_regions(country_data = gvar2016$country_data,

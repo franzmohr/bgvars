@@ -36,12 +36,12 @@
 #' 
 #' @examples
 #' # Load data
-#' data("gvar2016")
+#' data("gvar2019")
 #' 
 #' # Create regions
-#' temp <- create_regions(country_data = gvar2016$country_data,
-#'              weight_data = gvar2016$weight_data,
-#'              region_weights = gvar2016$region_weights,
+#' temp <- create_regions(country_data = gvar2019$country_data,
+#'              weight_data = gvar2019$weight_data,
+#'              region_weights = gvar2019$region_weights,
 #'              regions = list(EA =  c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")),
 #'              period = 3)
 #' 

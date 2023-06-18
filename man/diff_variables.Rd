@@ -23,8 +23,8 @@ list of named time-series objects.
 }
 \examples{
 # Load data
-data("gvar2016")
-country_data <- gvar2016$country_data
+data("gvar2019")
+country_data <- gvar2019$country_data
 
 # Take first difference of the variables "y" and "Dp" across all
 # elements of object "country_data" and multiply them by 100
