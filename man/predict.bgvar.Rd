@@ -46,15 +46,15 @@ with \eqn{u_t \sim N(0, \Sigma)}.
 data("gvar2019")
 
 # Create regions
-temp <- create_regions(country_data = gvar2016$country_data,
-             weight_data = gvar2016$weight_data,
-             region_weights = gvar2016$region_weights,
+temp <- create_regions(country_data = gvar2019$country_data,
+             weight_data = gvar2019$weight_data,
+             region_weights = gvar2019$region_weights,
              regions = list(EA =  c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")),
              period = 3)
 
 country_data <- temp$country_data
 weight_data <- temp$weight_data
-global_data = gvar2016$global_data
+global_data = gvar2019$global_data
 
 # Difference series to make them stationary
 country_data <- diff_variables(country_data, variables = c("y", "Dp", "r"), multi = 100)
