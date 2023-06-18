@@ -113,10 +113,8 @@ draw_posterior.gvarsubmodels <- function(object, ..., FUN = NULL, mc.cores = NUL
   }
   
   names(object) <- names_obj
-  
-  if (is.null(ctry)) {
-    class(object) <- append("bgvarest", class(object)) 
-  }
+
+  class(object) <- c("bgvarest", "list")
   
   return(object)
 }

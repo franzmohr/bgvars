@@ -61,9 +61,7 @@ draw_posterior.gvecsubmodels <- function(object, ..., FUN = NULL, mc.cores = NUL
   
   names(object) <- names_obj
   
-  if (is.null(ctry)) {
-    class(object) <- append("bgvecest", class(object))
-  }
+  class(object) <- c("bgvecest", "list")
   
   return(object)
 }

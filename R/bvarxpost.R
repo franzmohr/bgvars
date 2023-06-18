@@ -250,7 +250,7 @@ bvarxpost <- function(object) {
     }
   }
 
-  class(object) <- append("ctryvarest", class(object))
+  class(object) <- c("ctryvarest", "list")
   
   return(object)
 }
