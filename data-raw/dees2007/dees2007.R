@@ -152,7 +152,7 @@ dees2007 <- list("country_data" = country.data,
 
 rm(list = ls()[-which(ls() == "dees2007")])
 
-library(bgvars)
+devtools::load_all(".")
 
 country_data <- dees2007$country_data
 global_data <- dees2007$global_data
@@ -357,6 +357,6 @@ dees2007 <- list("country_data" = country_data,
                  "global_data" = global_data,
                  #"region_weights" = region_weights,
                  "weight_data" = gvar_weights,
-                 "dees_specs" = model_specs)
+                 "model_specs" = model_specs)
 
 usethis::use_data(dees2007, overwrite = TRUE, version = 2)
