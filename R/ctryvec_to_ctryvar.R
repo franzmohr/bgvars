@@ -19,13 +19,14 @@ ctryvec_to_ctryvar <- function(object) {
   
   object <- lapply(object, .transform_ctryvec)
   
-  class(object) <- append("bgvarest", class(object)) 
+  class(object) <- c("bgvarest", "list") 
   
   return(object) 
 }
 
 .transform_ctryvec <- function(object) {
   
+  # Get number of draws and draw information
   draws <- NULL
   specs <- NULL
   vars <- c("a0", "alpha",
@@ -49,7 +50,8 @@ ctryvec_to_ctryvar <- function(object) {
       }
     }
   }
-  
+
+  # Model specs  
   k <- NCOL(object[["data"]][["Y"]])
   tt <- NROW(object[["data"]][["Y"]])
   tvp <- object[["model"]][["tvp"]]
@@ -57,7 +59,7 @@ ctryvec_to_ctryvar <- function(object) {
   r <- object[["model"]][["rank"]]
   
   # Calculate Pi matrices ----
-  
+  # Obtain Pi matrices
   object <- .create_pi_matrices(object)
   
   # Produce VAR matrices ----
@@ -140,6 +142,8 @@ ctryvec_to_ctryvar <- function(object) {
   rm(A)
   object[["posteriors"]][["pi_domestic"]] <- NULL
   object[["posteriors"]][["gamma_domestic"]] <- NULL
+  object[["posteriors"]][["gamma_domestic_lambda"]] <- NULL
+  object[["posteriors"]][["gamma_domestic_sigma"]] <- NULL
   
   ## Foreign ----
   B <- NULL
@@ -196,6 +200,8 @@ ctryvec_to_ctryvar <- function(object) {
   rm(B)
   object[["posteriors"]][["pi_foreign"]] <- NULL
   object[["posteriors"]][["gamma_foreign"]] <- NULL
+  object[["posteriors"]][["gamma_foreign_lambda"]] <- NULL
+  object[["posteriors"]][["gamma_foreign_sigma"]] <- NULL
   
   ## Global ----
   B <- NULL
@@ -252,6 +258,8 @@ ctryvec_to_ctryvar <- function(object) {
   rm(B)
   object[["posteriors"]][["pi_global"]] <- NULL
   object[["posteriors"]][["gamma_global"]] <- NULL
+  object[["posteriors"]][["gamma_global_lambda"]] <- NULL
+  object[["posteriors"]][["gamma_global_sigma"]] <- NULL
   
   ## Deterministic ----
   k_det_r <- 0
