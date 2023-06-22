@@ -348,7 +348,7 @@ Rcpp::List bgvecalg(Rcpp::List object) {
     sigma_i = omega_i;
   }
   diag_sigma_i = arma::kron(diag_tt, sigma_i);
-  if (covar | sv) {
+  if (covar || sv) {
     diag_omega_i = diag_sigma_i;
   }
   g_i = sigma_i;
