@@ -255,6 +255,12 @@ add_priors.gvecsubmodels <- function(object, ...,
   minnesota <- FALSE # Minnesota prior?
   if (!is.null(coef[["minnesota"]])) {
     minnesota <- TRUE
+    if (!"list" %in% class(coef[["minnesota"]])) {
+      stop("Argument coeff$minnesota must be a list.")
+    }
+    if (!all(c("kappa0", "kappa1", "kappa3") %in% names(coef[["minnesota"]]))) {
+      stop("Argument coeff$minnesota must contain at least the elements 'kappa0', 'kappa1' and 'kappa3'.")
+    }
   }
   
   # Check SSVS ----
