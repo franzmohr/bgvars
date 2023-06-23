@@ -37,8 +37,9 @@ irf.bgvarest <- function(x, impulse, response, n.ahead = 5, ci = .95, shock = 1,
 
   result <- list()
   for (i in 1:length(x)) {
-    result[[i]] <- irf(x[[i]], impulse = impulse, response = response, n.ahead = n.ahead, ci = ci, shock = shock,
-                       type = type, cumulative, keep_draws, period, ...)
+    result[[i]] <- irf(x[[i]], impulse = impulse, response = response, n.ahead = n.ahead, ci = ci,
+                       shock = shock, type = type, cumulative = cumulative,
+                       keep_draws = keep_draws, period = period, ...)
   }
   
   class(result) <- c("bgvarestirf", "list")
