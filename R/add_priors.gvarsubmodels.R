@@ -34,7 +34,7 @@
 #'   lag of regressor \eqn{j} is obtained as
 #'   \deqn{ \frac{\kappa_{0}}{l^2} \textrm{ for own lags of endogenous variables,}} 
 #'   \deqn{ \frac{\kappa_{0} \kappa_{1}}{l^2} \frac{\sigma_{i}^2}{\sigma_{j}^2} \textrm{ for endogenous variables other than own lags,}}
-#'   \deqn{ \frac{\kappa_{0} \kappa_{2}}{l^2} \frac{\sigma_{i}^2}{\sigma_{j}^2} \textrm{ for foreign and global exogenous variables,}}
+#'   \deqn{ \frac{\kappa_{0} \kappa_{2}}{(1 + l)^2} \frac{\sigma_{i}^2}{\sigma_{j}^2} \textrm{ for foreign and global exogenous variables,}}
 #'   \deqn{ \kappa_{0} \kappa_{3} \sigma_{i}^2 \textrm{ for deterministic terms,}}
 #'   where \eqn{\sigma_{i}} is the residual standard deviation of variable \eqn{i} of an unrestricted
 #'   LS estimate. For exogenous variables \eqn{\sigma_{i}} is the sample standard deviation.
@@ -534,7 +534,7 @@ add_priors.gvarsubmodels <- function(object, ...,
           }
         }
         
-        # Glogal variables
+        # Global variables
         if (global) {
           s_global <- sqrt(apply(matrix(x[k * p_domestic + m * p_foreign + 1:n, ], n), 1, stats::var))
           for (r in 1:p_global) {
