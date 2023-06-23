@@ -46,6 +46,7 @@ Collate:
     'get_submodel_specifications.R'
     'gfevd.R'
     'girf.R'
+    'irf.ctryvarest.R'
     'plot.bgvarest.R'
     'plot.bgvarfevd.R'
     'plot.bgvarirf.R'

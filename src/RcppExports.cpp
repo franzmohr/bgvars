@@ -55,9 +55,9 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// ir
-arma::mat ir(Rcpp::List A, int h, int impulse, int response);
-RcppExport SEXP _bgvars_ir(SEXP ASEXP, SEXP hSEXP, SEXP impulseSEXP, SEXP responseSEXP) {
+// gir
+arma::mat gir(Rcpp::List A, int h, int impulse, int response);
+RcppExport SEXP _bgvars_gir(SEXP ASEXP, SEXP hSEXP, SEXP impulseSEXP, SEXP responseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -65,7 +65,22 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type h(hSEXP);
     Rcpp::traits::input_parameter< int >::type impulse(impulseSEXP);
     Rcpp::traits::input_parameter< int >::type response(responseSEXP);
-    rcpp_result_gen = Rcpp::wrap(ir(A, h, impulse, response));
+    rcpp_result_gen = Rcpp::wrap(gir(A, h, impulse, response));
+    return rcpp_result_gen;
+END_RCPP
+}
+// ir
+arma::vec ir(Rcpp::List A, int h, std::string type, int impulse, int response);
+RcppExport SEXP _bgvars_ir(SEXP ASEXP, SEXP hSEXP, SEXP typeSEXP, SEXP impulseSEXP, SEXP responseSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::List >::type A(ASEXP);
+    Rcpp::traits::input_parameter< int >::type h(hSEXP);
+    Rcpp::traits::input_parameter< std::string >::type type(typeSEXP);
+    Rcpp::traits::input_parameter< int >::type impulse(impulseSEXP);
+    Rcpp::traits::input_parameter< int >::type response(responseSEXP);
+    rcpp_result_gen = Rcpp::wrap(ir(A, h, type, impulse, response));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -88,7 +103,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_bgvars_bgvartvpalg", (DL_FUNC) &_bgvars_bgvartvpalg, 1},
     {"_bgvars_bgvecalg", (DL_FUNC) &_bgvars_bgvecalg, 1},
     {"_bgvars_bgvectvpalg", (DL_FUNC) &_bgvars_bgvectvpalg, 1},
-    {"_bgvars_ir", (DL_FUNC) &_bgvars_ir, 4},
+    {"_bgvars_gir", (DL_FUNC) &_bgvars_gir, 4},
+    {"_bgvars_ir", (DL_FUNC) &_bgvars_ir, 5},
     {"_bgvars_vardecomp", (DL_FUNC) &_bgvars_vardecomp, 3},
     {NULL, NULL, 0}
 };

@@ -13,13 +13,19 @@
 #' @export
 ctryvec_to_ctryvar <- function(object) {
   
-  if (!any(class(object) %in% "bgvecest")) {
-    stop("Argument 'object' must be of class 'bgvecest'.")
+  if (!any(c("bgvecest", "ctryvecest") %in% class(object))) {
+    stop("Argument 'object' must be of class 'bgvecest' or 'ctryvecest'.")
   }
   
-  object <- lapply(object, .transform_ctryvec)
+  if ("bgvecest" %in% class(object)) {
+    object <- lapply(object, .transform_ctryvec)
+    class(object) <- c("bgvarest", "list")  
+  }
   
-  class(object) <- c("bgvarest", "list") 
+  if ("ctryvecest" %in% class(object)) {
+    object <- .transform_ctryvec(object)
+    class(object) <- c("ctryvarest", "list")  
+  }
   
   return(object) 
 }
@@ -50,7 +56,7 @@ ctryvec_to_ctryvar <- function(object) {
       }
     }
   }
-
+  
   # Model specs  
   k <- NCOL(object[["data"]][["Y"]])
   tt <- NROW(object[["data"]][["Y"]])

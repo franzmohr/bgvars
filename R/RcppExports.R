@@ -17,8 +17,12 @@
     .Call(`_bgvars_bgvectvpalg`, object)
 }
 
-.ir <- function(A, h, impulse, response) {
-    .Call(`_bgvars_ir`, A, h, impulse, response)
+.gir <- function(A, h, impulse, response) {
+    .Call(`_bgvars_gir`, A, h, impulse, response)
+}
+
+.ir <- function(A, h, type, impulse, response) {
+    .Call(`_bgvars_ir`, A, h, type, impulse, response)
 }
 
 .vardecomp <- function(A, h, response) {

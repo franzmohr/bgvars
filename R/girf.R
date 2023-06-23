@@ -126,9 +126,9 @@ girf <- function(object, impulse, response, n.ahead = 5,
   
   # Generate impulse responses
   if (is.null(mc.cores)) {
-    result <- lapply(a, .ir, h = n.ahead, impulse = impulse, response = response) 
+    result <- lapply(a, .gir, h = n.ahead, impulse = impulse, response = response) 
   } else {
-    result <- parallel::mclapply(a, .ir, h = n.ahead, impulse = impulse,
+    result <- parallel::mclapply(a, .gir, h = n.ahead, impulse = impulse,
                                  response = response, mc.cores = mc.cores)
   }
   
