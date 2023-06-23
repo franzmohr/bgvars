@@ -32,7 +32,7 @@
 #' Pesaran, H. H., Shin, Y. (1998). Generalized impulse response analysis in linear multivariate models. \emph{Economics Letters, 58}, 17-29.
 #' 
 #' @export
-irf.ctryvarest <- function(x, impulse = NULL, response = NULL, n.ahead = 5, ci = .95, shock = 1,
+irf.ctryvarest <- function(x, impulse, response, n.ahead = 5, ci = .95, shock = 1,
                            type = "feir", cumulative = FALSE, keep_draws = FALSE, period = NULL, ...) {
 
   if (!type %in% c("feir", "oir", "gir", "sir", "sgir")) {
