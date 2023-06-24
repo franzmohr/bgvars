@@ -47,7 +47,7 @@ irf.bgvarest <- function(x, impulse, response, n.ahead = 5, ci = .95, shock = 1,
     stop("Specified countries not available.")
   }
   
-  result <- list()
+  result <- NULL
   for (i in pos) {
     
     # Skip tests if posterior simulation was not successful
@@ -57,10 +57,14 @@ irf.bgvarest <- function(x, impulse, response, n.ahead = 5, ci = .95, shock = 1,
       }
     }
     
-    result[[i]] <- irf(x[[i]], impulse = impulse, response = response, n.ahead = n.ahead, ci = ci,
-                       shock = shock, type = type, cumulative = cumulative,
-                       keep_draws = keep_draws, period = period, ...)
+    temp <- irf(x[[i]], impulse = impulse, response = response, n.ahead = n.ahead, ci = ci,
+                shock = shock, type = type, cumulative = cumulative,
+                keep_draws = keep_draws, period = period, ...)
+    
+    result <- c(result, list(temp))
+    rm(temp)
   }
+  names(result) <- names(object)[pos]
   
   class(result) <- c("bgvarestirf", "list")
   return(result)
