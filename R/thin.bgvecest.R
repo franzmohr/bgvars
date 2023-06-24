@@ -25,6 +25,13 @@ thin.bgvecest <- function(x, thin = 10, ...) {
   
   draws <- NA
   for (j in 1:length(x)) {
+    
+    if (!is.null(x[[j]][["error"]])) {
+      if (x[[j]][["error"]]) {
+        next
+      }
+    }
+    
     for (i in vars) {
       if (is.na(draws)) {
         if (!is.null(x[[j]][["posteriors"]][[i]])) {
@@ -43,6 +50,13 @@ thin.bgvecest <- function(x, thin = 10, ...) {
   end <- pos_thin[length(pos_thin)]
   
   for (j in 1:length(x)) {
+    
+    if (!is.null(x[[j]][["error"]])) {
+      if (x[[j]][["error"]]) {
+        next
+      }
+    }
+    
     for (i in vars) {
       if (!is.null(x[[j]][["posteriors"]][[i]])) {
         if (is.list(x[[j]][["posteriors"]][[i]])) {
