@@ -147,12 +147,10 @@ plot.ctryvecest <- function(x, ci = 0.95, type = "hist", variables = "all", ctry
   if (x[["model"]][["structural"]]) {
     title_text <- paste0(title_text, "S")
   }
-  title_text <- paste0(title_text, "VECX submodel")
+  title_text <- paste0(title_text, "VECX submodel (r = ", r, ")")
   if (!is.null(ctry)) {
     title_text <- paste0(title_text, " - ", ctry)
   }
-  title_text <- paste0(title_text, " - r = ", r)
-  
   
   graphics::par(mar = c(0, 0, 0, 0))
   graphics::plot.new(); graphics::text(0.5, 0.5, labels = title_text, cex = 1.5)
