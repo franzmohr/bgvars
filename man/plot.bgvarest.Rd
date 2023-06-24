@@ -4,7 +4,7 @@
 \alias{plot.bgvarest}
 \title{Plotting Draws of a Bayesian Global VAR Models}
 \usage{
-\method{plot}{bgvarest}(x, ci = 0.95, type = "hist", model = NULL, ...)
+\method{plot}{bgvarest}(x, ci = 0.95, type = "hist", ctry = NULL, ...)
 }
 \arguments{
 \item{x}{an object of class \code{"bgvarest"}, usually, a result of a call to \code{\link{draw_posterior}}.}
@@ -14,9 +14,8 @@
 \item{type}{either \code{"hist"} (default) for histograms, \code{"trace"} for a trace plot,
 or \code{"boxplot"} for a boxplot. Only used for parameter draws of constant coefficients.}
 
-\item{model}{indicates, for which model plots should be produced. Can be a character
-vector of country names or an integer vector of the positions of the elements in
-argument \code{x}.}
+\item{ctry}{character. Name of the element in argument \code{x}, for which posterior draws
+should be plotted. If \code{NULL} (default), all submodels are used.}
 
 \item{...}{further graphical parameters.}
 }
