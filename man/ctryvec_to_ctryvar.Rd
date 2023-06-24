@@ -4,10 +4,14 @@
 \alias{ctryvec_to_ctryvar}
 \title{Transform the BVEC Submodels of a BGVAR model to a BVAR Submodel in Levels}
 \usage{
-ctryvec_to_ctryvar(object)
+ctryvec_to_ctryvar(object, ctry = NULL)
 }
 \arguments{
 \item{object}{an object of class \code{"bgvecest"}.}
+
+\item{ctry}{character. Name of the element in argument \code{object}, for which
+the transformation should be carried out. If \code{NULL} (default), all submodels
+are transformed.}
 }
 \value{
 An object of class \code{"bgvarest"}.

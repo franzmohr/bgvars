@@ -3,6 +3,9 @@
 #' An object of class \code{"bgvecest"} is transformed to a VAR in level representation.
 #' 
 #' @param object an object of class \code{"bgvecest"}.
+#' @param ctry character. Name of the element in argument \code{object}, for which
+#' the transformation should be carried out. If \code{NULL} (default), all submodels
+#' are transformed.
 #' 
 #' @return An object of class \code{"bgvarest"}.
 #' 
@@ -11,18 +14,39 @@
 #' Lütkepohl, H. (2006). \emph{New introduction to multiple time series analysis} (2nd ed.). Berlin: Springer.
 #' 
 #' @export
-ctryvec_to_ctryvar <- function(object) {
+ctryvec_to_ctryvar <- function(object, ctry = NULL) {
   
   if (!any(c("bgvecest", "ctryvecest") %in% class(object))) {
     stop("Argument 'object' must be of class 'bgvecest' or 'ctryvecest'.")
   }
   
   if ("bgvecest" %in% class(object)) {
-    object <- lapply(object, .transform_ctryvec)
+    if (!is.null(ctry)) {
+      # Determine position of countries in object
+      pos <- which(names(object) %in% ctry) 
+      if (length(pos) == 0) {
+        stop("Specified countries not available.")
+      }
+      # Perform transformations for selected submodels
+      result <- NULL
+      for (i in pos) {
+        temp <- .transform_ctryvec(object[[i]])
+        result <- c(result, list(temp))
+        rm(temp)
+      }
+      names(result) <- names(object)[pos]
+      object <- result
+      rm(result)
+    } else {
+      object <- lapply(object, .transform_ctryvec) 
+    }
     class(object) <- c("bgvarest", "list")  
   }
   
   if ("ctryvecest" %in% class(object)) {
+    if (!is.null(ctry)) {
+      warning("Only one model provided. Argument 'ctry' will be ignored.")
+    }
     object <- .transform_ctryvec(object)
     class(object) <- c("ctryvarest", "list")  
   }
