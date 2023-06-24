@@ -68,6 +68,8 @@ irf.ctryvarest <- function(x, impulse, response, n.ahead = 5, ci = .95, shock = 
     need_Sigma <- FALSE
   }
   
+  impulse_attr <- impulse
+  response_attr <- response
   impulse <- which(dimnames(x[["data"]][["domestic"]])[[2]] == impulse)
   if (length(impulse) == 0){stop("Impulse variable not available.")}
   response <- which(dimnames(x[["data"]][["domestic"]])[[2]] == response)
@@ -160,6 +162,12 @@ irf.ctryvarest <- function(x, impulse, response, n.ahead = 5, ci = .95, shock = 
     ci_high <- 1 - ci_low
     pr <- c(ci_low, .5, ci_high)
     result <- stats::ts(t(apply(result, 2, stats::quantile, probs = pr)), start = 0, frequency = 1) 
+  }
+  
+  attr(result, "impulse") <- impulse_attr
+  attr(result, "response") <- response_attr
+  if (!is.null(x[["model"]][["rank"]])) {
+    attr(result, "rank") <- x[["model"]][["rank"]]    
   }
   
   class(result) <- append("bvarirf", class(result))

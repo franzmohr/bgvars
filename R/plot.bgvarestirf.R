@@ -9,7 +9,19 @@
 #' @rdname irf.bgvarest
 plot.bgvarestirf <- function(x, ...) {
   for (i in 1:length(x)) {
-    plot(x[[i]], ...)
+    
+    # Prepare title and axis text
+    main <- attr(x[[i]], "ctry")
+    if (!is.null(attr(x[[i]], "rank"))) {
+      main <- paste0(main, " (r = ", attr(x[[i]], "rank"),")")
+    }
+    ylab <- paste0(attr(x[[i]], "impulse"), " -> ", attr(x[[i]], "response"))
+    
+    # Plot
+    plot(x[[i]], main = main, ylab = ylab, xlab = NULL, ...)
+    
+    rm(list = c("main", "ylab")) # Housekeeping
+    
   }
 }
 
