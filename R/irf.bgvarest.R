@@ -37,6 +37,14 @@ irf.bgvarest <- function(x, impulse, response, n.ahead = 5, ci = .95, shock = 1,
 
   result <- list()
   for (i in 1:length(x)) {
+    
+    # Skip tests if posterior simulation was not successful
+    if (!is.null(x[[i]][["error"]])) {
+      if (x[[i]][["error"]]) {
+        next 
+      }
+    }
+    
     result[[i]] <- irf(x[[i]], impulse = impulse, response = response, n.ahead = n.ahead, ci = ci,
                        shock = shock, type = type, cumulative = cumulative,
                        keep_draws = keep_draws, period = period, ...)

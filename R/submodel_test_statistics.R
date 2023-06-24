@@ -99,6 +99,14 @@ submodel_test_statistics <- function(object, ...){
   for (i in 1:n_models) {
     
     teststats[i, "ctry"] <- names(object)[i]
+    
+    # Skip tests if posterior simulation was not successful
+    if (!is.null(object[[i]][["error"]])) {
+      if (object[[i]][["error"]]) {
+        next 
+      }
+    }
+    
     structural <- object[[i]][["model"]][["structural"]]
     tvp <- object[[i]][["model"]][["tvp"]]
     sv <- object[[i]][["model"]][["sv"]]
