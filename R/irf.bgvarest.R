@@ -21,6 +21,8 @@
 #' @param period integer. Index of the period, for which the IR should be generated.
 #' Only used for TVP or SV models. Default is \code{NULL}, so that the posterior draws of the last time period
 #' are used.
+#' @param ctry character. Name of the element in argument \code{x}, for which IRFs
+#' should be obtained. If \code{NULL} (default), all submodels are used.
 #' @param ... further arguments passed to or from other methods.
 #' 
 #' @return A time-series object of class \code{"bvarirf"} and if \code{keep_draws = TRUE} a simple matrix.
@@ -33,10 +35,20 @@
 #' 
 #' @export
 irf.bgvarest <- function(x, impulse, response, n.ahead = 5, ci = .95, shock = 1,
-                           type = "feir", cumulative = FALSE, keep_draws = FALSE, period = NULL, ...) {
-
+                         type = "feir", cumulative = FALSE, keep_draws = FALSE, period = NULL,
+                         ctry = NULL, ...) {
+  
+  pos <- 1:length(x)
+  if (!is.null(ctry)) {
+    pos <- which(names(x) %in% ctry) 
+  }
+  
+  if (length(pos) == 0) {
+    stop("Specified countries not available.")
+  }
+  
   result <- list()
-  for (i in 1:length(x)) {
+  for (i in pos) {
     
     # Skip tests if posterior simulation was not successful
     if (!is.null(x[[i]][["error"]])) {

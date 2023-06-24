@@ -16,6 +16,7 @@
   cumulative = FALSE,
   keep_draws = FALSE,
   period = NULL,
+  ctry = NULL,
   ...
 )
 
@@ -48,6 +49,9 @@ the median and the credible intervals of the posterior draws are returned.}
 \item{period}{integer. Index of the period, for which the IR should be generated.
 Only used for TVP or SV models. Default is \code{NULL}, so that the posterior draws of the last time period
 are used.}
+
+\item{ctry}{character. Name of the element in argument \code{x}, for which IRFs
+should be obtained. If \code{NULL} (default), all submodels are used.}
 
 \item{...}{further graphical parameters.}
 }
