@@ -894,78 +894,48 @@ library(Matrix)
 
 set.seed(123456)
 
-# Data
-data("dees2007")
+data("gvar2019")
 
-country_data <- dees2007$country_data
-for (i in 1:length(country_data)) {
-  country_data[[i]] <- country_data[[i]] * 100
-}
-global_data <- dees2007$global_data * 100
-weight_data <- dees2007$weight_data
-model_specs <- dees2007$dees_specs
+# Create regions
+temp <- create_regions(country_data = gvar2019$country_data,
+                       weight_data = gvar2019$weight_data,
+                       region_weights = gvar2019$region_weights,
+                       regions = list(EA =  c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")), period = 3)
 
-for (i in 1:length(model_specs)) {
-  model_specs[[i]][["tvp"]]  <- TRUE
-}
+country_data <- temp$country_data
+weight_data <- temp$weight_data
 
-# Create all country models
+global_data = gvar2019$global_data
+
+# Create weights
+model_weights <- create_weights(weight_data, period = 3, country_data = country_data)
+
+# Create models
+model_specs <- create_specifications(country_data = country_data,
+                                     global_data = global_data,
+                                     domestic = list(variables = c("y", "Dp", "r", "lr", "eq", "ep"), lags = 1),
+                                     foreign = list(variables = c("y", "Dp", "eq", "r", "lr"), lags = 1),
+                                     global = list(variables = "poil", lags = 1),
+                                     deterministic = list(const = "unrestricted",
+                                                          trend = "restricted"),
+                                     countries = NULL,
+                                     tvp = TRUE, sv = FALSE,
+                                     type = "VEC", r = 1,
+                                     iterations = 100,
+                                     burnin = 100)
+
 country_models <- create_models(country_data = country_data,
-                                weight_data = weight_data,
+                                weight_data = model_weights,
                                 global_data = global_data,
                                 model_specs = model_specs)
 
 # Add priors
-object <- add_priors(country_models)
+models_with_priors <- add_priors(country_models,
+                                 coef = list(v_i = 1 / 9, v_i_det = 1 / 9, shape = 3, rate = .0001,
+                                             minnesota = list(kappa0 = 1, kappa1 = .5, kappa2 = 1, kappa3 = 1),
+                                             max_var = 10),
+                                 sigma = list(shape = 3, rate = .0001, covar = TRUE))
 
-# Obtain betas
-for (i in 1:length(object)) {
-  pos <- i
-  y <- t(object[[pos]][["data"]][["Y"]])
-  w <- t(object[[pos]][["data"]][["W"]])
-  x <- t(object[[pos]][["data"]][["X"]])
-  r <- object[[pos]][["model"]][["rank"]]
-  tt <- ncol(y)
-  k <- nrow(y)
-  k_ect <- nrow(w)
-  
-  # Square root of a matrix
-  mroot <- function(M){
-    eig <- eigen(M)
-    if (length(eig$values)==1){
-      val <- matrix(sqrt(eig$values),1)
-    } else {
-      val <- diag(sqrt(eig$values))
-    }
-    R <- eig$vectors %*% val %*% t(eig$vectors)
-    return(R)
-  }
-  
-  M <- diag(tt) - crossprod(x, solve(tcrossprod(x))) %*% x
-  R0 <- y %*% M
-  R1 <- w %*% M
-  S00.inv <- solve(tcrossprod(R0) / tt)
-  S01 <- tcrossprod(R0, R1) / tt
-  S10 <- tcrossprod(R1, R0) / tt
-  S11 <- tcrossprod(R1) / tt
-  S11.sqrt.inv <- solve(mroot(S11))
-  lambda <- eigen(S11.sqrt.inv %*% S10 %*% S00.inv %*% S01 %*% t(S11.sqrt.inv))#, symmetric = TRUE)
-  
-  if (r > 0) {
-    b <- t(crossprod(matrix(lambda$vectors[, 1:r] , k_ect), S11.sqrt.inv))
-    a <- S01 %*% b %*% solve(crossprod(b, S11) %*% b)
-    Pi <- tcrossprod(a, b)
-  } else {
-    Pi <- matrix(0, k, k_ect)
-  }
-  Gamma <- (y - Pi %*% w) %*% crossprod(x, solve(tcrossprod(x)))
-  sigma_i <- solve(tcrossprod(y - Pi %*% w - Gamma %*% x) / tt)
-  object[[i]][["initial"]][["cointegration"]][["beta"]] <- b
-  object[[i]][["initial"]][["sigma"]][["sigma_i"]] <- sigma_i
-  object[[i]][["model"]][["burnin"]] <- 5
-  object[[i]][["model"]][["iterations"]] <- 10
-}
-
-temp <- .bgvectvpalg(object[["EA"]])
-bla <- temp[["posteriors"]][["beta_det"]][["coeffs"]]
+temp <- .bgvectvpalg(models_with_priors[["EA"]])
+#bla <- temp[["posteriors"]][["beta_det"]][["coeffs"]]
 */
