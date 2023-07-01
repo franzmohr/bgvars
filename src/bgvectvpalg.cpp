@@ -38,15 +38,7 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
   int k_glo = 0;
   int p_glo = 0;
   int n_glo = 0;
-  int k_x = 0;
-  int n_x = 0;
-  if (x_test.isNotNull()) {
-    k_x = x.n_rows;
-    n_x = x.n_rows * k_dom;
-  }
   int k_det_r = 0;
-  int n_det_r = 0;
-  int k_det_ur = 0;
   int n_det_ur = 0;
   int n_psi = 0;
   const int n_sigma = k_dom * k_dom;
@@ -100,11 +92,9 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
     if (std::find(determ_names.begin(), determ_names.end(), "restricted") != determ_names.end()) {
       det_names_r = Rcpp::as<Rcpp::CharacterVector>(determ["restricted"]);
       k_det_r = det_names_r.length();
-      n_det_r = det_names_r.length() * k_dom;
     }
     if (std::find(determ_names.begin(), determ_names.end(), "unrestricted") != determ_names.end()) {
       det_names_ur = Rcpp::as<Rcpp::CharacterVector>(determ["unrestricted"]);
-      k_det_ur = det_names_ur.length();
       n_det_ur = det_names_ur.length() * k_dom;
     }
   }
@@ -195,7 +185,7 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
   }
   
   // gamma_0
-  arma::mat prior_gamma_mu, prior_gamma_vinv, post_gamma_mu, post_gamma_v;
+  arma::mat prior_gamma_mu, prior_gamma_vinv, post_gamma_mu, post_gamma_v, post_gamma0_v;
   if (use_rr) {
     
     // Generate empty prior matrices
@@ -458,7 +448,7 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
     post_gamma_v =  h_sigmav_i_h + zzss_i * zz;
     post_gamma_mu = arma::solve(post_gamma_v, h_sigmav_i_h * arma::kron(vec_tt, gamma_init) + zzss_i * yvec);
     gamma = post_gamma_mu + arma::solve(arma::chol(post_gamma_v), arma::randn<arma::vec>(n_tot * tt));
-    
+
     // Variable selection
     
     if (n_nonalpha > 0 && bvs) {
@@ -505,11 +495,11 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
     // Draw gamma_0
     if (use_rr) {
       // Update alpha_0 prior
-      prior_gamma_vinv.submat(0, 0, n_alpha - 1, n_alpha - 1) = 1 / (1 - rho * rho) * arma::eye<arma::mat>(n_alpha, n_alpha);
+      prior_gamma_vinv.submat(alpha_pos_start, alpha_pos_start, alpha_pos_end, alpha_pos_end) = 1 / (1 - rho * rho) * arma::eye<arma::mat>(n_alpha, n_alpha);
     }
-    post_gamma_v = prior_gamma_vinv + sigma_v_i;
-    post_gamma_mu = arma::solve(post_gamma_v, prior_gamma_vinv * prior_gamma_mu + sigma_v_i * gamma.submat(0, 0, n_tot - 1, 0));
-    gamma_init = post_gamma_mu + arma::solve(arma::chol(post_gamma_v), arma::randn(n_tot));
+    post_gamma0_v = prior_gamma_vinv + sigma_v_i;
+    post_gamma_mu = arma::solve(post_gamma0_v, prior_gamma_vinv * prior_gamma_mu + sigma_v_i * gamma.submat(0, 0, n_tot - 1, 0));
+    gamma_init = post_gamma_mu + arma::solve(arma::chol(post_gamma0_v), arma::randn(n_tot));
     
     
     //////// Draw cointegration parameters /////////////
@@ -719,7 +709,7 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
       gamma = arma::reshape(gamma, n_tot, tt); // Reshape gamma so that there is one column per period
       
       if (use_rr) {
-        draws_alpha.col(pos_draw) = arma::vectorise(gamma.rows(0, n_alpha - 1));
+        draws_alpha.col(pos_draw) = arma::vectorise(gamma.rows(alpha_pos_start, alpha_pos_end));
         for (int i = 0; i < tt; i++) {
           beta_t = arma::reshape(beta.col(i), k_w, r).t();
           draws_beta_dom.submat(i * k_dom * r, pos_draw, (i + 1) * r * k_dom - 1, pos_draw) = arma::vectorise(arma::trans(beta_t.cols(0, k_dom - 1)));
@@ -889,7 +879,7 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
 
 /*** R
 
-library(bgvars)
+#library(bgvars)
 library(Matrix)
 
 set.seed(123456)
