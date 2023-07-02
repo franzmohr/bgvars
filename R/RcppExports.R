@@ -17,6 +17,10 @@
     .Call(`_bgvars_bgvectvpalg`, object)
 }
 
+.draw_forecast <- function(i, k, a0, a, b_, c_, sigma, pred) {
+    .Call(`_bgvars_draw_forecast`, i, k, a0, a, b_, c_, sigma, pred)
+}
+
 .gir <- function(A, h, impulse, response) {
     .Call(`_bgvars_gir`, A, h, impulse, response)
 }

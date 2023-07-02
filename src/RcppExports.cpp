@@ -55,6 +55,24 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// draw_forecast
+arma::mat draw_forecast(int& i, int& k, arma::mat& a0, arma::mat& a, Rcpp::Nullable<Rcpp::NumericMatrix>& b_, Rcpp::Nullable<Rcpp::NumericMatrix>& c_, arma::mat& sigma, arma::mat pred);
+RcppExport SEXP _bgvars_draw_forecast(SEXP iSEXP, SEXP kSEXP, SEXP a0SEXP, SEXP aSEXP, SEXP b_SEXP, SEXP c_SEXP, SEXP sigmaSEXP, SEXP predSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int& >::type i(iSEXP);
+    Rcpp::traits::input_parameter< int& >::type k(kSEXP);
+    Rcpp::traits::input_parameter< arma::mat& >::type a0(a0SEXP);
+    Rcpp::traits::input_parameter< arma::mat& >::type a(aSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericMatrix>& >::type b_(b_SEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericMatrix>& >::type c_(c_SEXP);
+    Rcpp::traits::input_parameter< arma::mat& >::type sigma(sigmaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type pred(predSEXP);
+    rcpp_result_gen = Rcpp::wrap(draw_forecast(i, k, a0, a, b_, c_, sigma, pred));
+    return rcpp_result_gen;
+END_RCPP
+}
 // gir
 arma::mat gir(Rcpp::List A, int h, int impulse, int response);
 RcppExport SEXP _bgvars_gir(SEXP ASEXP, SEXP hSEXP, SEXP impulseSEXP, SEXP responseSEXP) {
@@ -103,6 +121,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_bgvars_bgvartvpalg", (DL_FUNC) &_bgvars_bgvartvpalg, 1},
     {"_bgvars_bgvecalg", (DL_FUNC) &_bgvars_bgvecalg, 1},
     {"_bgvars_bgvectvpalg", (DL_FUNC) &_bgvars_bgvectvpalg, 1},
+    {"_bgvars_draw_forecast", (DL_FUNC) &_bgvars_draw_forecast, 8},
     {"_bgvars_gir", (DL_FUNC) &_bgvars_gir, 4},
     {"_bgvars_ir", (DL_FUNC) &_bgvars_ir, 5},
     {"_bgvars_vardecomp", (DL_FUNC) &_bgvars_vardecomp, 3},

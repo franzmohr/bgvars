@@ -43,7 +43,7 @@
 #'                  country_data = country_data,
 #'                  global_data = global_data,
 #'                  countries = c("US", "JP", "CA", "NO", "GB", "EA"), 
-#'                  domestic = list(variables = c("y", "Dp", "r"), lags = 1),
+#'                  domestic = list(variables = c("y", "Dp", "r"), lags = 2),
 #'                  foreign = list(variables = c("y", "Dp", "r"), lags = 1),
 #'                  global = list(variables = c("poil"), lags = 1),
 #'                  deterministic = list(const = TRUE, trend = FALSE, seasonal = FALSE),
@@ -87,9 +87,6 @@
 #' @export
 predict.bgvar <- function(object, ..., n.ahead = 10, new_x = NULL, new_d = NULL, ci = .95) {
   
-  # Dev specs
-  # n.ahead = 10; new_x = NULL; new_d = rep(1, 10); ci = .95
-  
   k <- length(object[["model"]][["endogen"]][["variables"]]) # Endogenous variables
   p <- object[["model"]][["endogen"]][["lags"]]  # Determine number of lags
   tot <- k * p # Total number of endogenous regressors
@@ -107,13 +104,9 @@ predict.bgvar <- function(object, ..., n.ahead = 10, new_x = NULL, new_d = NULL,
                                    exogen = object[["data"]][["global"]], s = s)
   tt <- nrow(model_data[["data"]][["Y"]]) # Number of observations
   
-  # Endogenous variables
-  a <- object[["a"]]
-  
   # Global variables
   m <- 0
   if (global) {
-    a <- cbind(a, object[["b"]])
     n_glo <- k_glo * (s + 1)
     tot <- tot + n_glo
     if (is.null(new_x)) {
@@ -128,7 +121,6 @@ predict.bgvar <- function(object, ..., n.ahead = 10, new_x = NULL, new_d = NULL,
   
   # Determinisitc terms
   if ("c" %in% names(object)) {
-    a <- cbind(a, object[["c"]])
     n <- ncol(object[["c"]]) / k
     tot <- tot + n
     if (is.null(new_d)) {
@@ -170,27 +162,21 @@ predict.bgvar <- function(object, ..., n.ahead = 10, new_x = NULL, new_d = NULL,
     pred[pos_d, ] <- cbind(object[["data"]][["deterministic"]][tt, ], t(new_d))
   }
   
+  # Determine number of draws
+  draws <- NA
+  for (i in c("a0", "a", "b", "c", "sigma")) {
+    if (is.na(draws)) {
+      if (!is.null(object[[i]])) {
+        draws <- nrow(object[[i]])
+      }
+    }
+  }
+  
   # Calculate forecasts
-  draws <- nrow(a)
   result <- array(NA, dim = c(k, n.ahead, draws))
   pb <- utils::txtProgressBar(style = 3)
   for (draw in 1:draws) {
-    for (i in 1:n.ahead) {
-      
-      a0_i <- solve(matrix(object[["a0"]][draw, ], k))
-      
-      # Generate random error
-      temp <- eigen(matrix(object[["sigma"]][draw, ], k))
-      u <- temp$vectors %*% diag(sqrt(temp$values), k) %*% t(temp$vectors) %*% stats::rnorm(k)
-      
-      pred[1:k, i + 1] <- a0_i %*% matrix(a[draw, ], k) %*% pred[, i] + a0_i %*% u
-      if (p > 1) {
-        for (j in 1:(p - 1)) {
-          pred[j * k + 1:k, i + 1] <- pred[(j - 1) * k + 1:k, i]
-        } 
-      }
-    }
-    result[,, draw] <- pred[1:k, -1]
+    result[,, draw] <- .draw_forecast(draw, k, object[["a0"]], object[["a"]], object[["b"]], object[["c"]], object[["sigma"]], pred)[1:k, -1]
     utils::setTxtProgressBar(pb, draw / draws)
   }
   close(pb)
