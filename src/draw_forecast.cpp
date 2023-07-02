@@ -48,7 +48,7 @@ arma::mat draw_forecast(int &i, // index of draw
     // Forecast for next period
     pred.submat(0, j + 1, k - 1, j + 1) = a0_i * coef * pred.col(j) + a0_i * u;
     
-    // Update lags
+    // Update lags of endogenous variables
     if (p > 1) {
       for (int l = 0; l < (p - 1); l++) {
         pred.submat((l + 1) * k, j + 1, (l + 2) * k - 1, j + 1) = pred.submat(l * k, j, (l + 1) * k - 1, j); 
