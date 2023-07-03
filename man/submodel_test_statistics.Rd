@@ -14,7 +14,7 @@ a result of a call to \code{\link{draw_posterior.gvarsubmodels}} or
 \item{...}{further arguments passed to or from other methods.}
 }
 \value{
-A data frame.
+A list.
 }
 \description{
 Calculates test statistics for the the selection of country-specific VARX or 

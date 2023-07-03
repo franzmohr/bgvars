@@ -21,7 +21,7 @@
 #' \eqn{M} the number of global variables, \eqn{s} the number of lags of global variables,
 #' \eqn{N} the number of deterministic terms and \eqn{T} the number of observations.
 #'
-#' @return A data frame.
+#' @return A list.
 #' 
 #' @examples
 #' # Load data
@@ -95,6 +95,8 @@ submodel_test_statistics <- function(object, ...){
                           BIC = rep(NA, n_models),
                           HQ = rep(NA, n_models),
                           stringsAsFactors = FALSE)
+  
+  loglik <- list()
   
   for (i in 1:n_models) {
     
@@ -229,6 +231,10 @@ submodel_test_statistics <- function(object, ...){
       LL[, j] <- bvartools::loglik_normal(u, sigma)
     }
     
+    if (keep_ll) {
+      loglik[[i]] <- LL
+    }
+    
     ll <- sum(rowMeans(LL))
     teststats[i, "LL"] <- ll
     teststats[i, "AIC"] <- 2 * tot_pars - 2 * ll
@@ -243,10 +249,13 @@ submodel_test_statistics <- function(object, ...){
   result <- NULL
   ctry_names <- unique(teststats[, "ctry"])
   for (i in 1:length(ctry_names)) {
-    result[[i]] <- teststats[teststats[, "ctry"] == ctry_names[i], -1]
-    rownames(result[[i]]) <- NULL
+    result[[i]][["teststats"]] <- teststats[teststats[, "ctry"] == ctry_names[i], -1]
+    rownames(result[[i]][["teststats"]]) <- NULL
     names(result)[i] <- ctry_names[i]
   }
+  
+  result <- list(teststats = teststats,
+                 loglik = loglik)
   
   return(result)
 }

@@ -90,13 +90,13 @@ select_submodels <- function(object, ic = "BIC", select = "order", teststats = N
   
   # Obtain test statistics
   if (is.null(teststats)) {
-    criteria <- submodel_test_statistics(object) 
+    criteria <- submodel_test_statistics(object)[["teststats"]]
   } else {
     # Basic checks
     if (length(teststats) != length(unique(names(object)))) {
       stop("Number of countries in argument 'object' differs from number of countries in argument 'teststats'.")
     }
-    criteria <- teststats
+    criteria <- teststats[["teststats"]]
   }
   names_object <- names(object)
   
