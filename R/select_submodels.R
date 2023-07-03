@@ -12,7 +12,7 @@
 #' function selects the model, after which the selected information criterion increases
 #' for the first time.
 #' @param teststats optional. A named list of test statistics for each model in `object`. Usually,
-#' the result of a call to \code{\link{submodel_test_statistics}}.
+#' the result of a call to \code{\link{submodel_test_statistics}[["teststats"]]}.
 #' 
 #' @examples
 #' # Load data
@@ -93,12 +93,24 @@ select_submodels <- function(object, ic = "BIC", select = "order", teststats = N
     criteria <- submodel_test_statistics(object)[["teststats"]]
   } else {
     # Basic checks
+    if (!"data.frame" %in% class(teststats)) {
+      stop("If provided, argument 'teststats' must be of class data.frame.")
+    }
     if (length(teststats) != length(unique(names(object)))) {
       stop("Number of countries in argument 'object' differs from number of countries in argument 'teststats'.")
     }
-    criteria <- teststats[["teststats"]]
+    criteria <- teststats
   }
+  
   names_object <- names(object)
+  
+  crit <- list()
+  ctry <- unique(names(object))
+  for (i in 1:length(ctry)) {
+    crit[[i]] <- criteria[criteria[, "ctry"] == ctry[i],]
+  }
+  names(crit) <- ctry
+  criteria <- crit
   
   # Select final country models
   result <- NULL

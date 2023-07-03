@@ -245,10 +245,11 @@ submodel_test_statistics <- function(object, ...){
   result <- NULL
   ctry_names <- unique(teststats[, "ctry"])
   for (i in 1:length(ctry_names)) {
-    result[[i]][["teststats"]] <- teststats[teststats[, "ctry"] == ctry_names[i], -1]
-    rownames(result[[i]][["teststats"]]) <- NULL
+    result[[i]] <- teststats[teststats[, "ctry"] == ctry_names[i], -1]
+    rownames(result[[i]]) <- NULL
     names(result)[i] <- ctry_names[i]
   }
+  names(loglik) <- teststats[, "ctry"]
   
   result <- list(teststats = teststats,
                  loglik = loglik)

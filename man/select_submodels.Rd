@@ -20,7 +20,7 @@ function selects the model, after which the selected information criterion incre
 for the first time.}
 
 \item{teststats}{optional. A named list of test statistics for each model in `object`. Usually,
-the result of a call to \code{\link{submodel_test_statistics}}.}
+the result of a call to \code{\link{submodel_test_statistics}[["teststats"]]}.}
 }
 \description{
 Selects the best country-specific submodel of a GVAR model.
