@@ -190,7 +190,7 @@ submodel_test_statistics <- function(object, ...){
     } else {
       draws <- nrow(temp_pars) 
     }
-    LL <- matrix(NA, tt, draws)
+    loglik[[i]] <- matrix(NA, tt, draws)
     y <- t(object[[i]][["data"]][["Y"]])
     u <- y * 0
     if (sv) {
@@ -228,14 +228,10 @@ submodel_test_statistics <- function(object, ...){
       }
       
       # Calculate log-likelihood
-      LL[, j] <- bvartools::loglik_normal(u, sigma)
+      loglik[[i]][, j] <- bvartools::loglik_normal(u, sigma)
     }
     
-    if (keep_ll) {
-      loglik[[i]] <- LL
-    }
-    
-    ll <- sum(rowMeans(LL))
+    ll <- sum(rowMeans(loglik[[i]]))
     teststats[i, "LL"] <- ll
     teststats[i, "AIC"] <- 2 * tot_pars - 2 * ll
     teststats[i, "BIC"] <- log(tt) * tot_pars - 2 * ll
