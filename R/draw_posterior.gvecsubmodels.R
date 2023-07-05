@@ -69,6 +69,10 @@ draw_posterior.gvecsubmodels <- function(object, ..., FUN = NULL, mc.cores = NUL
 # Helper function to implement try() functionality
 .posterior_gvecsubmodels <- function(object, use) {
   
+  # Save specs in case Gibbs sampler fails
+  model <- list(data = object[["data"]],
+                model = object[["model"]])
+  
   if (is.null(use)) {
     object <- try(bvecxpost(object))
   } else {
@@ -78,7 +82,7 @@ draw_posterior.gvecsubmodels <- function(object, ..., FUN = NULL, mc.cores = NUL
   
   # Produce something if estimation fails
   if (inherits(object, "try-error")) {
-    object <- c(object, list(error = TRUE))
+    object <- c(object, c(model, list(error = TRUE)))
   }
   
   return(object)
