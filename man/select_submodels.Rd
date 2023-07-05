@@ -2,7 +2,7 @@
 % Please edit documentation in R/select_submodels.R
 \name{select_submodels}
 \alias{select_submodels}
-\title{Susbmodel Selection}
+\title{Submodel Selection}
 \usage{
 select_submodels(object, ic = "BIC", select = "order", teststats = NULL)
 }

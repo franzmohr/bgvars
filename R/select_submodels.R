@@ -1,4 +1,4 @@
-#' Susbmodel Selection
+#' Submodel Selection
 #' 
 #' Selects the best country-specific submodel of a GVAR model.
 #' 
