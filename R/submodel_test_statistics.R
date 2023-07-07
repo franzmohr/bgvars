@@ -107,19 +107,10 @@ submodel_test_statistics <- function(object, ...){
     current_ctry <- names(object)[i]
     n_models_curr_ctry <- sum(names(object) == current_ctry)
     n_completed_curr_ctry <- sum(names(object)[1:i] == current_ctry)
-    update_result_element <- n_models_curr_ctry == n_completed_curr_ctry
     pos <- cumsum(as.numeric(names(object) == current_ctry))
     pos[as.numeric(names(object) == current_ctry) == 0] <- 0 
     
     teststats[i, "ctry"] <- names(object)[i]
-    
-    # Skip tests if posterior simulation was not successful
-    if (!is.null(object[[i]][["error"]])) {
-      if (object[[i]][["error"]]) {
-        loglik[[pos]] <- NA
-        next 
-      }
-    }
     
     # Get model specifications
     structural <- object[[i]][["model"]][["structural"]]
@@ -144,112 +135,122 @@ submodel_test_statistics <- function(object, ...){
     }
     if (!is.null(object[[i]][["model"]][["rank"]])) {
       teststats[i, "r"] <- object[[i]][["model"]][["rank"]]
-    }
+    }    
     
-    if (tvp) {
-      temp_pars <- list()
-      length(temp_pars) <- tt
-    } else {
-      temp_pars <- NULL
-    }
-    x <- NULL
-    
-    if ("ctryvarest" %in% class(object[[i]])) {
-      
-      x <- t(object[[i]][["data"]][["Z"]])
-      tot_pars <- NCOL(object[[i]][["data"]][["Z"]])
-      
-      vars <- c("domestic", "foreign", "global", "deterministic")
-      for (j in vars) {
-        if (!is.null(object[[i]][["posteriors"]][[j]])) {
-          if (is.list(object[[i]][["posteriors"]][[j]])) {
-            for (period in 1:tt) {
-              temp_pars[[period]] <- cbind(temp_pars[[period]], object[[i]][["posteriors"]][[j]][[period]]) 
-            }
-          } else {
-            temp_pars <- cbind(temp_pars, object[[i]][["posteriors"]][[j]]) 
-          }
-        }
+    # Skip tests if posterior simulation was not successful
+    if (!is.null(object[[i]][["error"]])) {
+      if (object[[i]][["error"]]) {
+        loglik[[pos[i]]] <- NA
+        next 
       }
-    }
-    
-    if ("ctryvecest" %in% class(object[[i]])) {
-      
-      object[[i]] <- .create_pi_matrices(object[[i]])
-      
-      x <- t(object[[i]][["data"]][["X"]])
-      tot_pars <- object[[i]][["model"]][["rank"]] + nrow(x)
-      if (object[[i]][["model"]][["rank"]] > 0) {
-        x <- rbind(t(object[[i]][["data"]][["W"]]), x)
-      }
-      
-      vars <- c("pi_domestic", "pi_foreign", "pi_global", "pi_deterministic",
-                "gamma_domestic", "gamma_foreign", "gamma_global", "gamma_deterministic")
-      for (j in vars) {
-        if (!is.null(object[[i]][["posteriors"]][[j]])) {
-          if (is.list(object[[i]][["posteriors"]][[j]])) {
-            for (period in 1:tt) {
-              temp_pars[[period]] <- cbind(temp_pars[[period]], object[[i]][["posteriors"]][[j]][[period]]) 
-            }
-          } else {
-            temp_pars <- cbind(temp_pars, object[[i]][["posteriors"]][[j]]) 
-          }
-        }
-      }
-      
-    }
-    
-    if (tvp) {
-      draws <- nrow(temp_pars[[1]])
     } else {
-      draws <- nrow(temp_pars) 
-    }
-    loglik[[pos[i]]] <- matrix(NA, tt, draws)
-    y <- t(object[[i]][["data"]][["Y"]])
-    u <- y * 0
-    if (sv) {
-      sigma <- matrix(NA_real_, k_domestic * tt, k_domestic)
-    } else {
-      sigma <- matrix(NA_real_, k_domestic, k_domestic)
-    }
-    
-    for (j in 1:draws) {
-      # Residuals
+      
+      
       if (tvp) {
-        for (period in 1:tt) {
+        temp_pars <- list()
+        length(temp_pars) <- tt
+      } else {
+        temp_pars <- NULL
+      }
+      x <- NULL
+      
+      if ("ctryvarest" %in% class(object[[i]])) {
+        
+        x <- t(object[[i]][["data"]][["Z"]])
+        tot_pars <- NCOL(object[[i]][["data"]][["Z"]])
+        
+        vars <- c("domestic", "foreign", "global", "deterministic")
+        for (j in vars) {
+          if (!is.null(object[[i]][["posteriors"]][[j]])) {
+            if (is.list(object[[i]][["posteriors"]][[j]])) {
+              for (period in 1:tt) {
+                temp_pars[[period]] <- cbind(temp_pars[[period]], object[[i]][["posteriors"]][[j]][[period]]) 
+              }
+            } else {
+              temp_pars <- cbind(temp_pars, object[[i]][["posteriors"]][[j]]) 
+            }
+          }
+        }
+      }
+      
+      if ("ctryvecest" %in% class(object[[i]])) {
+        
+        object[[i]] <- .create_pi_matrices(object[[i]])
+        
+        x <- t(object[[i]][["data"]][["X"]])
+        tot_pars <- object[[i]][["model"]][["rank"]] + nrow(x)
+        if (object[[i]][["model"]][["rank"]] > 0) {
+          x <- rbind(t(object[[i]][["data"]][["W"]]), x)
+        }
+        
+        vars <- c("pi_domestic", "pi_foreign", "pi_global", "pi_deterministic",
+                  "gamma_domestic", "gamma_foreign", "gamma_global", "gamma_deterministic")
+        for (j in vars) {
+          if (!is.null(object[[i]][["posteriors"]][[j]])) {
+            if (is.list(object[[i]][["posteriors"]][[j]])) {
+              for (period in 1:tt) {
+                temp_pars[[period]] <- cbind(temp_pars[[period]], object[[i]][["posteriors"]][[j]][[period]]) 
+              }
+            } else {
+              temp_pars <- cbind(temp_pars, object[[i]][["posteriors"]][[j]]) 
+            }
+          }
+        }
+        
+      }
+      
+      if (tvp) {
+        draws <- nrow(temp_pars[[1]])
+      } else {
+        draws <- nrow(temp_pars) 
+      }
+      loglik[[pos[i]]] <- matrix(NA, tt, draws)
+      y <- t(object[[i]][["data"]][["Y"]])
+      u <- y * 0
+      if (sv) {
+        sigma <- matrix(NA_real_, k_domestic * tt, k_domestic)
+      } else {
+        sigma <- matrix(NA_real_, k_domestic, k_domestic)
+      }
+      
+      for (j in 1:draws) {
+        # Residuals
+        if (tvp) {
+          for (period in 1:tt) {
+            if (structural) {
+              A0 <- matrix(object[[i]][["posteriors"]][["a0"]][[period]][j, ], k_domestic)
+            } else {
+              A0 <- diag(k_domestic)
+            }
+            u[, period] <- y[, period] - matrix(temp_pars[[period]][j, ], k_domestic) %*% x[, period] 
+          }
+        } else {
           if (structural) {
-            A0 <- matrix(object[[i]][["posteriors"]][["a0"]][[period]][j, ], k_domestic)
+            A0 <- matrix(object[[i]][["posteriors"]][["a0"]][j, ], k_domestic)
           } else {
             A0 <- diag(k_domestic)
           }
-          u[, period] <- y[, period] - matrix(temp_pars[[period]][j, ], k_domestic) %*% x[, period] 
+          u <- A0 %*% y - matrix(temp_pars[j, ], k_domestic) %*% x 
         }
-      } else {
-        if (structural) {
-          A0 <- matrix(object[[i]][["posteriors"]][["a0"]][j, ], k_domestic)
+        
+        if (sv) {
+          for (period in 1:tt) {
+            sigma[(period - 1) * k_domestic + 1:k_domestic,] <- matrix(object[[i]][["posteriors"]][["sigma"]][[period]][j,], k_domestic)
+          }
         } else {
-          A0 <- diag(k_domestic)
+          sigma <- matrix(object[[i]][["posteriors"]][["sigma"]][j,], k_domestic)
         }
-        u <- A0 %*% y - matrix(temp_pars[j, ], k_domestic) %*% x 
+        
+        # Calculate log-likelihood
+        loglik[[pos[i]]][, j] <- bvartools::loglik_normal(u, sigma)
       }
       
-      if (sv) {
-        for (period in 1:tt) {
-          sigma[(period - 1) * k_domestic + 1:k_domestic,] <- matrix(object[[i]][["posteriors"]][["sigma"]][[period]][j,], k_domestic)
-        }
-      } else {
-        sigma <- matrix(object[[i]][["posteriors"]][["sigma"]][j,], k_domestic)
-      }
-      
-      # Calculate log-likelihood
-      loglik[[pos[i]]][, j] <- bvartools::loglik_normal(u, sigma)
+      ll <- sum(rowMeans(loglik[[pos[i]]]))
+      teststats[i, "LL"] <- ll
+      teststats[i, "AIC"] <- 2 * tot_pars - 2 * ll
+      teststats[i, "BIC"] <- log(tt) * tot_pars - 2 * ll
+      teststats[i, "HQ"] <- 2 * log(log(tt)) * tot_pars - 2 * ll 
     }
-    
-    ll <- sum(rowMeans(loglik[[pos[i]]]))
-    teststats[i, "LL"] <- ll
-    teststats[i, "AIC"] <- 2 * tot_pars - 2 * ll
-    teststats[i, "BIC"] <- log(tt) * tot_pars - 2 * ll
-    teststats[i, "HQ"] <- 2 * log(log(tt)) * tot_pars - 2 * ll
     
     # If all model of a country are finished, updated the result object
     if (n_models_curr_ctry == n_completed_curr_ctry) {

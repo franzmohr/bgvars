@@ -11,8 +11,8 @@
 #' specified information criterion per country is selected. If \code{"rank"}, the
 #' function selects the model, after which the selected information criterion increases
 #' for the first time.
-#' @param teststats optional. A named list of test statistics for each model in `object`. Usually,
-#' the result of a call to \code{\link{submodel_test_statistics}[["teststats"]]}.
+#' @param teststats optional. An object of class "ctryvartest", usually,
+#' the result of a call to \code{\link{submodel_test_statistics}}.
 #' 
 #' @examples
 #' # Load data
@@ -90,14 +90,11 @@ select_submodels <- function(object, ic = "BIC", select = "order", teststats = N
   
   # Obtain test statistics
   if (is.null(teststats)) {
-    criteria <- submodel_test_statistics(object)[["teststats"]]
+    criteria <- submodel_test_statistics(object)
   } else {
     # Basic checks
-    if (!"data.frame" %in% class(teststats)) {
-      stop("If provided, argument 'teststats' must be of class data.frame.")
-    }
-    if (length(teststats) != length(unique(names(object)))) {
-      stop("Number of countries in argument 'object' differs from number of countries in argument 'teststats'.")
+    if (!"ctryvartest" %in% class(teststats)) {
+      stop("If provided, argument 'teststats' must be of class ctryvartest.")
     }
     criteria <- teststats
   }
@@ -107,7 +104,7 @@ select_submodels <- function(object, ic = "BIC", select = "order", teststats = N
   crit <- list()
   ctry <- unique(names(object))
   for (i in 1:length(ctry)) {
-    crit[[i]] <- criteria[criteria[, "ctry"] == ctry[i],]
+    crit[[i]] <- criteria[[i]][["teststats"]]
   }
   names(crit) <- ctry
   criteria <- crit

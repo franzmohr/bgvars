@@ -19,8 +19,8 @@ specified information criterion per country is selected. If \code{"rank"}, the
 function selects the model, after which the selected information criterion increases
 for the first time.}
 
-\item{teststats}{optional. A named list of test statistics for each model in `object`. Usually,
-the result of a call to \code{\link{submodel_test_statistics}[["teststats"]]}.}
+\item{teststats}{optional. An object of class "ctryvartest", usually,
+the result of a call to \code{\link{submodel_test_statistics}}.}
 }
 \description{
 Selects the best country-specific submodel of a GVAR model.
