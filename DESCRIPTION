@@ -55,6 +55,7 @@ Collate:
     'plot.bgvarprd.R'
     'plot.bgvecest.R'
     'plot.ctryvarest.R'
+    'plot.ctryvartest.R'
     'plot.ctryvecest.R'
     'predict.bgvar.R'
     'summary.bgvarest.R'

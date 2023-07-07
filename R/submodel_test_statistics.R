@@ -242,17 +242,22 @@ submodel_test_statistics <- function(object, ...){
   teststats <- teststats[, which(!apply(teststats, 2, function(x) {all(is.na(x))}))]
   
   # Final output with one list element per country
-  result <- NULL
   ctry_names <- unique(teststats[, "ctry"])
+  result <- list()
+  length(result) <- length(ctry_names)
   for (i in 1:length(ctry_names)) {
-    result[[i]] <- teststats[teststats[, "ctry"] == ctry_names[i], -1]
-    rownames(result[[i]]) <- NULL
+    
+    model_pos <- which(teststats[, "ctry"] == ctry_names[i])
+    result[[i]][["teststats"]] <- teststats[model_pos, -1]
+    rownames(result[[i]][["teststats"]]) <- NULL
     names(result)[i] <- ctry_names[i]
+    
+    for (j in 1:length(model_pos)) {
+      result[[i]][["loglik"]][[j]] <- loglik[[model_pos[j]]]
+    }
   }
-  names(loglik) <- teststats[, "ctry"]
   
-  result <- list(teststats = teststats,
-                 loglik = loglik)
+  class(result) <- c("ctryvartest", "list")
   
   return(result)
 }
