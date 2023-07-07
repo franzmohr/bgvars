@@ -84,7 +84,6 @@
 submodel_test_statistics <- function(object, ...){
   
   n_models <- length(object)
-  
   teststats <- data.frame(ctry = rep(NA, n_models),
                           p_domestic = rep(NA, n_models),
                           p_foreign = rep(NA, n_models),
@@ -97,19 +96,32 @@ submodel_test_statistics <- function(object, ...){
                           stringsAsFactors = FALSE)
   
   loglik <- list()
+  result <- list()
+  n_ctry <- length(unique(names(object)))
+  length(result) <- n_ctry
+  names(result) <- unique(names(object))
   
+  pb <- utils::txtProgressBar(style = 3)
   for (i in 1:n_models) {
+    
+    current_ctry <- names(object)[i]
+    n_models_curr_ctry <- sum(names(object) == current_ctry)
+    n_completed_curr_ctry <- sum(names(object)[1:i] == current_ctry)
+    update_result_element <- n_models_curr_ctry == n_completed_curr_ctry
+    pos <- cumsum(as.numeric(names(object) == current_ctry))
+    pos[as.numeric(names(object) == current_ctry) == 0] <- 0 
     
     teststats[i, "ctry"] <- names(object)[i]
     
     # Skip tests if posterior simulation was not successful
     if (!is.null(object[[i]][["error"]])) {
       if (object[[i]][["error"]]) {
-        loglik[[i]] <- NA
+        loglik[[pos]] <- NA
         next 
       }
     }
     
+    # Get model specifications
     structural <- object[[i]][["model"]][["structural"]]
     tvp <- object[[i]][["model"]][["tvp"]]
     sv <- object[[i]][["model"]][["sv"]]
@@ -124,6 +136,7 @@ submodel_test_statistics <- function(object, ...){
       s <- object[[i]][["model"]][["global"]][["lags"]]
     }
     
+    # Update teststats
     teststats[i, "p_domestic"] <- p_domestic
     teststats[i, "p_foreign"] <- p_foreign 
     if (global) {
@@ -191,7 +204,7 @@ submodel_test_statistics <- function(object, ...){
     } else {
       draws <- nrow(temp_pars) 
     }
-    loglik[[i]] <- matrix(NA, tt, draws)
+    loglik[[pos[i]]] <- matrix(NA, tt, draws)
     y <- t(object[[i]][["data"]][["Y"]])
     u <- y * 0
     if (sv) {
@@ -229,34 +242,33 @@ submodel_test_statistics <- function(object, ...){
       }
       
       # Calculate log-likelihood
-      loglik[[i]][, j] <- bvartools::loglik_normal(u, sigma)
+      loglik[[pos[i]]][, j] <- bvartools::loglik_normal(u, sigma)
     }
     
-    ll <- sum(rowMeans(loglik[[i]]))
+    ll <- sum(rowMeans(loglik[[pos[i]]]))
     teststats[i, "LL"] <- ll
     teststats[i, "AIC"] <- 2 * tot_pars - 2 * ll
     teststats[i, "BIC"] <- log(tt) * tot_pars - 2 * ll
     teststats[i, "HQ"] <- 2 * log(log(tt)) * tot_pars - 2 * ll
-  }
-  
-  # Omit unnecessary columns
-  teststats <- teststats[, which(!apply(teststats, 2, function(x) {all(is.na(x))}))]
-  
-  # Final output with one list element per country
-  ctry_names <- unique(teststats[, "ctry"])
-  result <- list()
-  length(result) <- length(ctry_names)
-  for (i in 1:length(ctry_names)) {
     
-    model_pos <- which(teststats[, "ctry"] == ctry_names[i])
-    result[[i]][["teststats"]] <- teststats[model_pos, -1]
-    rownames(result[[i]][["teststats"]]) <- NULL
-    names(result)[i] <- ctry_names[i]
-    
-    for (j in 1:length(model_pos)) {
-      result[[i]][["loglik"]][[j]] <- loglik[[model_pos[j]]]
+    # If all model of a country are finished, updated the result object
+    if (n_models_curr_ctry == n_completed_curr_ctry) {
+      model_pos <- which(teststats[, "ctry"] == current_ctry)
+      result[[current_ctry]][["teststats"]] <- teststats[model_pos, -1]
+      rownames(result[[current_ctry]][["teststats"]]) <- NULL
+      result[[current_ctry]][["loglik"]] <- loglik
+      loglik <- list()
     }
+    
+    utils::setTxtProgressBar(pb, i / n_models)
   }
+  close(pb)
+  
+  # Clean up teststats tables
+  result <- lapply(result, function(x) {
+    x$teststats <- x$teststats[, which(!apply(x$teststats, 2, function(x) {all(is.na(x))}))]
+    return(x)
+  })
   
   class(result) <- c("ctryvartest", "list")
   
