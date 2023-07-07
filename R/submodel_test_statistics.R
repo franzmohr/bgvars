@@ -105,6 +105,7 @@ submodel_test_statistics <- function(object, ...){
     # Skip tests if posterior simulation was not successful
     if (!is.null(object[[i]][["error"]])) {
       if (object[[i]][["error"]]) {
+        loglik[[i]] <- NA
         next 
       }
     }

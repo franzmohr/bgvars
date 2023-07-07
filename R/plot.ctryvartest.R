@@ -20,9 +20,16 @@ plot.ctryvartest <- function(x, ctry = NULL, ...) {
   
   for (i in pos) {
     ctry_name <- names(x)[i]
-    ctry_temp <- lapply(x[[i]][[2]], colSums)
+    ctry_temp <- c()
     x_names <- c()
     for (j in 1:nrow(x[[i]][["teststats"]])) {
+      
+      if (is.na(x[[i]][["teststats"]][j, "LL"])) {
+        next
+      }
+      
+      ctry_temp[[j]] <- colSums(x[[i]][[2]][[j]])
+      
       temp <- c()
       if ("p_domestic" %in% names(x[[i]][["teststats"]])) {
         temp <- append(temp, paste0("p = ", x[[i]][["teststats"]][j, "p_domestic"]))
