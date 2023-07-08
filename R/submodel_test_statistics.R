@@ -137,14 +137,12 @@ submodel_test_statistics <- function(object, ...){
       teststats[i, "r"] <- object[[i]][["model"]][["rank"]]
     }    
     
-    # Skip tests if posterior simulation was not successful
+    # Test if Gibbs sampler was successful
     if (!is.null(object[[i]][["error"]])) {
       if (object[[i]][["error"]]) {
         loglik[[pos[i]]] <- NA
-        next 
       }
     } else {
-      
       
       if (tvp) {
         temp_pars <- list()
@@ -222,7 +220,7 @@ submodel_test_statistics <- function(object, ...){
             } else {
               A0 <- diag(k_domestic)
             }
-            u[, period] <- y[, period] - matrix(temp_pars[[period]][j, ], k_domestic) %*% x[, period] 
+            u[, period] <- A0 %*% y[, period] - matrix(temp_pars[[period]][j, ], k_domestic) %*% x[, period] 
           }
         } else {
           if (structural) {
