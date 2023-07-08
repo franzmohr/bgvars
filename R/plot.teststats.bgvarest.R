@@ -18,6 +18,9 @@ plot.teststats.bgvarest <- function(x, ctry = NULL, ...) {
     pos <- which(names(x) %in% ctry)
   }
   
+  mgp_orig <- graphics::par("mgp")
+  graphics::par(mgp = c(3, 2.5, 0))
+  
   for (i in pos) {
     ctry_name <- names(x)[i]
     ctry_temp <- c()
@@ -50,6 +53,8 @@ plot.teststats.bgvarest <- function(x, ctry = NULL, ...) {
     names(ctry_temp) <- x_names
     graphics::boxplot(ctry_temp, main = ctry_name, ...)
   }
+  
+  graphics::par(mgp = mgp_orig)
   
 }
 
