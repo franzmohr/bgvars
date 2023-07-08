@@ -48,8 +48,7 @@ plot.teststats.bgvarest <- function(x, ctry = NULL, ...) {
     }
     
     names(ctry_temp) <- x_names
-    graphics::boxplot(ctry_temp,
-                      main = ctry_name)
+    graphics::boxplot(ctry_temp, main = ctry_name, ...)
   }
   
 }
