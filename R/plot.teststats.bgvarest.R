@@ -10,7 +10,7 @@
 #' @param ... further graphical parameters.
 #' 
 #' @export
-plot.ctryvartest <- function(x, ctry = NULL, ...) {
+plot.teststats.bgvarest <- function(x, ctry = NULL, ...) {
   
   if (is.null(ctry)) {
     pos <- 1:length(x)

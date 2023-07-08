@@ -257,6 +257,7 @@ submodel_test_statistics <- function(object, ...){
       rownames(result[[current_ctry]][["teststats"]]) <- NULL
       result[[current_ctry]][["loglik"]] <- loglik
       loglik <- list()
+      class(result[[current_ctry]]) <- c("teststats.ctryvarest", "list")
     }
     
     utils::setTxtProgressBar(pb, i / n_models)
@@ -269,7 +270,7 @@ submodel_test_statistics <- function(object, ...){
     return(x)
   })
   
-  class(result) <- c("ctryvartest", "list")
+  class(result) <- c("teststats.bgvarest", "list")
   
   return(result)
 }

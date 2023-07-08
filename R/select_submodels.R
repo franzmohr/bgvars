@@ -93,8 +93,8 @@ select_submodels <- function(object, ic = "BIC", select = "order", teststats = N
     criteria <- submodel_test_statistics(object)
   } else {
     # Basic checks
-    if (!"ctryvartest" %in% class(teststats)) {
-      stop("If provided, argument 'teststats' must be of class ctryvartest.")
+    if (!"teststats.bgvarest" %in% class(teststats)) {
+      stop("If provided, argument 'teststats' must be of class teststats.bgvarest")
     }
     criteria <- teststats
   }
