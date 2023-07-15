@@ -8,8 +8,8 @@ create_specifications(
   country_data,
   global_data = NULL,
   countries = NULL,
-  domestic = NULL,
-  foreign = NULL,
+  domestic,
+  foreign,
   global = NULL,
   deterministic = NULL,
   type = "VAR",
@@ -64,12 +64,12 @@ A list of model specifications for each country.
 Produces a list of model specifications for each country in a GVAR model.
 }
 \details{
-If arguments \code{domestic}, \code{foreign} or \code{global} are \code{NULL} (default), all available variables
-are used and the lag order is set to 1 for each group of variables. If a list is provided, the used variables can be
-changed by adding an element \code{"variables"} with a character vector, i.e. \code{variables = c("var1", "var2", ...)},
-where \code{"var1"} is the name of a column in object \code{"country_data"}. Similarly, the lag order of each
-variable group can be changed by adding an element \code{"lags"} with an integer or integer vector, i.e. \code{lags = 1}.
-If a vector is provided, \code{\link{create_models}} will produce a distinct model for all
+For arguments \code{domestic}, \code{foreign} or \code{global} a list should be provided, which
+contains a vector of the names of used variables in element \code{"variables"}, i.e., \code{variables = c("var1", "var2", ...)},
+where \code{"var1"} is the name of a column in object \code{"country_data"} or \code{"global_data"}.
+Similarly, the lag order of each variable group can be changed by adding an element \code{"lags"}
+with an integer or integer vector, i.e. \code{lags = 1}. If a vector is provided,
+\code{\link{create_models}} will produce a distinct model for all
 possible specifications.
 
 If a list is provided as argument \code{deterministic}, it can contain the following elements:

@@ -172,7 +172,9 @@ create_models <- function(country_data, weight_data, global_data = NULL,
   }
   
   if (!is.null(global_data) & !global_vars) {
-    stop("Global data were provided in 'global_data', but they are not contained in the model specifications. Please adapt specifications, if you want to use global variables.")
+    stop("Global data were provided in 'global_data', but they are not contained
+  in the model specifications. Please adapt specifications, if you want to use
+  global variables.")
   }
   rm(global_vars)
   
