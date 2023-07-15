@@ -266,7 +266,7 @@ plot.ctryvecest <- function(x, ci = 0.95, type = "hist", variables = "all", ctry
       var_pos <- 1:(k_domestic * length(names_det_r))
       if (tvp) {
         for (j in var_pos) {
-          draws <- .tvpribbon(x[["pi_deterministic"]], j, ci_low, ci_high)
+          draws <- .tvpribbon(x[["posteriors"]][["pi_deterministic"]], j, ci_low, ci_high)
           stats::tsp(draws) <- tsp_info
           stats::ts.plot(draws, xlab = "")
         }
