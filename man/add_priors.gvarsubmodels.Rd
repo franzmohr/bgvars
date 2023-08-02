@@ -8,7 +8,7 @@
   object,
   ...,
   coef = list(v_i = 1, v_i_det = 0.1, shape = 3, rate = 1e-04, rate_det = 0.01),
-  sigma = list(df = "k", scale = 1, mu = 0, v_i = 0.01, sigma_h = 0.05),
+  sigma = list(df = "k", scale = 1, mu = 0, v_i = 0.01, hinit = 0.05, constant = 1e-04),
   ssvs = NULL,
   bvs = NULL
 )
@@ -63,11 +63,7 @@ The argument \code{coef} can contain the following elements
   where \eqn{\sigma_{i}} is the residual standard deviation of variable \eqn{i} of an unrestricted
   LS estimate. For exogenous variables \eqn{\sigma_{i}} is the sample standard deviation.
   If \code{kappa2 = NULL}, \eqn{\kappa_{0} \kappa_{3} \sigma_{i}^2} will be used for foreign
-  and global exogenous variables instead.
-  
-  For VEC models the function only provides priors for the non-cointegration part of the model. The
-  residual standard errors \eqn{\sigma_i} are based on an unrestricted LS regression of the
-  endogenous variables on the error correction term and the non-cointegration regressors.}
+  and global exogenous variables instead.}
   \item{\code{max_var}}{a numeric specifying the maximum prior variance that is allowed for
   non-deterministic coefficients.}
   \item{\code{shape}}{an integer specifying the prior degrees of freedom of the error term of the state equation. Default is 3.}
@@ -99,7 +95,9 @@ Argument \code{sigma} can contain the following elements:
   Only used for models with time varying volatility.}
   \item{\code{v_i}}{numeric of the prior precision of the initial state of the log-volatilities.
   Only used for models with time varying volatility.}
-  \item{\code{sigma_h}}{numeric of the initial draw for the variance of the log-volatilities.
+  \item{\code{hinit}}{numeric of the initial draw for the variance of the log-volatilities.
+  Only used for models with time varying volatility.}
+  \item{\code{constant}}{numeric of the constant, which is added before taking the log of the squared errors.
   Only used for models with time varying volatility.}
   \item{\code{covar}}{logical indicating whether error covariances should be estimated. Only used
   in combination with an inverse gamma prior or stochastic volatility, for which \code{shape} and
