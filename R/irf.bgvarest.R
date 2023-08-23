@@ -63,13 +63,13 @@ irf.bgvarest <- function(x, impulse, response, n.ahead = 5, ci = .95, shock = 1,
                 keep_draws = keep_draws, period = period, ...)
     
     # Add country name as attribute
-    attr(temp, "ctry") <- names(object)[i]
+    attr(temp, "ctry") <- names(x)[i]
     
     result <- c(result, list(temp))
     rm(temp)
   }
   # Rename list elements
-  names(result) <- names(object)[pos]
+  names(result) <- names(x)[pos]
   
   class(result) <- c("bgvarestirf", "list")
   return(result)

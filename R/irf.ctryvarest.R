@@ -112,7 +112,7 @@ irf.ctryvarest <- function(x, impulse, response, n.ahead = 5, ci = .95, shock = 
         temp[["A"]] <- matrix(x[["posteriors"]][["domestic"]][i, ], k_dom) 
       }
     } else {
-      temp[["A"]] <- matrix(0, k, k)
+      temp[["A"]] <- matrix(0, k_dom, k_dom)
     }
     if (need_Sigma) {
       if (x[["model"]][["sv"]]) {
