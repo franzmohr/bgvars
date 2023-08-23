@@ -2,7 +2,7 @@ Package: bgvars
 Title: Bayesian Inference of Global Vector Autoregressive and Gloal Vector Error Correction Models
 Version: 0.1.0
 Date: 2023-06-30
-Authors@R: person("Franz X.", "Mohr", email = "franz.x.mohr@outlook.com", role = c("aut","cre"))
+Authors@R: person("Franz X.", "Mohr", email = "franz.x.mohr@outlook.com", role = c("aut","cre"), comment = c(ORCiD = "0009-0003-8890-7781"))
 Description: Assists in the set-up and inference of Bayesian global vector autoregressive (BGVAR) and error correction (BGVEC) models.
 License: GPL (>= 2) 
 Depends: R (>= 3.3.0), bvartools (>= 0.2.1)
@@ -25,7 +25,7 @@ Collate:
     'RcppExports.R'
     'add_priors.gvarsubmodels.R'
     'add_priors.gvecsubmodels.R'
-    'bgvars.R'
+    'bgvars-package.R'
     'bvarxpost.R'
     'bvecxpost.R'
     'combine_submodels.R'
