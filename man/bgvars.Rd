@@ -3,9 +3,18 @@
 \docType{package}
 \name{bgvars}
 \alias{bgvars}
+\alias{bgvars-package}
 \title{bgvars: Bayesian Inference for Global Vector Autoregressive (GVAR) and Global Vector Error Correction (GVEC) Models}
 \description{
 R/C++ implementation of Bayesian global vector autoregressive and global vector error correction models.
+}
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/franzmohr/bgvars}
+  \item Report bugs at \url{https://github.com/franzmohr/bgvars/issues}
+}
+
 }
 \author{
 Franz X. Mohr

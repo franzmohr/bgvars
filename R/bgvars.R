@@ -6,9 +6,7 @@
 #' @docType package
 #' @name bgvars
 #' 
-#' 
-#' 
 #' @useDynLib bgvars, .registration = TRUE
 #' @importFrom Rcpp sourceCpp
 #' @exportPattern "^[[:alpha:]]+"
-NULL
+'_PACKAGE'
