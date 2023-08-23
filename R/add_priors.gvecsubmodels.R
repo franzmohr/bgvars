@@ -87,6 +87,8 @@
 #'   Only used for models with time varying volatility.}
 #'   \item{\code{sigma_h}}{numeric of the initial draw for the variance of the log-volatilities.
 #'   Only used for models with time varying volatility.}
+#'   \item{\code{constant}}{numeric of the constant, which is added before taking the log of the squared errors.
+#'   Only used for models with time varying volatility.}
 #'   \item{\code{covar}}{logical indicating whether error covariances should be estimated. Only used
 #'   in combination with an inverse gamma prior or stochastic volatility, for which \code{shape} and
 #'   \code{rate} must be specified.}
@@ -814,25 +816,27 @@ add_priors.gvecsubmodels <- function(object, ...,
     if (tot_par < NCOL(y)) {
       z <- object[[i]][["data"]][["SUR"]]
       ols <- solve(crossprod(z)) %*% crossprod(z, matrix(y))
-      object[[i]][["initial"]][["noncointegration"]][["draw"]] <- matrix(ols[-c(1:n_ect),])
+      object[[i]][["initial"]][["noncointegration"]][["gamma"]] <- matrix(ols[-c(1:n_ect),])
       u <- matrix(matrix(y) - z %*% ols, NROW(y)) # Residuals for initial var-covar matrix draw
     } else {
       # ... if not, use the prior mean.
       if (tot_par > 0) {
-        object[[i]][["initial"]][["noncointegration"]][["draw"]] <- mu 
+        object[[i]][["initial"]][["noncointegration"]][["gamma"]] <- mu
       }
       u <- y - matrix(apply(y, 1, mean), nrow = NROW(y), ncol = NCOL(y)) # Residuals for initial var-covar matrix draw
     }
     if (r_temp > 0) {
       beta <- matrix(0, n_ect / k_domestic, r_temp)
       beta[1:r_temp, 1:r_temp] <- diag(1, r_temp)
+      object[[i]][["initial"]][["cointegration"]][["alpha"]] <- matrix(0, n_alpha)
       object[[i]][["initial"]][["cointegration"]][["beta"]] <- beta
       if (object[[i]][["model"]][["tvp"]]) {
         object[[i]][["initial"]][["cointegration"]][["rho"]] <- rho
+        object[[i]][["initial"]][["cointegration"]][["sigma_alpha_i"]] <- diag(c(1 / object[[i]][["priors"]][["cointegration"]][["alpha"]][["rate"]]))
       }
     }
     if (object[[i]][["model"]][["tvp"]]) {
-      object[[i]][["initial"]][["noncointegration"]][["sigma_i"]] <- diag(c(1 / object[[i]][["priors"]][["noncointegration"]][["rate"]]), tot_par)
+      object[[i]][["initial"]][["noncointegration"]][["sigma_gamma_i"]] <- diag(c(1 / object[[i]][["priors"]][["noncointegration"]][["rate"]]), tot_par)
     }
     if (covar) {
       y_covar <- kronecker(-t(u), diag(1, k_domestic))
@@ -840,7 +844,8 @@ add_priors.gvecsubmodels <- function(object, ...,
       for (j in 1:k_domestic) {pos <- c(pos, (j - 1) * k_domestic + 1:j)}
       y_covar <- y_covar[, -pos]
       psi <- solve(crossprod(y_covar)) %*% crossprod(y_covar, matrix(u))
-      object[[i]][["initial"]][["psi"]][["draw"]] <- psi
+      object[[i]][["initial"]][["psi"]][["psi"]] <- psi
+      object[[i]][["initial"]][["psi"]][["sigma_psi_i"]] <- diag(1 / coef[["rate"]], nrow(psi))
       Psi <- diag(1, k_domestic)
       for (j in 2:k_domestic) {
         Psi[j, 1:(j - 1)] <- t(psi[((j - 2) * (j - 1) / 2) + 1:(j - 1), 1])
@@ -851,6 +856,7 @@ add_priors.gvecsubmodels <- function(object, ...,
     if (object[[i]][["model"]][["sv"]]) {
       object[[i]][["initial"]][["sigma"]][["h"]] <- log(matrix(u, nrow = NCOL(y), ncol = NROW(y), byrow = TRUE))
       object[[i]][["initial"]][["sigma"]][["sigma_h"]] <- matrix(sigma[["sigma_h"]], NROW(y))
+      object[[i]][["initial"]][["sigma"]][["constant"]] <- matrix(sigma[["constant"]], NROW(y))
     } else {
       object[[i]][["initial"]][["sigma"]][["sigma_i"]] <- diag(1 / u, NROW(y))
       dimnames(object[[i]][["initial"]][["sigma"]][["sigma_i"]]) <- list(dimnames(y)[[2]], dimnames(y)[[2]])

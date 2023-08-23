@@ -105,21 +105,22 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
   // Priors & initial values ----
   Rcpp::List priors = object["priors"];
   Rcpp::CharacterVector priors_names = priors.names();
+  Rcpp::List initial = object["initial"];  
   
-  Rcpp::List initial = object["initial"];
-  Rcpp::List init_coint;
-  Rcpp::List init_psi;
-  Rcpp::List init_sigma = initial["sigma"];
+  ///////////////////////////////////////////////////////////////////////
+  // Priors & initial values - Cointegration
+  ///////////////////////////////////////////////////////////////////////
   
-  // Cointegration 
-  Rcpp::List priors_cointegration, priors_alpha, priors_beta;
+  Rcpp::List init_coint, priors_cointegration, priors_alpha, priors_beta;
   Rcpp::CharacterVector priors_cointegration_names;
-  arma::vec priors_rho;
-  arma::mat prior_beta_mu, prior_beta_vinv, post_beta_mu, post_beta_v;
-  arma::vec ytilde, beta_init;
-  arma::mat alpha, beta, beta_help, beta_t, pi, pi_temp, zztilde;
-  arma::sp_mat sigma_b_i, zzss_b_i, hb_sigmab_i_hb, hh_b;
+  //arma::vec priors_rho;
+  arma::mat beta, beta_b, beta_mu_post, beta_mu_prior, beta_sigma, beta_t, beta_v_post,
+  beta_vinv_prior, beta_y, beta_z, pi, pi_temp;
+  arma::vec beta_init;
+  //arma::mat alpha, beta_help;
   double rho;
+  
+  
   
   if (use_rr) {
     
@@ -132,10 +133,9 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
     
     // beta
     priors_beta = priors_cointegration["beta"];
-    prior_beta_mu = Rcpp::as<arma::mat>(priors_beta["mu"]);
-    prior_beta_vinv = Rcpp::as<arma::mat>(priors_beta["v_i"]);
-    post_beta_mu = prior_beta_mu * 0;
-    post_beta_v = prior_beta_vinv * 0;
+    beta_mu_prior = Rcpp::as<arma::mat>(priors_beta["mu"]);
+    beta_mu_post = beta_mu_prior * 0;
+    // post_beta_v = prior_beta_vinv * 0;
     
     // rho (future functionality)
     // bool update_rho = false;
@@ -144,22 +144,26 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
     //   update_rho = true;
     // }
     
-    alpha = arma::zeros<arma::mat>(n_alpha, tt);
+    //alpha = arma::zeros<arma::mat>(n_alpha, tt);
     beta = arma::mat(n_beta, tt);
     for (int i = 0; i < tt; i++) {
       beta.col(i) = arma::vectorise(Rcpp::as<arma::mat>(init_coint["beta"]));
     }
-    pi = arma::zeros<arma::mat>(n_w, tt);
-    sigma_b_i = arma::speye<arma::sp_mat>(n_beta * tt, n_beta * tt);
-    rho = Rcpp::as<double>(init_coint["rho"]);
-    ytilde = yvec * 0;
+    beta_y = y * 0;
     beta_init = arma::vectorise(Rcpp::as<arma::mat>(init_coint["beta"]));
-    zztilde = arma::zeros<arma::mat>(k_dom * tt, n_beta * tt);
-    hh_b = arma::speye<arma::sp_mat>(n_beta * tt, n_beta * tt); // TVP H matrix
-    hh_b.diag(-n_beta) = -rho * arma::ones<arma::vec>(n_beta * (tt - 1));
+    beta_z = arma::zeros<arma::mat>(k_dom * tt, n_beta);
+    beta_sigma = arma::eye<arma::mat>(n_beta, n_beta);
+    rho = Rcpp::as<double>(init_coint["rho"]);
+    beta_b = arma::eye<arma::mat>(n_beta, n_beta) * rho;
+    pi = arma::zeros<arma::mat>(n_w, tt);
+    
+    beta_vinv_prior = (1 - rho * rho) * arma::eye<arma::mat>(n_beta, n_beta);
   }
   
-  ////////////// Priors - Non-cointegration ////////////////
+  ///////////////////////////////////////////////////////////////////////
+  // Priors & initial values - Non-cointegration
+  ///////////////////////////////////////////////////////////////////////
+  
   Rcpp::List priors_noncointegration;
   Rcpp::CharacterVector priors_noncointegration_names;
   if (std::find(priors_names.begin(), priors_names.end(), "noncointegration") != priors_names.end()) {
@@ -170,6 +174,9 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
       Rcpp::stop("Cointegration rank is zero and no non-cointegration priors provided.");
     }
   }
+  
+  Rcpp::List init_noncoint = initial["noncointegration"];
+  
   // Priors - BVS
   Rcpp::List priors_bvs;
   arma::vec gamma_bvs_lprior_0, gamma_bvs_lprior_1, gammma_prior_incl;
@@ -207,43 +214,50 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
     prior_gamma_vinv = Rcpp::as<arma::mat>(priors_noncointegration["v_i"]);
   }
   arma::vec prior_sigma_v_shape = arma::zeros<arma::vec>(n_tot);
-  arma::vec prior_sigma_v_rate = arma::zeros<arma::vec>(n_tot);
+  arma::vec gamma_sigma_v_prior_rate = arma::zeros<arma::vec>(n_tot);
+  arma::mat gamma_sigma_v = arma::zeros<arma::mat>(n_tot, n_tot);
+  arma::vec gamma_init = arma::zeros<arma::vec>(n_tot);
   if (use_rr) {
     prior_sigma_v_shape.subvec(0, n_alpha - 1) = Rcpp::as<arma::vec>(priors_alpha["shape"]);
-    prior_sigma_v_rate.subvec(0, n_alpha - 1) = Rcpp::as<arma::vec>(priors_alpha["rate"]);
+    gamma_sigma_v_prior_rate.subvec(0, n_alpha - 1) = Rcpp::as<arma::vec>(priors_alpha["rate"]);
+    gamma_init.subvec(0, n_alpha - 1) = Rcpp::as<arma::vec>(init_coint["alpha"]);
+    gamma_sigma_v.submat(0, 0, n_alpha - 1, n_alpha - 1) = Rcpp::as<arma::mat>(init_coint["sigma_alpha_i"]);
   }
   if (n_nonalpha > 0) {
     prior_sigma_v_shape.subvec(n_alpha, n_tot - 1) = Rcpp::as<arma::vec>(priors_noncointegration["shape"]);
-    prior_sigma_v_rate.subvec(n_alpha, n_tot - 1) = Rcpp::as<arma::mat>(priors_noncointegration["rate"]);
+    gamma_sigma_v_prior_rate.subvec(n_alpha, n_tot - 1) = Rcpp::as<arma::mat>(priors_noncointegration["rate"]);
+    gamma_init.subvec(n_alpha, n_tot - 1) = Rcpp::as<arma::vec>(init_noncoint["gamma"]);
+    gamma_sigma_v.submat(n_alpha, n_alpha, n_tot - 1, n_tot - 1) = Rcpp::as<arma::mat>(init_noncoint["sigma_gamma_i"]);
   }
-  arma::vec post_sigma_v_shape = prior_sigma_v_shape + 0.5 * tt;
-  arma::vec post_sigma_v_scale;
-  arma::sp_mat diag_tt = arma::speye<arma::sp_mat>(tt, tt); // T diag matrix
+  gamma_sigma_v.diag() = 1 / gamma_sigma_v.diag();
+  arma::vec gamma_sigma_v_post_shape = prior_sigma_v_shape + 0.5 * tt;
+  arma::vec gamma_sigma_v_post_scale;
+  arma::mat gamma_sigma_v_i = arma::eye<arma::mat>(n_tot, n_tot);
+  gamma_sigma_v_i.diag() = 1 / gamma_sigma_v_prior_rate;
+  arma::mat gamma_v;
+  
   arma::vec vec_tt = arma::ones<arma::vec>(tt); // T vector
   arma::mat diag_k = arma::eye<arma::mat>(k_dom, k_dom); // K diag matrix
-  arma::mat gamma = arma::zeros<arma::mat>(n_tot * tt, 1);
+  const arma::mat gamma_b = arma::eye<arma::mat>(n_tot, n_tot);
+  arma::mat gamma = arma::zeros<arma::mat>(n_tot, tt);
   arma::mat gamma_lag = gamma;
-  arma::vec gamma_init = arma::zeros<arma::vec>(n_tot);
-  arma::sp_mat zzss_i, h_sigmav_i_h;
-  arma::sp_mat hh = arma::speye<arma::sp_mat>(n_tot * tt, n_tot * tt); // TVP H matrix
-  hh.diag(-n_tot) = -arma::ones<arma::vec>(n_tot * (tt - 1));
-  arma::sp_mat zz = arma::zeros<arma::sp_mat>(tt * k_dom, tt * n_tot); // Final data matrix
+  
+  arma::mat z = arma::zeros<arma::mat>(tt * k_dom, n_tot);
   for (int i = 0; i < tt; i++) {
     if (n_nonalpha > 0) {
-      zz.submat(i * k_dom, i * n_tot + n_alpha, (i + 1) * k_dom - 1, (i + 1) * n_tot - 1) = Rcpp::as<arma::mat>(data["SUR"]).submat(i * k_dom, n_w, (i + 1) * k_dom - 1, n_w + n_nonalpha - 1);
+      z.submat(i * k_dom, n_alpha, (i + 1) * k_dom - 1, n_tot - 1) = Rcpp::as<arma::mat>(data["SUR"]).submat(i * k_dom, n_w, (i + 1) * k_dom - 1, n_w + n_nonalpha - 1);
     }
   }
-  arma::sp_mat sigma_v_i = arma::eye<arma::sp_mat>(n_tot, n_tot);
-  sigma_v_i.diag() = 1 / prior_sigma_v_rate;
-  arma::mat v;
   
   // Variable selection
-  arma::mat gamma_AG, gamma_mat, gamma_theta0, gamma_theta1;
-  arma::vec gamma_bvs_l0_res, gamma_bvs_l1_res, gamma_randu, gamma_varsel_include, gamma_varsel_include_draw;
-  arma::sp_mat zz_bvs, gamma_lambda;
+  arma::mat gamma_AG, gamma_bvs_l0_res, gamma_bvs_l1_res, gamma_mat, gamma_theta0, gamma_theta1;
+  arma::vec gamma_randu, gamma_varsel_include, gamma_varsel_include_draw;
+  arma::mat zz_bvs, gamma_lambda;
   int gamma_varsel_n, gamma_varsel_pos;
   double gamma_l0, gamma_l1, gamma_bayes, gamma_bayes_rand;
   if (bvs) {
+    gamma_bvs_l0_res = y * 0;
+    gamma_bvs_l1_res = y * 0; 
     gamma_varsel_include = Rcpp::as<arma::vec>(priors_bvs["include"]) + n_alpha - 1;
     gamma_varsel_n = size(gamma_varsel_include)(0);
     gamma_lambda = arma::eye<arma::sp_mat>(n_tot, n_tot);
@@ -251,12 +265,14 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
     gamma_l1 = 0;
     gamma_bayes = 0;
     gamma_bayes_rand = 0;
-    zz_bvs = zz;
+    zz_bvs = z;
   }
   
-  ///////////// Covar coefficients //////////////
-  // Priors
-  Rcpp::List psi_priors, psi_prior_varsel;
+  ///////////////////////////////////////////////////////////////////////
+  // Priors & initial values - Measurement covariances
+  ///////////////////////////////////////////////////////////////////////
+  
+  Rcpp::List init_psi, psi_priors, psi_prior_varsel;
   Rcpp::CharacterVector psi_priors_names;
   arma::vec psi_prior_incl, psi_tau0, psi_tau1, psi_tau0sq, psi_tau1sq, psi_bvs_lprior_0, psi_bvs_lprior_1;
   arma::vec psi_sigma_v_post_scale, psi_sigma_v_post_shape, psi_sigma_v_prior_rate;
@@ -278,39 +294,45 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
       psi_bvs_lprior_1 = arma::log(Rcpp::as<arma::vec>(psi_prior_varsel["inprior"]));
     }
   }
+  
   // Initial values
   int psi_varsel_n, psi_varsel_pos;
   double psi_bayes, psi_bayes_rand, psi_l0, psi_l1;
-  arma::vec psi, psi_init, psi_init_post_mu, psi_lag, psi_post_incl, psi_post_mu, psi_randu, psi_theta0_res, psi_theta1_res, psi_varsel_include, psi_varsel_include_draw, psi_u0, psi_u1, psi_y;
-  arma::mat diag_Psi, psi_AG, psi_init_post_v, psi_mat, psi_post_v, psi_theta0, psi_theta1, psi_v, psi_z_bvs;
-  arma::sp_mat diag_covar_omega_i, Psi, psi_hh, psi_h_sigmav_i_h, psi_lambda, psi_sigma_v_i, psi_z, psi_zzss_i;
+  arma::vec psi_init, psi_init_post_mu, psi_post_incl, psi_post_mu, psi_randu, psi_varsel_include, psi_varsel_include_draw, psi_u0, psi_u1;
+  arma::mat psi, Psi, diag_Psi, psi_AG, psi_b, psi_init_post_v, psi_lag, psi_lambda, psi_mat, psi_sigma_v, psi_sigma_v_i, psi_theta0, psi_theta1, psi_theta0_res, psi_theta1_res, psi_v, psi_y, psi_z, psi_z_bvs;
   if (covar) {
     n_psi = k_dom * (k_dom - 1) / 2;
-    Psi = arma::speye<arma::sp_mat>(k_dom * tt, k_dom * tt);
+    Psi = arma::zeros<arma::mat>(k_dom * tt, k_dom);
+    for (int i = 0; i < tt; i++) {
+      Psi.rows(i * k_dom, (i + 1) * k_dom - 1) = arma::eye<arma::mat>(k_dom, k_dom);
+    }
     Rcpp::List init_psi = initial["psi"];
-    psi_init = Rcpp::as<arma::vec>(init_psi["draw"]);
-    psi_lag = arma::zeros<arma::vec>(n_psi * tt);
-    psi_z = arma::zeros<arma::mat>((k_dom - 1) * tt, n_psi * tt);
-    psi_hh = arma::speye<arma::sp_mat>(n_psi * tt, n_psi * tt);
-    psi_hh.diag(-n_psi) = -arma::ones<arma::vec>(n_psi * (tt - 1));
-    diag_covar_omega_i = arma::zeros<arma::sp_mat>(tt * (k_dom - 1), tt * (k_dom - 1));
-    psi_sigma_v_i = arma::speye<arma::sp_mat>(n_psi, n_psi);
-    psi_sigma_v_i.diag() = 1 / psi_sigma_v_prior_rate;
+    psi_init = Rcpp::as<arma::vec>(init_psi["psi"]);
+    psi_sigma_v_i = Rcpp::as<arma::mat>(init_psi["sigma_psi_i"]);
+    psi_sigma_v = arma::solve(psi_sigma_v_i, arma::eye<arma::mat>(n_psi, n_psi));
+    psi_b = arma::eye<arma::mat>(n_psi, n_psi);
+    psi_lag = arma::zeros<arma::mat>(n_psi, tt);
+    psi_z = arma::zeros<arma::mat>((k_dom - 1) * tt, n_psi);
     if (psi_bvs) {
       psi_varsel_include = Rcpp::as<arma::vec>(psi_prior_varsel["include"]) - 1;
       psi_varsel_n = size(psi_varsel_include)(0);
-      psi_lambda = arma::speye<arma::sp_mat>(n_psi, n_psi);
+      psi_lambda = arma::eye<arma::mat>(n_psi, n_psi);
       psi_l0 = 0;
       psi_l1 = 0;
+      psi_theta0_res = arma::zeros<arma::mat>(k_dom - 1, tt);
+      psi_theta1_res = arma::zeros<arma::mat>(k_dom - 1, tt);
       psi_bayes = 0;
       psi_bayes_rand = 0;
     }
   }
   
-  ////////////// Measurement error - sigma_u ///////////////
-  // Priors
+  ///////////////////////////////////////////////////////////////////////
+  // Priors & initial values - Measurement error variances  
+  ///////////////////////////////////////////////////////////////////////
+  
   Rcpp::List sigma_pr = priors["sigma"];
   Rcpp::CharacterVector sigma_names = sigma_pr.names();
+  Rcpp::List init_sigma = initial["sigma"];
   double sigma_post_df;
   arma::vec sigma_post_shape, sigma_prior_rate, sigma_prior_mu;
   arma::mat sigma_prior_scale, sigma_prior_vi;
@@ -333,26 +355,39 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
   }
   
   // Initial values
-  arma::vec h_init, sigma_h, u_vec, sigma_post_scale;
-  arma::mat h_init_post_v, sigma_h_i, diag_sigma_i_temp;
-  arma::vec h_init_post_mu;
-  arma::mat h, h_lag, sse;
+  arma::vec h_const, h_init, h_init_post_mu, sigma_h, u_vec, sigma_post_scale;
+  arma::mat h_init_post_v, sigma_h_i, diag_sigma_i_temp, h, h_lag, sigma_u, sigma_u_i, sigma_u_temp, sse, omega_i, omega_psi;
   arma::mat u = y * 0;
-  arma::sp_mat diag_omega_i, sigma_u_i, omega_i;
-  arma::sp_mat diag_sigma_u_i = arma::zeros<arma::sp_mat>(k_dom * tt, k_dom * tt);
+  sigma_u = arma::zeros<arma::mat>(k_dom * tt, k_dom);
+  sigma_u_i = arma::zeros<arma::mat>(k_dom * tt, k_dom);
   if (sv) {
     h = Rcpp::as<arma::mat>(init_sigma["h"]);
     h_lag = h * 0;
     sigma_h = Rcpp::as<arma::vec>(init_sigma["sigma_h"]);
     h_init = arma::vectorise(h.row(0));
-    sigma_u_i = arma::diagmat(1 / exp(h_init));
+    h_const = Rcpp::as<arma::vec>(init_sigma["constant"]);
+    if (covar) {
+      omega_psi = arma::zeros<arma::mat>((k_dom - 1) * tt, k_dom - 1);
+    }
+    for (int i = 0; i < tt; i++) {
+      sigma_u.rows(i * k_dom, (i + 1) * k_dom - 1) = arma::diagmat(exp(h_init));
+      sigma_u_i.rows(i * k_dom, (i + 1) * k_dom - 1) = arma::solve(sigma_u.rows(i * k_dom, (i + 1) * k_dom - 1), diag_k);
+      if (covar) {
+        omega_psi.rows(i * (k_dom - 1), (i + 1) * (k_dom - 1) - 1) = sigma_u.submat(i * k_dom + 1, 1, (i + 1) * k_dom - 1, k_dom - 1);
+      }
+    }
+    omega_i = sigma_u_i;
   } else {
-    omega_i = Rcpp::as<arma::mat>(init_sigma["sigma_i"]);
-    sigma_u_i = omega_i;
-  }
-  diag_sigma_u_i = arma::kron(diag_tt, sigma_u_i); //diag_sigma_u_i.diag() = arma::repmat(sigma_u_i.diag(), tt, 1);
-  if (covar || sv) {
-    diag_omega_i = diag_sigma_u_i;
+    if (use_gamma) {
+      omega_i = arma::zeros<arma::mat>(k_dom, k_dom);
+      omega_i.diag() = Rcpp::as<arma::mat>(init_sigma["sigma_i"]).diag();
+    } else {
+      omega_i = Rcpp::as<arma::mat>(init_sigma["sigma_i"]);
+    }
+    for (int i = 0; i < tt; i++) {
+      sigma_u.rows(i * k_dom, (i + 1) * k_dom - 1) = arma::solve(omega_i, diag_k);
+      sigma_u_i.rows(i * k_dom, (i + 1) * k_dom - 1) = omega_i;
+    }
   }
   
   //////////////////////////////////////////// Storage objects ///////////////////////////////////////////////////
@@ -425,51 +460,78 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
       Rcpp::checkUserInterrupt();
     }
     
-    //////// Draw non-cointegration parameters /////////////
+    ///////////////////////////////////////////////////////////////////////
+    // Draw non-cointegration parameters
+    ///////////////////////////////////////////////////////////////////////
     
     if (use_rr) {
       // Update ECT
       if (bvs) {
         for (int i = 0; i < tt; i++) {
-          zz_bvs.submat(i * k_dom, i * n_tot, (i + 1) * k_dom - 1, i * n_tot + n_alpha - 1) = arma::kron(arma::trans(arma::trans(arma::reshape(beta.col(i), k_w, r)) * w.col(i)), diag_k);
+          zz_bvs.submat(i * k_dom, 0, (i + 1) * k_dom - 1, n_alpha - 1) = arma::kron(arma::trans(arma::trans(arma::reshape(beta.col(i), k_w, r)) * w.col(i)), diag_k);
         }
       } else {
         for (int i = 0; i < tt; i++) {
-          zz.submat(i * k_dom, i * n_tot, (i + 1) * k_dom - 1, i * n_tot + n_alpha - 1) = arma::kron(arma::trans(arma::trans(arma::reshape(beta.col(i), k_w, r)) * w.col(i)), diag_k);
+          z.submat(i * k_dom, 0, (i + 1) * k_dom - 1, n_alpha - 1) = arma::kron(arma::trans(arma::trans(arma::reshape(beta.col(i), k_w, r)) * w.col(i)), diag_k);
         }
       }
     }
     
     if (bvs) {
-      zz = zz_bvs * arma::kron(diag_tt, gamma_lambda); // Update zz for BVS
+      z = zz_bvs * gamma_lambda; // Update zz for BVS
     }
-    zzss_i = arma::trans(zz) * diag_sigma_u_i;
-    h_sigmav_i_h = arma::trans(hh) * arma::kron(diag_tt, sigma_v_i) * hh;
-    post_gamma_v =  h_sigmav_i_h + zzss_i * zz;
-    post_gamma_mu = arma::solve(post_gamma_v, h_sigmav_i_h * arma::kron(vec_tt, gamma_init) + zzss_i * yvec);
-    gamma = post_gamma_mu + arma::solve(arma::chol(post_gamma_v), arma::randn<arma::vec>(n_tot * tt));
-
-    // Variable selection
     
+    // Draw gamma
+    gamma = bvartools::kalman_dk(y, z, sigma_u, gamma_sigma_v, gamma_b, gamma_init, gamma_sigma_v);
+    gamma = gamma.cols(1, tt);
+    
+    // Draw sigma_v_i
+    gamma_lag.col(0) = gamma_init;
+    gamma_lag.cols(1, tt - 1) = gamma.cols(0, tt - 2);
+    gamma_v = arma::trans(gamma - gamma_lag);
+    gamma_sigma_v_post_scale = 1 / (gamma_sigma_v_prior_rate + arma::vectorise(arma::sum(arma::pow(gamma_v, 2))) * 0.5);
+    for (int i = 0; i < n_tot; i++) {
+      gamma_sigma_v_i(i, i) = arma::randg<double>(arma::distr_param(gamma_sigma_v_post_shape(i), gamma_sigma_v_post_scale(i)));
+      gamma_sigma_v(i, i) = 1 / gamma_sigma_v_i(i, i);
+    }
+    
+    // Draw gamma_0
+    if (use_rr) {
+      // Update alpha_0 prior
+      prior_gamma_vinv.submat(alpha_pos_start, alpha_pos_start, alpha_pos_end, alpha_pos_end) = 1 / (1 - rho * rho) * arma::eye<arma::mat>(n_alpha, n_alpha);
+    }
+    post_gamma0_v = prior_gamma_vinv + gamma_sigma_v_i;
+    post_gamma_mu = arma::solve(post_gamma0_v, prior_gamma_vinv * prior_gamma_mu + gamma_sigma_v_i * gamma.submat(0, 0, n_tot - 1, 0));
+    gamma_init = post_gamma_mu + arma::solve(arma::chol(post_gamma0_v), arma::randn(n_tot));
+    
+    // Variable selection
     if (n_nonalpha > 0 && bvs) {
-      zz = zz_bvs;
-      gamma_mat = arma::reshape(gamma, n_tot, tt); // Full current draw
-      gamma_AG = gamma_lambda * gamma_mat;  // Old selection
+      z = zz_bvs;
+      gamma_AG = gamma_lambda * gamma;  // Old selection
       gamma_varsel_include_draw = shuffle(gamma_varsel_include); // Reorder positions of variable selection
-      for (int j = 0; j < gamma_varsel_n; j++){
+      for (int j = 0; j < gamma_varsel_n; j++){ // Repeat for each variable
         gamma_varsel_pos = gamma_varsel_include_draw(j);
         gamma_randu = arma::log(arma::randu<arma::vec>(1));
         if (gamma_lambda(gamma_varsel_pos, gamma_varsel_pos) == 1 && gamma_randu(0) >= gamma_bvs_lprior_1(gamma_varsel_pos)){continue;}
         if (gamma_lambda(gamma_varsel_pos, gamma_varsel_pos) == 0 && gamma_randu(0) >= gamma_bvs_lprior_0(gamma_varsel_pos)){continue;}
         if ((gamma_lambda(gamma_varsel_pos, gamma_varsel_pos) == 1 && gamma_randu(0) < gamma_bvs_lprior_1(gamma_varsel_pos)) || (gamma_lambda(gamma_varsel_pos, gamma_varsel_pos) == 0 && gamma_randu(0) < gamma_bvs_lprior_0(gamma_varsel_pos))){
+          // Candidate exclude
           gamma_theta0 = gamma_AG;
-          gamma_theta1 = gamma_AG;
           gamma_theta0.row(gamma_varsel_pos) = arma::zeros<arma::mat>(1, tt);
-          gamma_theta1.row(gamma_varsel_pos) = gamma_mat.row(gamma_varsel_pos);
-          gamma_bvs_l0_res = yvec - zz * arma::vectorise(gamma_theta0);
-          gamma_bvs_l1_res = yvec - zz * arma::vectorise(gamma_theta1);
-          gamma_l0 = -arma::as_scalar(trans(gamma_bvs_l0_res) * diag_sigma_u_i * gamma_bvs_l0_res) * 0.5 + arma::as_scalar(gamma_bvs_lprior_0(gamma_varsel_pos));
-          gamma_l1 = -arma::as_scalar(trans(gamma_bvs_l1_res) * diag_sigma_u_i * gamma_bvs_l1_res) * 0.5 + arma::as_scalar(gamma_bvs_lprior_1(gamma_varsel_pos));
+          // Candidate include
+          gamma_theta1 = gamma_AG;
+          gamma_theta1.row(gamma_varsel_pos) = gamma.row(gamma_varsel_pos);
+          // Obtain errors
+          gamma_l0 = 0;
+          gamma_l1 = 0;
+          for (int i = 0; i < tt; i++) {
+            gamma_bvs_l0_res.col(i) = y.col(i) - z.rows(i * k_dom, (i + 1) * k_dom - 1) * gamma_theta0.col(i);
+            gamma_bvs_l1_res.col(i) = y.col(i) - z.rows(i * k_dom, (i + 1) * k_dom - 1) * gamma_theta1.col(i); 
+            gamma_l0 = gamma_l0 + arma::as_scalar(arma::trans(gamma_bvs_l0_res.col(i)) * sigma_u_i.rows(i * k_dom, (i + 1) * k_dom - 1) * gamma_bvs_l0_res.col(i));
+            gamma_l1 = gamma_l0 + arma::as_scalar(arma::trans(gamma_bvs_l1_res.col(i)) * sigma_u_i.rows(i * k_dom, (i + 1) * k_dom - 1) * gamma_bvs_l1_res.col(i));
+          }
+          gamma_l0 = -gamma_l0 * 0.5 + arma::as_scalar(gamma_bvs_lprior_0(gamma_varsel_pos));
+          gamma_l1 = -gamma_l1 * 0.5 + arma::as_scalar(gamma_bvs_lprior_1(gamma_varsel_pos));
           gamma_bayes = gamma_l1 - gamma_l0;
           gamma_bayes_rand = arma::as_scalar(arma::log(arma::randu<arma::vec>(1)));
           if (gamma_bayes >= gamma_bayes_rand){
@@ -479,28 +541,9 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
           }
         }
       }
-      gamma = arma::vectorise(gamma_lambda * gamma_mat);
+      gamma = gamma_lambda * gamma;
       gamma_lambda_vec = gamma_lambda.diag();
     }
-    
-    // Error variances of state equation
-    gamma_lag.submat(0, 0, n_tot - 1, 0) = gamma_init;
-    gamma_lag.submat(n_tot, 0, tt * n_tot - 1, 0) = gamma.submat(0, 0, (tt - 1) * n_tot - 1, 0);
-    v = arma::trans(arma::reshape(gamma - gamma_lag, n_tot, tt));
-    post_sigma_v_scale = 1 / (prior_sigma_v_rate + arma::vectorise(arma::sum(arma::pow(v, 2))) * 0.5);
-    for (int i = 0; i < n_tot; i++) {
-      sigma_v_i(i, i) = arma::randg<double>(arma::distr_param(post_sigma_v_shape(i), post_sigma_v_scale(i)));
-    }
-    
-    // Draw gamma_0
-    if (use_rr) {
-      // Update alpha_0 prior
-      prior_gamma_vinv.submat(alpha_pos_start, alpha_pos_start, alpha_pos_end, alpha_pos_end) = 1 / (1 - rho * rho) * arma::eye<arma::mat>(n_alpha, n_alpha);
-    }
-    post_gamma0_v = prior_gamma_vinv + sigma_v_i;
-    post_gamma_mu = arma::solve(post_gamma0_v, prior_gamma_vinv * prior_gamma_mu + sigma_v_i * gamma.submat(0, 0, n_tot - 1, 0));
-    gamma_init = post_gamma_mu + arma::solve(arma::chol(post_gamma0_v), arma::randn(n_tot));
-    
     
     //////// Draw cointegration parameters /////////////
     if (use_rr) {
@@ -508,44 +551,37 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
       // Get y for beta
       if (n_nonalpha > 0) {
         for (int i = 0; i < tt; i++) {
-          ytilde.subvec(i * k_dom, (i + 1) * k_dom - 1) = yvec.subvec(i * k_dom, (i + 1) * k_dom - 1) - zz.submat(i * k_dom, i * n_tot + n_alpha, (i + 1) * k_dom - 1, (i + 1) * n_tot - 1) * gamma.submat(i * n_tot + n_alpha, 0, (i + 1) * n_tot - 1, 0);
+          beta_y.col(i) = y.col(i) - z.submat(i * k_dom, n_alpha, (i + 1) * k_dom - 1, n_tot - 1) * gamma.submat(n_alpha, i, n_tot - 1, i);
         }
       } else {
-        ytilde = yvec;
+        beta_y = y;
       }
       
       for (int i = 0; i < tt; i++) {
-        zztilde.submat(i * k_dom, i * n_beta, (i + 1) * k_dom - 1, (i + 1) * n_beta - 1) = arma::kron(arma::reshape(gamma.submat(i * n_tot, 0, i * n_tot + n_alpha - 1, 0), k_dom, r), arma::trans(w.col(i)));
+        beta_z.rows(i * k_dom, (i + 1) * k_dom - 1) = arma::kron(arma::reshape(gamma.submat(0, i, n_alpha - 1, i), k_dom, r), arma::trans(w.col(i)));
       }
-
-      zzss_b_i = arma::trans(zztilde) * arma::kron(diag_tt, sigma_u_i);
-      hh_b.diag(-n_beta) = -rho * arma::ones<arma::vec>(n_beta * (tt - 1));
-      hb_sigmab_i_hb = arma::trans(hh_b) * sigma_b_i * hh_b;
-      post_beta_v = hb_sigmab_i_hb + zzss_b_i * zztilde;
-      post_beta_mu = arma::solve(post_beta_v, hb_sigmab_i_hb * arma::kron(vec_tt, beta_init) + zzss_b_i * ytilde);
-      beta = post_beta_mu + arma::solve(arma::chol(post_beta_v), arma::randn<arma::vec>(n_beta * tt));
-      beta = arma::reshape(beta, n_beta, tt);
+      
+      beta = bvartools::kalman_dk(beta_y, beta_z, sigma_u, beta_sigma, beta_b, beta_init, beta_sigma);
+      beta = beta.cols(1, tt);
       
       for (int i = 0; i < tt; i++) {
-        pi_temp = arma::reshape(gamma.submat(i * n_tot, 0, i * n_tot + n_alpha - 1, 0), k_dom, r) * arma::trans(arma::reshape(beta.col(i), k_w, r));
-        // Subtract cointegration part from y
-        u.col(i) = y.col(i) - pi_temp * w.col(i);
-        pi.col(i) = arma::vectorise(pi_temp);
+        pi_temp = arma::reshape(gamma.submat(0, i, n_alpha - 1, i), k_dom, r) * arma::trans(arma::reshape(beta.col(i), k_w, r));
+        u.col(i) = y.col(i) - pi_temp * w.col(i); // Subtract cointegration part from y
         if (n_nonalpha > 0) { // If estimated, subtract non-cointegration effects
-          u.col(i) = u.col(i) - zz.submat(i * k_dom, i * n_tot + n_alpha, (i + 1) * k_dom - 1, (i + 1) * n_tot - 1) * gamma.submat(i * n_tot + n_alpha, 0, (i + 1) * n_tot - 1, 0);
+          u.col(i) = u.col(i) - z.submat(i * k_dom, n_alpha, (i + 1) * k_dom - 1, n_tot - 1) * gamma.submat(n_alpha, i, n_tot - 1, i);
         }
+        pi.col(i) = arma::vectorise(pi_temp); // Update final Pi matrix
       }
       
       /////// Draw beta_0 //////////
-      prior_beta_vinv = (1 - rho * rho) * arma::eye<arma::mat>(n_beta, n_beta); // Update beta prior
-      post_beta_v = prior_beta_vinv + arma::eye<arma::mat>(n_beta, n_beta);
-      post_beta_mu = arma::solve(post_beta_v, prior_beta_vinv * prior_beta_mu + arma::eye<arma::mat>(n_beta, n_beta) * beta.col(0));
-      beta_init = post_beta_mu + arma::solve(arma::chol(post_beta_v), arma::randn(n_beta));
+      beta_v_post = beta_vinv_prior + beta_sigma;
+      beta_mu_post = arma::solve(beta_v_post, beta_vinv_prior * beta_mu_prior + beta_sigma * beta.col(0));
+      beta_init = beta_mu_post + arma::solve(arma::chol(beta_v_post), arma::randn(n_beta));
       
     } else {
       if (n_nonalpha > 0) {
         for (int i = 0; i < tt; i++) {
-          u.col(i) = yvec.subvec(i * k_dom, (i + 1) * k_dom - 1) - zz.submat(i * k_dom, i * n_tot, (i + 1) * k_dom - 1, (i + 1) * n_tot - 1) * gamma.submat(i * n_tot, 0, (i + 1) * n_tot - 1, 0);
+          u.col(i) = y.col(i) - z.rows(i * k_dom, (i + 1) * k_dom - 1) * gamma.col(i);
         }
       } else {
         u = y;
@@ -556,28 +592,24 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
     if (covar) {
       
       // Prepare data
-      psi_y = arma::vectorise(u.rows(1, k_dom - 1));
-      for (int i = 1; i < k_dom; i++) {
-        for (int j = 0; j < tt; j++) {
+      for (int j = 0; j < tt; j++) {
+        for (int i = 1; i < k_dom; i++) {
           psi_z.submat(j * (k_dom - 1) + i - 1,
-                       j * n_psi + i * (i - 1) / 2,
+                       i * (i - 1) / 2,
                        j * (k_dom - 1) + i - 1,
-                       j * n_psi + (i + 1) * i / 2 - 1) = -arma::trans(u.submat(0, j, i - 1, j));
-          
-          diag_covar_omega_i(j * (k_dom - 1) + i - 1, j * (k_dom - 1) + i - 1) = diag_omega_i(j * k_dom + i, j * k_dom + i);
+                       (i + 1) * i / 2 - 1) = -arma::trans(u.submat(0, j, i - 1, j));
         }
+        omega_psi.rows(j * (k_dom - 1), (j + 1) * (k_dom - 1) - 1) = arma::solve(omega_i.submat(j * k_dom + 1, 1, (j + 1) * k_dom - 1, k_dom - 1), arma::eye<arma::mat>(k_dom - 1, k_dom - 1));
       }
       
       if (psi_bvs) {
         psi_z_bvs = psi_z;
-        psi_z = psi_z_bvs * arma::kron(diag_tt, psi_lambda);
+        psi_z = psi_z_bvs * psi_lambda;
       }
       
-      psi_zzss_i = arma::trans(psi_z) * diag_covar_omega_i;
-      psi_h_sigmav_i_h = arma::trans(psi_hh) * arma::kron(diag_tt, psi_sigma_v_i) * psi_hh;
-      psi_post_v = psi_h_sigmav_i_h + psi_zzss_i * psi_z;
-      psi_post_mu = arma::solve(psi_post_v, psi_h_sigmav_i_h * arma::kron(vec_tt, psi_init) + psi_zzss_i * psi_y);
-      psi = psi_post_mu + arma::solve(arma::chol(psi_post_v), arma::randn(n_psi * tt));
+      psi_y = u.rows(1, k_dom - 1);
+      psi = bvartools::kalman_dk(psi_y, psi_z, omega_psi, psi_sigma_v, psi_b, psi_init, psi_sigma_v);
+      psi = psi.cols(1, tt);
       
       if (psi_bvs) {
         
@@ -585,22 +617,28 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
         psi_varsel_include_draw = shuffle(psi_varsel_include);
         
         psi_z = psi_z_bvs;
-        psi_mat = arma::reshape(psi, n_psi, tt);
-        psi_AG = psi_lambda * psi_mat;
+        psi_AG = psi_lambda * psi;
         for (int j = 0; j < psi_varsel_n; j++){
           psi_varsel_pos = psi_varsel_include_draw(j);
           psi_randu = arma::log(arma::randu<arma::vec>(1));
           if (psi_lambda(psi_varsel_pos, psi_varsel_pos) == 1 && psi_randu(0) >= psi_bvs_lprior_1(psi_varsel_pos)){continue;}
           if (psi_lambda(psi_varsel_pos, psi_varsel_pos) == 0 && psi_randu(0) >= psi_bvs_lprior_0(psi_varsel_pos)){continue;}
           if ((psi_lambda(psi_varsel_pos, psi_varsel_pos) == 1 && psi_randu(0) < psi_bvs_lprior_1(psi_varsel_pos)) || (psi_lambda(psi_varsel_pos, psi_varsel_pos) == 0 && psi_randu(0) < psi_bvs_lprior_0(psi_varsel_pos))){
+            // Candidate exclude
             psi_theta0 = psi_AG;
+            psi_theta0.row(psi_varsel_pos) = arma::zeros<arma::mat>(1, tt);;
+            // Candidate include
             psi_theta1 = psi_AG;
-            psi_theta0.row(psi_varsel_pos) = 0;
             psi_theta1.row(psi_varsel_pos) = psi.row(psi_varsel_pos);
-            psi_theta0_res = psi_y - psi_z * psi_theta0;
-            psi_theta1_res = psi_y - psi_z * psi_theta1;
-            psi_l0 = -arma::as_scalar(trans(psi_theta0_res) * diag_covar_omega_i * psi_theta0_res) / 2 + arma::as_scalar(psi_bvs_lprior_0(psi_varsel_pos));
-            psi_l1 = -arma::as_scalar(trans(psi_theta1_res) * diag_covar_omega_i * psi_theta1_res) / 2 + arma::as_scalar(psi_bvs_lprior_1(psi_varsel_pos));
+            // Obtain errors
+            psi_l0 = 0;
+            psi_l1 = 0;
+            for (int i = 0; i < tt; i++) {
+              psi_theta0_res.col(i) = psi_y.col(i) - psi_z.rows(i * (k_dom - 1), (i + 1) * (k_dom - 1) - 1) * psi_theta0.col(i);
+              psi_theta1_res.col(i) = psi_y.col(i) - psi_z.rows(i * (k_dom - 1), (i + 1) * (k_dom - 1) - 1) * psi_theta1.col(i); 
+              psi_l0 = psi_l0 + arma::as_scalar(arma::trans(psi_theta0_res.col(i)) * omega_psi.rows(i * (k_dom - 1), (i + 1) * (k_dom - 1) - 1) * psi_theta0_res.col(i));
+              psi_l1 = psi_l1 + arma::as_scalar(arma::trans(psi_theta1_res.col(i)) * omega_psi.rows(i * (k_dom - 1), (i + 1) * (k_dom - 1) - 1) * psi_theta1_res.col(i));
+            }
             psi_bayes = psi_l1 - psi_l0;
             psi_bayes_rand = arma::as_scalar(arma::log(arma::randu<arma::vec>(1)));
             if (psi_bayes >= psi_bayes_rand){
@@ -610,47 +648,53 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
             }
           }
         }
-        psi = arma::vectorise(psi_lambda * psi_mat);
+        psi = psi_lambda * psi;
         psi_lambda_vec = psi_lambda.diag();
       }
-      
-      // Draw sigma_v_i
-      psi_lag.subvec(0, n_psi - 1) = psi_init;
-      psi_lag.subvec(n_psi, tt * n_psi - 1) = psi.subvec(0, (tt - 1) * n_psi - 1);
-      psi_v = arma::trans(arma::reshape(psi - psi_lag, n_psi, tt));
+     
+      psi_lag.col(0) = psi_init;
+      psi_lag.cols(1, tt - 1) = psi.cols(0, tt - 2);
+      psi_v = arma::trans(psi - psi_lag);
       psi_sigma_v_post_scale = 1 / (psi_sigma_v_prior_rate + arma::vectorise(arma::sum(arma::pow(psi_v, 2))) * 0.5);
       for (int i = 0; i < n_psi; i++) {
         psi_sigma_v_i(i, i) = arma::randg<double>(arma::distr_param(psi_sigma_v_post_shape(i), psi_sigma_v_post_scale(i)));
+        psi_sigma_v(i, i) = 1 / psi_sigma_v_i(i, i);
       }
       
       // Draw initial state of a
       psi_init_post_v = psi_init_prior_vi + psi_sigma_v_i;
-      psi_init_post_mu = arma::solve(psi_init_post_v, psi_init_prior_vi * psi_init_prior_mu + psi_sigma_v_i * psi.subvec(0, n_psi - 1));
+      psi_init_post_mu = arma::solve(psi_init_post_v, psi_init_prior_vi * psi_init_prior_mu + psi_sigma_v_i * psi.col(0));
       psi_init = psi_init_post_mu + arma::solve(arma::chol(psi_init_post_v), arma::randn(n_psi));
       
       for (int j = 0; j < tt; j ++) {
         for (int i = 1; i < k_dom; i++) {
-          Psi.submat((k_dom * j) + i, k_dom * j, (k_dom * j) + i, (k_dom * j) + i - 1) = arma::trans(psi.subvec((n_psi * j) + i * (i - 1) / 2, (n_psi * j) + (i + 1) * i / 2 - 1));
+          Psi.submat((k_dom * j) + i, 0, (k_dom * j) + i, i - 1) = arma::trans(psi.submat(i * (i - 1) / 2, j, (i + 1) * i / 2 - 1, j));
+        }
+        u.col(j) = Psi.rows(j * k_dom, (j + 1) * k_dom - 1) * u.col(j);
+      }
+    }
+    
+    ///////////////////////////////////////////////////////////////////////
+    // Draw error variances
+    ///////////////////////////////////////////////////////////////////////
+    if (sv) {
+      
+      // Draw variances
+      for (int i = 0; i < k_dom; i++) {
+        h.col(i) = bvartools::stoch_vol(u.row(i).t(), h.col(i), sigma_h(i), h_init(i), h_const(i));
+      }
+      
+      // Update sigma_u
+      for (int i = 0; i < tt; i++) {
+        omega_i.rows(i * k_dom, (i + 1) * k_dom - 1) = arma::diagmat(1 / arma::exp(h.row(i)));
+        if (covar) {
+          sigma_u_i.rows(i * k_dom, (i + 1) * k_dom - 1) = arma::trans(Psi.rows(i * k_dom, (i + 1) * k_dom - 1)) * omega_i.rows(i * k_dom, (i + 1) * k_dom - 1) * Psi.rows(i * k_dom, (i + 1) * k_dom - 1);
+          sigma_u.rows(i * k_dom, (i + 1) * k_dom - 1) = arma::solve(sigma_u_i.rows(i * k_dom, (i + 1) * k_dom - 1), diag_k);
+        } else {
+          sigma_u.rows(i * k_dom, (i + 1) * k_dom - 1) = arma::diagmat(arma::exp(h.row(i)));
         }
       }
       
-      u = arma::reshape(Psi * arma::vectorise(u), k_dom, tt);
-    }
-    
-    // Errors
-    if (sv) {
-
-      // Draw variances
-      for (int i = 0; i < k_dom; i++) {
-        h.col(i) = bvartools::stoch_vol(u.row(i).t(), h.col(i), sigma_h(i), h_init(i));
-      }
-      diag_omega_i.diag() = 1 / exp(arma::vectorise(h.t()));
-      if (covar) {
-        diag_sigma_u_i = arma::trans(Psi) * diag_omega_i * Psi;
-      } else {
-        diag_sigma_u_i = diag_omega_i;
-      }
-
       // Draw sigma_h
       h_lag.row(0) = h_init.t();
       h_lag.rows(1, tt - 1) = h.rows(0, tt - 2);
@@ -659,115 +703,125 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
       for (int i = 0; i < k_dom; i++) {
         sigma_h(i) = 1 / arma::randg<double>(arma::distr_param(sigma_post_shape(i), sigma_post_scale(i)));
       }
-
+      
       // Draw h_init
       sigma_h_i = arma::diagmat(1 / sigma_h);
       h_init_post_v = sigma_prior_vi + sigma_h_i;
       h_init_post_mu = arma::solve(h_init_post_v, sigma_prior_vi * sigma_prior_mu + sigma_h_i * h.row(0).t());
       h_init = h_init_post_mu + arma::solve(arma::chol(h_init_post_v), arma::randn(k_dom));
-
+      
     } else {
-
+      
+      // Obtain squared errors
+      sse = u * u.t();
+      
       if (use_gamma) {
-
-        sse = u * u.t();
+        // Draw from gamma distribution
         for (int i = 0; i < k_dom; i++) {
           omega_i(i, i) = arma::randg<double>(arma::distr_param(sigma_post_shape(i), 1 / arma::as_scalar(sigma_prior_rate(i) + sse(i, i) * 0.5)));
         }
-        diag_omega_i = arma::kron(diag_tt, omega_i);
+        
         if (covar) {
-          diag_sigma_u_i = arma::trans(Psi) * diag_omega_i * Psi;
+          for (int i = 0; i < tt; i++) {
+            sigma_u_i.rows(i * k_dom, (i + 1) * k_dom - 1) = arma::trans(Psi.rows(i * k_dom, (i + 1) * k_dom - 1)) * omega_i.rows(i * k_dom, (i + 1) * k_dom - 1) * Psi.rows(i * k_dom, (i + 1) * k_dom - 1);
+            sigma_u.rows(i * k_dom, (i + 1) * k_dom - 1) = arma::solve(sigma_u_i.rows(i * k_dom, (i + 1) * k_dom - 1), diag_k);
+          }
         } else {
           sigma_u_i = omega_i;
-          diag_sigma_u_i = diag_omega_i;
+          sigma_u_temp = arma::solve(sigma_u_i, diag_k);
+          for (int i = 0; i < tt; i++) {
+            sigma_u.rows(i * k_dom, (i + 1) * k_dom - 1) = sigma_u_temp;
+          }
         }
-
+        
       } else {
-        sigma_u_i = arma::wishrnd(arma::solve(sigma_prior_scale + u * u.t(), diag_k), sigma_post_df);
-        diag_sigma_u_i = arma::kron(diag_tt, sigma_u_i);
+        sigma_u_i = arma::wishrnd(arma::solve(sigma_prior_scale + sse, diag_k), sigma_post_df);
+        sigma_u_temp = arma::solve(sigma_u_i, diag_k);
+        for (int i = 0; i < tt; i++) {
+          sigma_u.rows(i * k_dom, (i + 1) * k_dom - 1) = sigma_u_temp;
+        }
+      }
+    }
+   
+  
+  
+  // Store draws
+  if (draw >= burnin) {
+    
+    pos_draw = draw - burnin;
+    
+    if (sv) {
+      for (int i = 0; i < tt; i ++) {
+        draws_sigma_u.submat(i * n_sigma, pos_draw, (i + 1) * n_sigma - 1, pos_draw) = arma::vectorise(sigma_u.rows(i * k_dom, (i + 1) * k_dom - 1));
+      }
+      draws_sigma_sigma.col(pos_draw) = arma::vectorise(arma::diagmat(sigma_h));
+    } else {
+      draws_sigma_u.col(pos_draw) = arma::vectorise(sigma_u.rows(0, k_dom - 1));
+    }
+    
+    if (psi_bvs) {
+      draws_a0_lambda.col(pos_draw) = psi_lambda_vec;
+    }
+   
+    if (use_rr) {
+      draws_alpha.col(pos_draw) = arma::vectorise(gamma.rows(alpha_pos_start, alpha_pos_end));
+      for (int i = 0; i < tt; i++) {
+        beta_t = arma::reshape(beta.col(i), k_w, r).t();
+        draws_beta_dom.submat(i * k_dom * r, pos_draw, (i + 1) * r * k_dom - 1, pos_draw) = arma::vectorise(arma::trans(beta_t.cols(0, k_dom - 1)));
+        if (k_for > 0) {
+          draws_beta_for.submat(i * k_for * r, pos_draw, (i + 1) * r * k_for - 1, pos_draw) = arma::vectorise(arma::trans(beta_t.cols(k_dom, k_dom + k_for - 1)));
+        }
+        if (k_glo > 0) {
+          draws_beta_glo.submat(i * k_glo * r, pos_draw, (i + 1) * r * k_glo - 1, pos_draw) = arma::vectorise(arma::trans(beta_t.cols(k_dom + k_for, k_dom + k_for + k_glo - 1)));
+        }
+        if (k_det_r > 0) {
+          draws_beta_det.submat(i * k_det_r * r, pos_draw, (i + 1) * r * k_det_r - 1, pos_draw) = arma::vectorise(arma::trans(beta_t.cols(k_dom + k_for + k_glo, k_dom + k_for + k_glo + k_det_r - 1)));
+        }
       }
     }
     
-    // Store draws
-    if (draw >= burnin) {
-      
-      pos_draw = draw - burnin;
-      
-      if (sv) {
-        for (int i = 0; i < tt; i ++) {
-          draws_sigma_u.submat(i * n_sigma, pos_draw, (i + 1) * n_sigma - 1, pos_draw) = arma::vectorise(arma::solve(arma::mat(diag_sigma_u_i.submat(i * k_dom, i * k_dom, (i + 1) * k_dom - 1, (i + 1) * k_dom - 1)), diag_k));
-        }
-        draws_sigma_sigma.col(pos_draw) = arma::vectorise(arma::diagmat(sigma_h));
-      } else {
-        draws_sigma_u.col(pos_draw) = arma::vectorise(arma::solve(arma::mat(sigma_u_i), diag_k));
+    if (n_dom > 0) {
+      draws_dom.col(pos_draw) = arma::vectorise(gamma.rows(dom_pos_start, dom_pos_end));
+      draws_dom_sigma.col(pos_draw) = 1 / arma::mat(gamma_sigma_v_i.submat(dom_pos_start, dom_pos_start, dom_pos_end, dom_pos_end)).diag();
+      if (bvs) {
+        draws_dom_lambda.col(pos_draw) = gamma_lambda_vec.subvec(dom_pos_start, dom_pos_end);
       }
-      
-      if (psi_bvs) {
-        draws_a0_lambda.col(pos_draw) = psi_lambda_vec;
+    }
+
+    if (n_for > 0) {
+      draws_for.col(pos_draw) = arma::vectorise(gamma.rows(for_pos_start, for_pos_end));
+      draws_for_sigma.col(pos_draw) = 1 / arma::mat(gamma_sigma_v_i.submat(for_pos_start, for_pos_start, for_pos_end, for_pos_end)).diag();
+      if (bvs) {
+        draws_for_lambda.col(pos_draw) = gamma_lambda_vec.subvec(for_pos_start, for_pos_end);
       }
-      
-      gamma = arma::reshape(gamma, n_tot, tt); // Reshape gamma so that there is one column per period
-      
-      if (use_rr) {
-        draws_alpha.col(pos_draw) = arma::vectorise(gamma.rows(alpha_pos_start, alpha_pos_end));
-        for (int i = 0; i < tt; i++) {
-          beta_t = arma::reshape(beta.col(i), k_w, r).t();
-          draws_beta_dom.submat(i * k_dom * r, pos_draw, (i + 1) * r * k_dom - 1, pos_draw) = arma::vectorise(arma::trans(beta_t.cols(0, k_dom - 1)));
-          if (k_for > 0) {
-            draws_beta_for.submat(i * k_for * r, pos_draw, (i + 1) * r * k_for - 1, pos_draw) = arma::vectorise(arma::trans(beta_t.cols(k_dom, k_dom + k_for - 1)));
-          }
-          if (k_glo > 0) {
-            draws_beta_glo.submat(i * k_glo * r, pos_draw, (i + 1) * r * k_glo - 1, pos_draw) = arma::vectorise(arma::trans(beta_t.cols(k_dom + k_for, k_dom + k_for + k_glo - 1)));
-          }
-          if (k_det_r > 0) {
-            draws_beta_det.submat(i * k_det_r * r, pos_draw, (i + 1) * r * k_det_r - 1, pos_draw) = arma::vectorise(arma::trans(beta_t.cols(k_dom + k_for + k_glo, k_dom + k_for + k_glo + k_det_r - 1)));
-          }
-        }
+    }
+
+    if (n_glo > 0) {
+      draws_glo.col(pos_draw) = arma::vectorise(gamma.rows(glo_pos_start, glo_pos_end));
+      draws_glo_sigma.col(pos_draw) = 1 / arma::mat(gamma_sigma_v_i.submat(glo_pos_start, glo_pos_start, glo_pos_end, glo_pos_end)).diag();
+      if (bvs) {
+        draws_glo_lambda.col(pos_draw) = gamma_lambda_vec.subvec(glo_pos_start, glo_pos_end);
       }
-      
-      if (n_dom > 0) {
-        draws_dom.col(pos_draw) = arma::vectorise(gamma.rows(dom_pos_start, dom_pos_end));
-        draws_dom_sigma.col(pos_draw) = 1 / arma::mat(sigma_v_i.submat(dom_pos_start, dom_pos_start, dom_pos_end, dom_pos_end)).diag();
-        if (bvs) {
-          draws_dom_lambda.col(pos_draw) = gamma_lambda_vec.subvec(dom_pos_start, dom_pos_end);
-        }
+    }
+
+    if (n_det_ur > 0) {
+      draws_det_ur.col(pos_draw) = arma::vectorise(gamma.rows(c_pos_start, c_pos_end));
+      draws_det_ur_sigma.col(pos_draw) = 1 / arma::mat(gamma_sigma_v_i.submat(c_pos_start, c_pos_start, c_pos_end, c_pos_end)).diag();
+      if (bvs) {
+        draws_det_ur_lambda.col(pos_draw) = gamma_lambda_vec.subvec(c_pos_start, c_pos_end);
       }
-      
-      if (n_for > 0) {
-        draws_for.col(pos_draw) = arma::vectorise(gamma.rows(for_pos_start, for_pos_end));
-        draws_for_sigma.col(pos_draw) = 1 / arma::mat(sigma_v_i.submat(for_pos_start, for_pos_start, for_pos_end, for_pos_end)).diag();
-        if (bvs) {
-          draws_for_lambda.col(pos_draw) = gamma_lambda_vec.subvec(for_pos_start, for_pos_end);
-        }
+    }
+
+    if (structural) {
+      draws_a0.col(pos_draw) = arma::vectorise(gamma.rows(a0_pos_start, a0_pos_end));
+      draws_a0_sigma.col(pos_draw) = 1 / arma::mat(gamma_sigma_v_i.submat(a0_pos_start, a0_pos_start, a0_pos_end, a0_pos_end)).diag();
+      if (bvs) {
+        draws_a0_lambda.col(pos_draw) = gamma_lambda_vec.subvec(a0_pos_start, a0_pos_end);
       }
-      
-      if (n_glo > 0) {
-        draws_glo.col(pos_draw) = arma::vectorise(gamma.rows(glo_pos_start, glo_pos_end));
-        draws_glo_sigma.col(pos_draw) = 1 / arma::mat(sigma_v_i.submat(glo_pos_start, glo_pos_start, glo_pos_end, glo_pos_end)).diag();
-        if (bvs) {
-          draws_glo_lambda.col(pos_draw) = gamma_lambda_vec.subvec(glo_pos_start, glo_pos_end);
-        }
-      }
-      
-      if (n_det_ur > 0) {
-        draws_det_ur.col(pos_draw) = arma::vectorise(gamma.rows(c_pos_start, c_pos_end));
-        draws_det_ur_sigma.col(pos_draw) = 1 / arma::mat(sigma_v_i.submat(c_pos_start, c_pos_start, c_pos_end, c_pos_end)).diag();
-        if (bvs) {
-          draws_det_ur_lambda.col(pos_draw) = gamma_lambda_vec.subvec(c_pos_start, c_pos_end);
-        }
-      }
-      
-      if (structural) {
-        draws_a0.col(pos_draw) = arma::vectorise(gamma.rows(a0_pos_start, a0_pos_end));
-        draws_a0_sigma.col(pos_draw) = 1 / arma::mat(sigma_v_i.submat(a0_pos_start, a0_pos_start, a0_pos_end, a0_pos_end)).diag();
-        if (bvs) {
-          draws_a0_lambda.col(pos_draw) = gamma_lambda_vec.subvec(a0_pos_start, a0_pos_end);
-        }
-      }
+    }
     } // End posterior storing
-    
   } // End Gibbs sampler
-  
+
   Rcpp::List posteriors = Rcpp::List::create(Rcpp::Named("a0") = R_NilValue,
                                              Rcpp::Named("alpha") = R_NilValue,
                                              Rcpp::Named("beta_dom") = R_NilValue,
@@ -779,10 +833,10 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
                                              Rcpp::Named("gamma_glo") = R_NilValue,
                                              Rcpp::Named("gamma_det") = R_NilValue,
                                              Rcpp::Named("sigma") = R_NilValue);
-  
+
   if (use_rr) {
     posteriors["alpha"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_alpha));
-    
+
     // Reformat draws
     posteriors["beta_dom"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_beta_dom));
     if (k_for > 0) {
@@ -795,7 +849,7 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
       posteriors["beta_det"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_beta_det));
     }
   }
-  
+
   if (n_dom > 0) {
     if (bvs) {
       posteriors["gamma_dom"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_dom,
@@ -806,7 +860,7 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
                                                      Rcpp::Named("sigma") = draws_dom_sigma));
     }
   }
-  
+
   if (n_for > 0) {
     if (bvs) {
       posteriors["gamma_for"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_for,
@@ -817,7 +871,7 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
                                                      Rcpp::Named("sigma") = draws_for_sigma));
     }
   }
-  
+
   if (n_glo > 0) {
     if (bvs) {
       posteriors["gamma_glo"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_glo,
@@ -828,7 +882,7 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
                                                      Rcpp::Named("sigma") = draws_glo_sigma));
     }
   }
-  
+
   if (n_det_ur > 0) {
     if (bvs) {
       posteriors["gamma_det"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_det_ur,
@@ -839,7 +893,7 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
                                                      Rcpp::Named("sigma") = draws_det_ur_sigma));
     }
   }
-  
+
   if (structural) {
     if (bvs) {
       posteriors["a0"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_a0,
@@ -850,7 +904,7 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
                                                      Rcpp::Named("sigma") = draws_a0_sigma));
     }
   }
-  
+
   if (psi_bvs) {
     if (sv) {
       posteriors["sigma"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_sigma_u,
@@ -868,7 +922,7 @@ Rcpp::List bgvectvpalg(Rcpp::List object) {
       posteriors["sigma"] = Rcpp::wrap(Rcpp::List::create(Rcpp::Named("coeffs") = draws_sigma_u));
     }
   }
-  
+
   return Rcpp::List::create(Rcpp::Named("data") = object["data"],
                             Rcpp::Named("model") = object["model"],
                             Rcpp::Named("priors") = object["priors"],
@@ -909,7 +963,7 @@ model_specs <- create_specifications(country_data = country_data,
                                      deterministic = list(const = "unrestricted",
                                                           trend = "restricted"),
                                      countries = NULL,
-                                     tvp = TRUE, sv = FALSE,
+                                     tvp = TRUE, sv = TRUE,
                                      type = "VEC", r = 1,
                                      iterations = 100,
                                      burnin = 100)
@@ -921,11 +975,11 @@ country_models <- create_models(country_data = country_data,
 
 # Add priors
 models_with_priors <- add_priors(country_models,
-                                 coef = list(v_i = 1 / 9, v_i_det = 1 / 9, shape = 3, rate = .0001,
-                                             minnesota = list(kappa0 = 1, kappa1 = .5, kappa2 = 1, kappa3 = 1),
-                                             max_var = 10),
-                                 sigma = list(shape = 3, rate = .0001, covar = TRUE))
+                                 coef = list(v_i = 1 / 9, v_i_det = 1 / 9, shape = 3, rate = .0001),
+                                 sigma = list(shape = 3, rate = .0001, mu = -9, v_i = .1, sigma_h = .05, constant = .0001, covar = TRUE),
+                                 bvs = list(inprior = .5, covar = TRUE))
 
 temp <- .bgvectvpalg(models_with_priors[["EA"]])
-#bla <- temp[["posteriors"]][["beta_det"]][["coeffs"]]
+a <- temp
+
 */

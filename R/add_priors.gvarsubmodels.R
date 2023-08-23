@@ -71,7 +71,7 @@
 #'   Only used for models with time varying volatility.}
 #'   \item{\code{v_i}}{numeric of the prior precision of the initial state of the log-volatilities.
 #'   Only used for models with time varying volatility.}
-#'   \item{\code{hinit}}{numeric of the initial draw for the variance of the log-volatilities.
+#'   \item{\code{sigma_h}}{numeric of the initial draw for the variance of the log-volatilities.
 #'   Only used for models with time varying volatility.}
 #'   \item{\code{constant}}{numeric of the constant, which is added before taking the log of the squared errors.
 #'   Only used for models with time varying volatility.}
@@ -803,7 +803,7 @@ add_priors.gvarsubmodels <- function(object, ...,
     u <- apply(u, 1, stats::var)
     if (object[[i]][["model"]][["sv"]]) {
       object[[i]][["initial"]][["sigma"]][["h"]] <- log(matrix(u, nrow = NCOL(y), ncol = NROW(y), byrow = TRUE))
-      object[[i]][["initial"]][["sigma"]][["hinit"]] <- matrix(sigma[["hinit"]], NROW(y))
+      object[[i]][["initial"]][["sigma"]][["sigma_h"]] <- matrix(sigma[["sigma_h"]], NROW(y))
       object[[i]][["initial"]][["sigma"]][["constant"]] <- matrix(sigma[["constant"]], NROW(y))
     } else {
       object[[i]][["initial"]][["sigma"]][["sigma_i"]] <- diag(1 / u, NROW(y))

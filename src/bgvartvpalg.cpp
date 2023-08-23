@@ -185,7 +185,10 @@ Rcpp::List bgvartvpalg(Rcpp::List object) {
     }
   }
   
-  // Priors - Measurement errors
+  ///////////////////////////////////////////////////////////////////////
+  // Priors & initial values - Measurement error variances  
+  ///////////////////////////////////////////////////////////////////////
+  
   Rcpp::List sigma_pr = priors["sigma"];
   Rcpp::CharacterVector sigma_names = sigma_pr.names();
   Rcpp::List init_sigma = initial["sigma"];
@@ -223,7 +226,7 @@ Rcpp::List bgvartvpalg(Rcpp::List object) {
   if (sv) {
     h = Rcpp::as<arma::mat>(init_sigma["h"]);
     h_lag = h * 0;
-    sigma_h = Rcpp::as<arma::vec>(init_sigma["hinit"]);
+    sigma_h = Rcpp::as<arma::vec>(init_sigma["sigma_h"]);
     h_init = arma::vectorise(h.row(0));
     sigma_u_i = arma::diagmat(1 / exp(h_init));
     for (int i = 0; i < tt; i++) {
@@ -453,6 +456,9 @@ Rcpp::List bgvartvpalg(Rcpp::List object) {
       psi_init = psi_init_post_mu + arma::solve(arma::chol(psi_init_post_v), arma::randn(n_psi));
     }
     
+    ///////////////////////////////////////////////////////////////////////
+    // Draw error variances
+    ///////////////////////////////////////////////////////////////////////
     if (sv) {
       
       // Draw variances
@@ -489,10 +495,10 @@ Rcpp::List bgvartvpalg(Rcpp::List object) {
       
     } else {
       
+      // Obtain squared errors
+      sse = u * u.t();
+      
       if (use_gamma) {
-        
-        // Obtain squared errors
-        sse = u * u.t();
         // Draw from gamma distribution
         for (int i = 0; i < k_dom; i++) {
           omega_i(i, i) = arma::randg<double>(arma::distr_param(sigma_post_shape(i), 1 / arma::as_scalar(sigma_prior_rate(i) + sse(i, i) * 0.5)));
@@ -512,11 +518,11 @@ Rcpp::List bgvartvpalg(Rcpp::List object) {
         }
         
       } else {
-        sigma_u_i = arma::wishrnd(arma::solve(sigma_prior_scale + u * u.t(), diag_k), sigma_post_df);
+        sigma_u_i = arma::wishrnd(arma::solve(sigma_prior_scale + sse, diag_k), sigma_post_df);
+        sigma_u = arma::solve(sigma_u_i, diag_k);
         if (bvs) {
           diag_sigma_u_i = arma::kron(diag_tt, arma::sp_mat(sigma_u_i));
         }
-        sigma_u = arma::solve(sigma_u_i, diag_k);
       }
     }
     

@@ -79,7 +79,10 @@ Rcpp::List bgvaralg(Rcpp::List object) {
     n_det = k_dom * k_det;
   }
   
-  // Priors & initial values ----
+  ///////////////////////////////////////////////////////////////////////
+  //                           Priors
+  ///////////////////////////////////////////////////////////////////////
+  
   Rcpp::List priors = object["priors"];
   Rcpp::CharacterVector priors_names = priors.names();
   
@@ -87,7 +90,10 @@ Rcpp::List bgvaralg(Rcpp::List object) {
   Rcpp::List init_coeffs = initial["coefficients"];
   Rcpp::List init_sigma = initial["sigma"];
   
-  // Priors - Coefficients
+  ///////////////////////////////////////////////////////////////////////
+  // Priors & initial values - Domestic, foreign and global coefficients
+  ///////////////////////////////////////////////////////////////////////
+  
   Rcpp::List priors_coefficients;
   Rcpp::CharacterVector prcoeff_names;
   arma::mat prior_a_mu;
@@ -148,7 +154,60 @@ Rcpp::List bgvaralg(Rcpp::List object) {
     } 
   }
   
-  // Priors - Covar coefficients
+  ///////////////////////////////////////////////////////////////////////
+  // Priors & initial values - Error variances  
+  ///////////////////////////////////////////////////////////////////////
+  
+  // Empty objects
+  Rcpp::List sigma_pr = priors["sigma"];
+  Rcpp::CharacterVector sigma_names = sigma_pr.names();
+  bool use_gamma = false;
+  double sigma_post_df;
+  arma::vec h_const, h_init, h_init_post_mu, sigma_h, u_vec, sigma_post_scale,
+            sigma_post_shape, sigma_prior_mu, sigma_prior_rate;
+  arma::mat diag_omega_i, diag_sigma_i, diag_sigma_i_temp, h, h_init_post_v,
+            h_lag, sigma_h_i, sigma_i, sigma_prior_scale, sigma_prior_vi, sse,
+            omega_i, u;
+  u = y * 0;
+  diag_sigma_i = arma::zeros(k_dom * tt, k_dom * tt);
+  
+  if (sv) {
+    // Initial conditions of state equation
+    sigma_prior_mu = Rcpp::as<arma::vec>(sigma_pr["mu"]);
+    sigma_prior_vi = Rcpp::as<arma::mat>(sigma_pr["v_i"]);
+    // Variances of state equation
+    sigma_post_shape = Rcpp::as<arma::vec>(sigma_pr["shape"]) + 0.5 * tt;
+    sigma_prior_rate = Rcpp::as<arma::vec>(sigma_pr["rate"]);
+    
+    h = Rcpp::as<arma::mat>(init_sigma["h"]);
+    h_lag = h * 0;
+    sigma_h = Rcpp::as<arma::vec>(init_sigma["sigma_h"]);
+    h_init = arma::vectorise(h.row(0));
+    sigma_i = arma::diagmat(1 / exp(h_init));
+    h_const = Rcpp::as<arma::vec>(init_sigma["constant"]);
+  } else {
+    if (std::find(sigma_names.begin(), sigma_names.end(), "df") != sigma_names.end()) {
+      sigma_post_df = Rcpp::as<double>(sigma_pr["df"]) + tt;
+      sigma_prior_scale = Rcpp::as<arma::mat>(sigma_pr["scale"]);
+    }
+    if (std::find(sigma_names.begin(), sigma_names.end(), "shape") != sigma_names.end()) {
+      use_gamma = true;
+      sigma_post_shape = Rcpp::as<arma::vec>(sigma_pr["shape"]) + 0.5 * tt;
+      sigma_prior_rate = Rcpp::as<arma::vec>(sigma_pr["rate"]);
+    }
+    
+    omega_i = Rcpp::as<arma::mat>(init_sigma["sigma_i"]);
+    sigma_i = omega_i;
+  }
+  diag_sigma_i.diag() = arma::repmat(sigma_i.diag(), tt, 1);
+  if (covar || sv) {
+    diag_omega_i = diag_sigma_i;
+  }
+  
+  ///////////////////////////////////////////////////////////////////////
+  // Covariances
+  ///////////////////////////////////////////////////////////////////////
+  
   Rcpp::List psi_priors, psi_prior_varsel;
   Rcpp::CharacterVector psi_priors_names;
   arma::vec psi_prior_incl, psi_tau0, psi_tau1, psi_tau0sq, psi_tau1sq, psi_bvs_lprior_0, psi_bvs_lprior_1;
@@ -156,7 +215,7 @@ Rcpp::List bgvaralg(Rcpp::List object) {
   int psi_varsel_n, psi_varsel_pos;
   double psi_bayes, psi_bayes_rand, psi_l0, psi_l1, psi_lambda_draw;
   arma::vec psi_post_incl, psi_post_mu, psi_randu, psi_theta0_res, psi_theta1_res, psi_varsel_include, psi_varsel_include_draw, psi_u0, psi_u1, psi_y;
-  arma::mat diag_omega_i, diag_covar_omega_i, diag_Psi, psi, Psi, psi_AG, psi_lambda, psi_post_v, psi_theta0, psi_theta1, psi_z, psi_z_bvs;
+  arma::mat diag_covar_omega_i, diag_Psi, psi, Psi, psi_AG, psi_lambda, psi_post_v, psi_theta0, psi_theta1, psi_z, psi_z_bvs;
   if (std::find(priors_names.begin(), priors_names.end(), "psi") != priors_names.end()) {
     covar = true;
     psi_priors = priors["psi"];
@@ -204,50 +263,6 @@ Rcpp::List bgvaralg(Rcpp::List object) {
       }
     }
     diag_covar_omega_i = arma::zeros<arma::mat>(tt * (k_dom - 1), tt * (k_dom - 1));
-  }
-  
-  
-  // Priors - Errors
-  Rcpp::List sigma_pr = priors["sigma"];
-  Rcpp::CharacterVector sigma_names = sigma_pr.names();
-  double sigma_post_df;
-  arma::vec sigma_post_shape, sigma_prior_rate, sigma_prior_mu;
-  arma::mat sigma_prior_scale, sigma_prior_vi;
-  bool use_gamma = false;
-  arma::vec h_init, sigma_h, u_vec, sigma_post_scale;
-  arma::mat h_init_post_v, sigma_h_i, diag_sigma_i_temp;
-  arma::vec h_init_post_mu;
-  arma::mat sigma_i, h, h_lag, sse, omega_i;
-  arma::mat u = y * 0;
-  arma::mat diag_sigma_i = arma::zeros(k_dom * tt, k_dom * tt);
-  if (sv) {
-    sigma_prior_mu = Rcpp::as<arma::vec>(sigma_pr["mu"]);
-    sigma_prior_vi = Rcpp::as<arma::mat>(sigma_pr["v_i"]);
-    sigma_post_shape = Rcpp::as<arma::vec>(sigma_pr["shape"]) + 0.5 * tt;
-    sigma_prior_rate = Rcpp::as<arma::vec>(sigma_pr["rate"]);
-    
-    h = Rcpp::as<arma::mat>(init_sigma["h"]);
-    h_lag = h * 0;
-    sigma_h = Rcpp::as<arma::vec>(init_sigma["sigma_h"]);
-    h_init = arma::vectorise(h.row(0));
-    sigma_i = arma::diagmat(1 / exp(h_init));
-  } else {
-    if (std::find(sigma_names.begin(), sigma_names.end(), "df") != sigma_names.end()) {
-      sigma_post_df = Rcpp::as<double>(sigma_pr["df"]) + tt;
-      sigma_prior_scale = Rcpp::as<arma::mat>(sigma_pr["scale"]);
-    }
-    if (std::find(sigma_names.begin(), sigma_names.end(), "shape") != sigma_names.end()) {
-      use_gamma = true;
-      sigma_post_shape = Rcpp::as<arma::vec>(sigma_pr["shape"]) + 0.5 * tt;
-      sigma_prior_rate = Rcpp::as<arma::vec>(sigma_pr["rate"]);
-    }
-    
-    omega_i = Rcpp::as<arma::mat>(init_sigma["sigma_i"]);
-    sigma_i = omega_i;
-  }
-  diag_sigma_i.diag() = arma::repmat(sigma_i.diag(), tt, 1);
-  if (covar || sv) {
-    diag_omega_i = diag_sigma_i;
   }
   
   // Storage objects
@@ -301,7 +316,10 @@ Rcpp::List bgvaralg(Rcpp::List object) {
       Rcpp::checkUserInterrupt();
     }
     
-    // Draw coefficients ----
+    ///////////////////////////////////////////////////////////////////////
+    // Draw coefficients
+    ///////////////////////////////////////////////////////////////////////
+    
     if (bvs) {
       z = z_bvs * a_lambda;
     }
@@ -367,7 +385,9 @@ Rcpp::List bgvaralg(Rcpp::List object) {
     u_vec = yvec - z * a;
     u = arma::reshape(u_vec, k_dom, tt);
     
-    // Covariances
+    ///////////////////////////////////////////////////////////////////////
+    // Draw covariances
+    ///////////////////////////////////////////////////////////////////////
     if (covar) {
       
       // Prepare data
@@ -452,11 +472,14 @@ Rcpp::List bgvaralg(Rcpp::List object) {
       u = Psi * u;
     }
     
+    ///////////////////////////////////////////////////////////////////////
+    // Draw error variances
+    ///////////////////////////////////////////////////////////////////////
     if (sv) {
       
       // Draw variances  
       for (int i = 0; i < k_dom; i++) {
-        h.col(i) = bvartools::stoch_vol(u.row(i).t(), h.col(i), sigma_h(i), h_init(i));
+        h.col(i) = bvartools::stoch_vol(u.row(i).t(), h.col(i), sigma_h(i), h_init(i), h_const(i));
       }
       diag_omega_i.diag() = 1 / exp(arma::vectorise(h.t()));
       if (covar) {
@@ -483,9 +506,9 @@ Rcpp::List bgvaralg(Rcpp::List object) {
       
     } else {
       
+      sse = u * u.t();
+      
       if (use_gamma) {
-        
-        sse = u * u.t();
         for (int i = 0; i < k_dom; i++) {
           omega_i(i, i) = arma::randg<double>(arma::distr_param(sigma_post_shape(i), 1 / arma::as_scalar(sigma_prior_rate(i) + sse(i, i) * 0.5)));
         }
@@ -495,16 +518,17 @@ Rcpp::List bgvaralg(Rcpp::List object) {
         } else {
           sigma_i = omega_i;
         }
-        
       } else {
-        sigma_i = arma::wishrnd(arma::solve(sigma_prior_scale + u * u.t(), diag_k), sigma_post_df);
+        sigma_i = arma::wishrnd(arma::solve(sigma_prior_scale + sse, diag_k), sigma_post_df);
       }
       
       diag_sigma_i = arma::kron(diag_tt, sigma_i);
       
     }
     
+    ///////////////////////////////////////////////////////////////////////
     // Store draws
+    ///////////////////////////////////////////////////////////////////////
     if (draw >= burnin) {
       
       pos_draw = draw - burnin;
@@ -633,3 +657,57 @@ Rcpp::List bgvaralg(Rcpp::List object) {
   
   // return Rcpp::List::create(Rcpp::Named("test") = sigma_i);
 }
+
+/*** R
+
+#library(bgvars)
+
+# Load data
+data("gvar2019")
+
+# Create regions
+temp <- create_regions(country_data = gvar2019$country_data,
+                       weight_data = gvar2019$weight_data,
+                       region_weights = gvar2019$region_weights,
+                       regions = list(EA =  c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")), period = 3)
+
+country_data <- temp$country_data
+weight_data <- temp$weight_data
+global_data = gvar2019$global_data
+
+# Make series stationary
+country_data <- diff_variables(country_data, variables = c("y", "Dp", "r"), multi = 100)
+global_data <- diff_variables(global_data, multi = 100)
+
+# Create weights
+weight_data <- create_weights(weight_data, period = 3, country_data = country_data)
+
+# Model ----
+
+# Create general model specifications
+model_specs <- create_specifications(country_data = country_data,
+                                     global_data = global_data,
+                                     domestic = list(variables = c("y", "Dp", "r"), lags = 1),
+                                     foreign = list(variables = c("y", "Dp", "r"), lags = 1),
+                                     global = list(variables = "poil", lags = 1),
+                                     deterministic = list("const" = TRUE),
+                                     countries = c("EA", "US", "GB", "CA", "JP", "IN"),
+                                     type = "VAR",
+                                     tvp = FALSE, sv = TRUE,
+                                     iterations = 10,
+                                     burnin = 10)
+
+# Create all country models
+country_models <- create_models(country_data = country_data,
+                                weight_data = weight_data,
+                                global_data = global_data,
+                                model_specs = model_specs)
+
+# Add priors
+temp_model <- add_priors(country_models,
+                         coef = list(v_i = 1 / 9, v_i_det = 1 / 10),
+                         sigma = list(shape = 3, rate = .0001, mu = 0, v_i = .1, sigma_h = 0.05, constant = .0001, covar = TRUE))
+
+.bgvaralg(temp_model[[1]])
+
+*/
