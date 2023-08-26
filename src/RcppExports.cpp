@@ -22,6 +22,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// bgvartvpalg
+Rcpp::List bgvartvpalg(Rcpp::List object);
+RcppExport SEXP _bgvars_bgvartvpalg(SEXP objectSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::List >::type object(objectSEXP);
+    rcpp_result_gen = Rcpp::wrap(bgvartvpalg(object));
+    return rcpp_result_gen;
+END_RCPP
+}
 // draw_forecast
 arma::mat draw_forecast(int& i, int& k, arma::mat& a0, arma::mat& a, Rcpp::Nullable<Rcpp::NumericMatrix>& b_, Rcpp::Nullable<Rcpp::NumericMatrix>& c_, arma::mat& sigma, arma::mat pred);
 RcppExport SEXP _bgvars_draw_forecast(SEXP iSEXP, SEXP kSEXP, SEXP a0SEXP, SEXP aSEXP, SEXP b_SEXP, SEXP c_SEXP, SEXP sigmaSEXP, SEXP predSEXP) {
@@ -85,6 +96,7 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_bgvars_bgvaralg", (DL_FUNC) &_bgvars_bgvaralg, 1},
+    {"_bgvars_bgvartvpalg", (DL_FUNC) &_bgvars_bgvartvpalg, 1},
     {"_bgvars_draw_forecast", (DL_FUNC) &_bgvars_draw_forecast, 8},
     {"_bgvars_gir", (DL_FUNC) &_bgvars_gir, 4},
     {"_bgvars_ir", (DL_FUNC) &_bgvars_ir, 5},

@@ -53,11 +53,11 @@ model_specs <- create_specifications(
                  global_data = global_data,
                  countries = c("US", "JP", "CA", "NO", "GB", "EA"), 
                  domestic = list(variables = c("y", "Dp", "r"), lags = 1:2),
-                 foreign = list(variables = c("y", "Dp", "r"), lags = 1:2),
-                 global = list(variables = c("poil"), lags = 1:2),
+                 foreign = list(variables = c("y", "Dp", "r"), lags = 1),
+                 global = list(variables = c("poil"), lags = 1),
                  deterministic = list(const = TRUE, trend = FALSE, seasonal = FALSE),
-                 iterations = 10,
-                 burnin = 10)
+                 iterations = 4,
+                 burnin = 2)
 # Note that the number of iterations and burnin draws should be much higher!
                                      
 # Overwrite country-specific specifications

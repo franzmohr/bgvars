@@ -5,6 +5,10 @@
     .Call(`_bgvars_bgvaralg`, object)
 }
 
+.bgvartvpalg <- function(object) {
+    .Call(`_bgvars_bgvartvpalg`, object)
+}
+
 .draw_forecast <- function(i, k, a0, a, b_, c_, sigma, pred) {
     .Call(`_bgvars_draw_forecast`, i, k, a0, a, b_, c_, sigma, pred)
 }
