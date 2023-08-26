@@ -5,7 +5,7 @@
 
 [![CRAN
 status](https://www.r-pkg.org/badges/version/bgvars)](https://cran.r-project.org/package=bgvars)
-[![R-CMD-check](https://github.com/franzmohr/bgvars/workflows/R-CMD-check/badge.svg)](https://github.com/franzmohr/bgvars/actions)
+[![R-CMD-check](https://github.com/franzmohr/bgvars/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/franzmohr/bgvars/actions/workflows/R-CMD-check.yaml)
 
 ## Overview
 
