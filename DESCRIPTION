@@ -5,7 +5,7 @@ Date: 2023-06-30
 Authors@R: person("Franz X.", "Mohr", email = "franz.x.mohr@outlook.com", role = c("aut","cre"), comment = c(ORCiD = "0009-0003-8890-7781"))
 Description: Assists in the set-up and inference of Bayesian global vector autoregressive (BGVAR) and error correction (BGVEC) models.
 License: GPL (>= 2) 
-Depends: R (>= 3.3.0), bvartools (>= 0.2.1)
+Depends: R (>= 3.3.0), bvartools (>= 0.2.3)
 Imports:
     coda,
     grDevices,
@@ -24,8 +24,10 @@ Suggests: knitr, rmarkdown
 Collate: 
     'RcppExports.R'
     'add_priors.gvarsubmodels.R'
+    'add_priors.gvecsubmodels.R'
     'bgvars-package.R'
     'bvarxpost.R'
+    'bvecxpost.R'
     'combine_submodels.R'
     'country_fill_helper.R'
     'create_models.R'
@@ -37,6 +39,7 @@ Collate:
     'data.R'
     'diff_variables.R'
     'draw_posterior.gvarsubmodels.R'
+    'draw_posterior.gvecsubmodels.R'
     'gen_varx.R'
     'gen_vecx.R'
     'get_regressor_names.R'
@@ -50,16 +53,23 @@ Collate:
     'plot.bgvarfevd.R'
     'plot.bgvarirf.R'
     'plot.bgvarprd.R'
+    'plot.bgvecest.R'
     'plot.ctryvarest.R'
+    'plot.ctryvecest.R'
     'plot.teststats.bgvarest.R'
     'predict.bgvar.R'
     'summary.bgvarest.R'
     'print.summary.bgvarest.R'
+    'summary.bgvecest.R'
+    'print.summary.bgvecest.R'
     'summary.ctryvarest.R'
     'print.summary.ctryvarest.R'
+    'summary.ctryvecest.R'
+    'print.summary.ctryvecest.R'
     'select_submodels.R'
     'submodel_test_statistics.R'
     'thin.bgvar.R'
     'thin.bgvarest.R'
+    'thin.bgvecest.R'
     'tvpribbon.R'
     'zzz.R'
