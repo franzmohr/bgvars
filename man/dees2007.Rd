@@ -7,8 +7,10 @@
 \format{
 A named list containing the following elements:
 \describe{
-  \item{\strong{country_data}}{A named list of 26 time-series objects with 99 quarterly
-  observations from 1979Q2 to 2003Q4 of the following variables:
+  \item{\strong{submodel_data}}{A named list of 26 elements, consisting of
+  submodel-specific data. Each element of those sub-elements includes an
+  element \strong{endogen}, which is a time-series object with 99 quarterly
+  observations from 1979Q2 to 2003Q7 of the following variables:
   
   \itemize{
   \item \strong{y:} log real GDP
@@ -18,13 +20,14 @@ A named list containing the following elements:
   \item \strong{q:} log real equity prices
   \item \strong{ep:} log real exchange rate
   }
+  
+  The second sub-element contains a time-series object containing annual data on
+   trade flows from 1980 to 2016 for the respective country.
   }
   
   \item{\strong{global_data}}{A time-series object containing 99 quarterly observations
   from 1979Q2 to 2003Q4 of log of oil prices.} 
   \item{\strong{weight_data}}{A named \eqn{26 \times 26} weight matrix.}
-  \item{\strong{dees_specs}}{A named list of country model specifications as used in
-  Dees et al. (2007).}
 }
 
 See the supplementary material to Dees et al. (2007) for further details on the
