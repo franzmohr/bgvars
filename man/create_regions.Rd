@@ -4,13 +4,9 @@
 \alias{create_regions}
 \title{Create Regional Series}
 \usage{
-create_regions(country_data, weight_data, region_weights, regions, period)
+create_regions(submodel_data, region_weights, regions, period)
 }
 \arguments{
-\item{country_data}{a named list of time-series objects containing country data.}
-
-\item{weight_data}{a named list of named time-series objects. See 'Details'.}
-
 \item{region_weights}{a multivariate time-series object containing data used
 to weight the observations in \code{country_data}.}
 
@@ -20,6 +16,10 @@ respective list element will become the name of the region.}
 
 \item{period}{either a single integer or a numeric vector specifiying the periods in
 \code{region_weights}, which should be used to construct weights.}
+
+\item{country_data}{a named list of time-series objects containing country data.}
+
+\item{weight_data}{a named list of named time-series objects. See 'Details'.}
 }
 \value{
 A list containing the following elements:
@@ -50,15 +50,12 @@ contain zeros in the column of the respective country. For examle, the column
 # Load data
 data("gvar2019")
 
-# Create regions
-temp <- create_regions(country_data = gvar2019$country_data,
-             weight_data = gvar2019$weight_data,
-             region_weights = gvar2019$region_weights,
-             regions = list(EA =  c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")),
-             period = 3)
+new_regions <- list("EA" = c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL"))
 
-# New data sets
-country_data <- temp$country_data
-weight_data <- temp$weight_data 
+# Create regions
+submodel_data <- create_regions(submodel_data = gvar2019[["submodel_data"]],
+                                region_weights = gvar2019[["region_weights"]],
+                                regions = new_regions,
+                                period = 3)
 
 }

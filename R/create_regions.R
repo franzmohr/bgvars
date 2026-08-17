@@ -38,22 +38,19 @@
 #' # Load data
 #' data("gvar2019")
 #' 
-#' # Create regions
-#' temp <- create_regions(country_data = gvar2019$country_data,
-#'              weight_data = gvar2019$weight_data,
-#'              region_weights = gvar2019$region_weights,
-#'              regions = list(EA =  c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")),
-#'              period = 3)
+#' new_regions <- list("EA" = c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL"))
 #' 
-#' # New data sets
-#' country_data <- temp$country_data
-#' weight_data <- temp$weight_data 
+#' # Create regions
+#' submodel_data <- create_regions(submodel_data = gvar2019[["submodel_data"]],
+#'                                 region_weights = gvar2019[["region_weights"]],
+#'                                 regions = new_regions,
+#'                                 period = 3)
 #' 
 #' @export
-create_regions <- function(country_data, weight_data, region_weights, regions, period){
+create_regions <- function(submodel_data, region_weights, regions, period){
   
-  tt <- unique(unlist(lapply(country_data, NROW)))
-  if (length(tt) > 1) {stop("Country data must have the same numbers of observations.")}
+  tt <- unique(unlist(lapply(submodel_data, function(x) {NROW(x[["endogen"]])})))
+  if (length(tt) > 1) {stop("Currently, submodel data must have the same numbers of observations.")}
   
   if ((!"list" %in% class(regions)) | is.null(names(regions))) {stop("Object 'regions' must be a named list.")}
   
@@ -61,31 +58,36 @@ create_regions <- function(country_data, weight_data, region_weights, regions, p
     stop("The same country is not allowed to be in more than one region.") 
   }
   
-  vars <- unique(unlist(lapply(country_data, function(x){return(dimnames(x)[[2]])})))
+  vars <- unique(unlist(lapply(submodel_data, function(x){return(dimnames(x[["endogen"]])[[2]])})))
   
-  var_exist <- matrix(FALSE, length(country_data), length(vars))
-  dimnames(var_exist) <- list(names(country_data), vars)
-  for (i in names(country_data)) {
-    var_exist[i, dimnames(country_data[[i]])[[2]]] <- TRUE
+  # Create a table containing information on which variable is availabe within
+  # a submodel.
+  submodel_names <- names(submodel_data)
+  var_exist <- matrix(FALSE, length(submodel_data), length(vars))
+  dimnames(var_exist) <- list(submodel_names, vars)
+  for (i in submodel_names) {
+    var_exist[i, dimnames(submodel_data[[i]][["endogen"]])[[2]]] <- TRUE
   }
   
+  # Create a matrix, where each row contains the oberservations that should be
+  # used for weight construction for each period
   if (length(period) == 1) {
-    t.temp <- as.numeric(stats::time(country_data[[1]]))
-    t.avail <- as.numeric(stats::time(region_weights))
+    t_temp <- as.numeric(stats::time(submodel_data[[1]][["endogen"]]))
+    t_avail <- as.numeric(stats::time(region_weights))
     
-    t <- matrix(NA, tt, period)
+    rolling_window_weights <- matrix(NA, tt, period)
     for (i in 1:tt) {
-      if (t.temp[i] <= t.avail[period]) {
-        t[i,] <- t.avail[1:period]
+      if (t_temp[i] <= t_avail[period]) {
+        rolling_window_weights[i,] <- t_avail[1:period]
       }
       # Use last available values of region weights if country data is more recent
-      if (t.temp[i] >= t.avail[period]) {
-        if (any(floor(t.temp[i]) == t.avail)) {
-          pos_t <- which(floor(t.temp[i]) == t.avail)
+      if (t_temp[i] >= t_avail[period]) {
+        if (any(floor(t_temp[i]) == t_avail)) {
+          pos_t <- which(floor(t_temp[i]) == t_avail)
           pos_t <- (pos_t - period + 1):pos_t 
         }
         # If condition is not met, the pos_t, from the last iteration will be used.
-        t[i,] <- t.avail[pos_t]
+        rolling_window_weights[i,] <- t_avail[pos_t]
       }
     }
   }
@@ -93,10 +95,13 @@ create_regions <- function(country_data, weight_data, region_weights, regions, p
   r_names <- names(regions)
   all_r_countries <- unlist(regions)
   names(all_r_countries) <- NULL
-  r_tsp <- stats::tsp(country_data[[1]])
+  r_tsp <- stats::tsp(submodel_data[[1]][["endogen"]])
   
-  r.temp <- c()
+  # Create submodel entries for regions, but do not add them to main data set yet.
+  endogen_temp <- c()
   for (i in 1:length(regions)) {
+    
+    # Check variable availability
     vars_r <- apply(var_exist[regions[[i]], ], 2, any)
     vars_r <- dimnames(var_exist)[[2]][vars_r]
     
@@ -104,23 +109,30 @@ create_regions <- function(country_data, weight_data, region_weights, regions, p
     dimnames(r_temp)[[2]] <- vars_r
     
     for (j in vars_r) {
+      # Create matrix for an individual series with the data from all submodels,
+      # from which data is used to construct the group
       c_temp <- matrix(NA, tt, length(regions[[i]]))
       dimnames(c_temp)[[2]] <- regions[[i]]
       for (k in regions[[i]]) {
         if (var_exist[k , j]) {
-          c_temp[, k] <- country_data[[k]][, j] 
+          c_temp[, k] <- submodel_data[[k]][["endogen"]][, j] 
         }
       }
+      # Only use submodels for which observations are available for that variable
       c_temp <- c_temp[, var_exist[regions[[i]], j]]
       
       if (NCOL(c_temp) > 1) {
+        # In case of rolling window weights calculate each observation separately
         if (length(period) == 1) {
           for (k in 1:tt) {
-            temp <- colSums(region_weights[which(dimnames(region_weights)[[1]] %in% t[k,]), dimnames(c_temp)[[2]]])
+            # Create weights
+            temp <- colSums(region_weights[which(dimnames(region_weights)[[1]] %in% rolling_window_weights[k,]), dimnames(c_temp)[[2]]])
             temp <- temp / sum(temp)
+            # Calculate weighted mean
             r_temp[k, j] <- sum(c_temp[k, ] * temp)
           }
         } else {
+          # Create weights
           temp <- colSums(region_weights[which(dimnames(region_weights)[[1]] %in% as.character(period)), dimnames(c_temp)[[2]]])
           temp <- temp / sum(temp)
           r_temp[, j] <- c_temp %*% matrix(temp)
@@ -129,40 +141,41 @@ create_regions <- function(country_data, weight_data, region_weights, regions, p
         r_temp[, j] <- c_temp
       }
     }
-    r.temp <- c(r.temp, list(r_temp))
+    endogen_temp <- c(endogen_temp, list(r_temp))
   }
-  names(r.temp) <- names(regions)
+  names(endogen_temp) <- names(regions)
   
+  # Update weight data
   w_temp <- c()
-  for (i in names(country_data)) {
+  for (i in names(submodel_data)) {
     if (!i %in% all_r_countries) {
-      w_i <- weight_data[[i]][, -which(dimnames(weight_data[[i]])[[2]] %in% all_r_countries)]
+      w_i <- submodel_data[[i]][["weights"]][, -which(dimnames(submodel_data[[i]][["weights"]])[[2]] %in% all_r_countries)]
       w_i_names <- c(dimnames(w_i)[[2]], names(regions))
       w_i <- cbind(w_i, matrix(0, ncol = length(regions)))
       dimnames(w_i)[[2]] <- w_i_names
       
       for (j in r_names) {
-        w_i[, j] <- rowSums(weight_data[[i]][, regions[[j]]])
+        w_i[, j] <- rowSums(submodel_data[[i]][["weights"]][, regions[[j]]])
       }
       w_temp <- c(w_temp, list(w_i))
       rm(w_i)
     }
   }
   
-  tot_names <- unique(unlist(lapply(weight_data, function(x){dimnames(x)[[2]]})))
+  tot_names <- unique(unlist(lapply(submodel_data, function(x){dimnames(x[["weights"]])[[2]]})))
   tot_names <- tot_names[-which(tot_names %in% all_r_countries)]
   for (i in r_names) {
-    w_i <- weight_data[[regions[[i]][1]]][, tot_names] * 0
+    w_i <- submodel_data[[regions[[i]][1]]][["weights"]][, tot_names] * 0
     w_i <- cbind(w_i, matrix(0, nrow(w_i), length(regions)))
     dimnames(w_i)[[2]] <- c(tot_names, r_names)
     for (j in regions[[i]]) {
       # Add non-regional data
-      w_i[, tot_names] <- w_i[, tot_names] + weight_data[[j]][, tot_names]
+      w_i[, tot_names] <- w_i[, tot_names] + submodel_data[[j]][["weights"]][, tot_names]
       # Add regional data
       for (k in r_names) {
         if (k != i) {
           for (l in regions[[k]]) {
-            w_i[, k] <- w_i[, k] + weight_data[[j]][, l] 
+            w_i[, k] <- w_i[, k] + submodel_data[[j]][["weights"]][, l] 
           }
         }
       }
@@ -172,20 +185,25 @@ create_regions <- function(country_data, weight_data, region_weights, regions, p
   
   data <- c()
   data.names <- c()
-  for (i in names(country_data)) {
+  for (i in names(submodel_data)) {
     if (!i %in% all_r_countries) {
-      data <- c(data , list(country_data[[i]]))
+      data <- c(data , list(submodel_data[[i]][["endogen"]]))
       data.names <- c(data.names, i)
     }
   }
-  for (i in names(r.temp)) {
-    data <- c(data, list(r.temp[[i]]))
+  for (i in names(endogen_temp)) {
+    data <- c(data, list(endogen_temp[[i]]))
     data.names <- c(data.names, i)
   }
   names(data) <- data.names
   names(w_temp) <- data.names
   
-  result <- list("country_data" = data,
-                 "weight_data" = w_temp)
+  result <- NULL
+  for (i in data.names) {
+    result[[i]] <- list("endogen" = data[[i]],
+                        "weights" = w_temp[[i]])
+  }
+  class(result) <- list("submodeldata", "list")
+  
   return(result)
 }
