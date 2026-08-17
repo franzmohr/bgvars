@@ -12,11 +12,25 @@ create_gvarmodel(submodel_data, global_data = NULL)
 \item{global_data}{a named time-series object of global data.}
 }
 \value{
-A list of class 'gvarmodel'.
+A list of class 'gvarmodel', which consists of the following elements:
+\describe{
+  \item{\strong{global}}{A named list containing the data objects of the global model.}
+  \item{\strong{weights}}{The list entry, where the submodel weight matrices will go.
+  This entry is empty after the execution of \code{create_gvarmodel}, but will be
+  updated with \code{\link{add_weight_matrices}}.} 
+  \item{\strong{submodels}}{The list entry, where the estimated submodels will go.
+  This entry is empty after the execution of \code{create_gvarmodel}, but will be
+  updated with \code{\link{add_submodels}}.}
+}
 }
 \description{
 Initialises an object of class 'gvarmodel', which contains all elements necessary
 to set up, estimate and evaluate a Bayesian GVAR model.
+}
+\details{
+The function creates a list of class 'gvarmodel', which provides the basic
+structure for the creation of sub-models, prior specification, initial value
+generation, posterior simulation, model evaluation and structural analysis.
 }
 \examples{
 
@@ -28,8 +42,5 @@ global_data <- gvar2023[["global_data"]] # Global commodities data
 # Create 'gvarmodel' object
 object <- create_gvarmodel(submodel_data = submodel_data,
                            global_data = global_data)
-
-
-
-
+                           
 }

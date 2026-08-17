@@ -6,7 +6,21 @@
 #' @param submodel_data a named list of time-series objects of country-specific data.
 #' @param global_data a named time-series object of global data.
 #' 
-#' @return A list of class 'gvarmodel'.
+#' @details
+#' The function creates a list of class 'gvarmodel', which provides the basic
+#' structure for the creation of sub-models, prior specification, initial value
+#' generation, posterior simulation, model evaluation and structural analysis.
+#' 
+#' @return A list of class 'gvarmodel', which consists of the following elements:
+#' \describe{
+#'   \item{\strong{global}}{A named list containing the data objects of the global model.}
+#'   \item{\strong{weights}}{The list entry, where the submodel weight matrices will go.
+#'   This entry is empty after the execution of \code{create_gvarmodel}, but will be
+#'   updated with \code{\link{add_weight_matrices}}.} 
+#'   \item{\strong{submodels}}{The list entry, where the estimated submodels will go.
+#'   This entry is empty after the execution of \code{create_gvarmodel}, but will be
+#'   updated with \code{\link{add_submodels}}.}
+#' }
 #' 
 #' @examples
 #' 
@@ -18,10 +32,7 @@
 #' # Create 'gvarmodel' object
 #' object <- create_gvarmodel(submodel_data = submodel_data,
 #'                            global_data = global_data)
-#' 
-#' 
-#' 
-#' 
+#'                            
 #' @export
 create_gvarmodel <- function(submodel_data, global_data = NULL){
   
@@ -55,8 +66,8 @@ create_gvarmodel <- function(submodel_data, global_data = NULL){
       # to keep variable name information
       global_data <- stats::ts(as.matrix(global_data), class = c("mts", "ts", "matrix"))
       stats::tsp(global_data) <- tsp_global
+      dimnames(global_data)[[2]] <- "global"
     }
-    dimnames(global_data)[[2]] <- "global"
   }
   
   result <- list("global" = list("endogen" = endogen,
