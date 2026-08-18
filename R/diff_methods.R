@@ -1,9 +1,8 @@
 #' Differences of Variables
 #' 
-#' Produces the first difference of variables in a time-series object or in a
-#' list of named time-series objects.
+#' Produces the first difference of variables in an object of class 'submodeldata'.
 #' 
-#' @param data a named time-series object or a list of named time-series objects.
+#' @param data an object of class 'submodeldata'.
 #' @param variables a character vector of variables that should be differenced, if
 #' they appear in a time-series object. If \code{NULL} (default), all variables are differenced.
 #' @param multi optional. Numeric by which the differenced series should be multiplicated.
@@ -13,33 +12,32 @@
 #' @examples 
 #' # Load data
 #' data("gvar2019")
-#' country_data <- gvar2019$country_data
+#' submodel_data <- gvar2019$submodel_data
 #' 
 #' # Take first difference of the variables "y" and "Dp" across all
-#' # elements of object "country_data" and multiply them by 100
-#' country_data <- diff_variables(country_data, variables = c("y", "Dp"), multi = 100)
+#' # elements of object "submodel_data" and multiply them by 100
+#' submodel_data <- diff(submodel_data, variables = c("y", "Dp"), multi = 100)
 #' 
 #' @export
-diff_variables <- function(data, variables = NULL, multi = NULL){
+diff.submodeldata <- function(data, variables = NULL, multi = NULL){
   
-  if (any(class(data) == "list")) {
-    if (is.null(names(data))) {
-      stop("Argument 'data' must be named, if a list is provided.")
+  # Endogenous variables
+  vars_endogen <- unique(unlist(lapply(data, function(x) {dimnames(x[["endogen"]])[[2]]})))
+  if (!is.null(variables)) {
+    if (length(which(variables %in% vars_endogen)) == 0) {
+      stop("Non of the variables specified in 'variables' is contained in the data.")
     }
-    if(sum(unlist(lapply(data, class)) == "ts") != length(data)) {stop("Data must be of class 'ts'.")} 
-    data <- lapply(data, .diff_func, variables, multi)
-  } else {
-    if(!"ts" %in% class(data)) {
-      stop("Data must be of class 'ts'.")
-    } else {
-      data <- .diff_func(data, variables, multi) 
-    }
+    variables <- variables[which(variables %in% vars_endogen)]
   }
+  
+  data <- lapply(data, .diff_func, variables, multi)
   
   return(data)
 }
 
 .diff_func <- function(x, variables, multi){
+  
+  x <- x[["endogen"]]
   tsp_all <- stats::tsp(x)
   tsp_all[1] <- tsp_all[1] + 1 / tsp_all[3]
   if (is.null(multi)) {
