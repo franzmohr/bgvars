@@ -3,7 +3,8 @@
 #' Initialises an object of class 'gvarmodel', which contains all elements necessary
 #' to set up, estimate and evaluate a Bayesian GVAR model.
 #'
-#' @param submodel_data a named list of time-series objects of country-specific data.
+#' @param submodel_data an object of class 'submodeldata', which is a named list
+#' of time-series objects of with endogenous data for sub-models.
 #' @param global_data a named time-series object of global data.
 #' 
 #' @details
@@ -35,6 +36,10 @@
 #'                            
 #' @export
 create_gvarmodel <- function(submodel_data, global_data = NULL){
+  
+  if (!"submodeldata" %in% class(submodel_data)) {
+    stop("Argument 'submodel_data' must be of class 'submodeldata'.")
+  }
   
   submodels <- names(submodel_data)
   

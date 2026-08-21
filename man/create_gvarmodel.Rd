@@ -7,7 +7,8 @@
 create_gvarmodel(submodel_data, global_data = NULL)
 }
 \arguments{
-\item{submodel_data}{a named list of time-series objects of country-specific data.}
+\item{submodel_data}{an object of class 'submodeldata', which is a named list
+of time-series objects of with endogenous data for sub-models.}
 
 \item{global_data}{a named time-series object of global data.}
 }
