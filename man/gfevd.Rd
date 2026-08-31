@@ -5,7 +5,7 @@
 \alias{plot.bgvarfevd}
 \title{Generalised Forecast Error Variance Decomposition}
 \usage{
-gfevd(object, response, n.ahead = 5, normalise_gir = FALSE, mc.cores = NULL)
+gfevd(object, response, n_ahead = 5, normalise_gir = FALSE, mc.cores = NULL)
 
 \method{plot}{bgvarfevd}(x, top_n = 5L, group = "variable", ...)
 }
@@ -14,7 +14,7 @@ gfevd(object, response, n.ahead = 5, normalise_gir = FALSE, mc.cores = NULL)
 
 \item{response}{a character vector of the response country and variable, respectively.}
 
-\item{n.ahead}{number of steps ahead.}
+\item{n_ahead}{number of steps ahead.}
 
 \item{normalise_gir}{logical. Should the GFEVD be normalised?}
 

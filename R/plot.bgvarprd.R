@@ -5,11 +5,13 @@
 #' @param x an object of class "bvarprd", usually, a result of a call to \code{\link{predict.bgvar}}.
 #' @param variable a character vector containing a country name as its first and a variable name
 #' as its second element. If \code{NULL} (default) all series are plotted.
+#' @param ci a numeric between 0 and 1 specifying the probability mass covered by the
+#' credible intervals. Defaults to 0.95.
 #' @param ... further graphical parameters.
 #' 
 #' @export
 #' @rdname predict.bgvar
-plot.bgvarprd <- function(x, variable = NULL, ...) {
+plot.bgvarprd <- function(x, variable = NULL, ci = 0.95, ...) {
   
   tt <- nrow(x[["y"]])
   if (is.null(variable)) {

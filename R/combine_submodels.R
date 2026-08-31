@@ -1,15 +1,13 @@
 #' Generate a GVAR Model
 #' 
-#' Combines the country model results to a global VAR model and solves it.
+#' Combines the submodels of a global VAR model and solves it.
 #' 
-#' @param object a list containing the results of the country estimates, usually, the
+#' @param object a list containing the results of the submodel estimates, usually, the
 #' result of a call to \code{\link{draw_posterior}}.
 #' @param period an integer of the time index for which the GVAR should be solved. Only used
 #' when time varying weights or parameters are used.
-#' @param thin an integer specifying the thinning factor for the MCMC output.
-#' Defaults to 1 to obtain the full MCMC sequence.
 #' 
-#' @return An object of class \code{"bgvar"}.
+#' @return An object of class 'bgvar'.
 #' 
 #' @examples 
 #' # Load data
@@ -68,26 +66,30 @@
 #' gvar <- combine_submodels(object)
 #' 
 #' @export
-combine_submodels <- function(object, period = NULL, thin = 1){
-  
-  if ("bgvecest" %in% class(object)) {
-    stop("Please transform the country-specific VECX models to VARs before using this function.")
-  }
+combine_submodels <- function(object, period = NULL){
   
   # Check if only one model per country
   names_object <- names(object)
-  for (i in names_object) {
-    if (sum(names_object == i) > 1) {
-      stop("Multiple models for the same country detected. Please choose final models before using this function.")
+  if (any(table(names_object) > 1)) {
+    stop("Argument 'object' contains more than one model for an entity or country.")
+  }
+  
+  if ("vecxsubmodelest" %in% unlist(lapply(object, class))) {
+    message("VECX submodels detected. Transforming them into their VARX representations...")
+    for (i in 1:length(object)) {
+      if ("vecxsubmodelest" %in% class(object[[i]])) {
+        object[[i]] <- bvec_to_bvar(object[[i]])
+      }
     }
   }
   
   #### Solve GVAR model ####
   
   # Obtain number of draws per country model
-  draws_i <- unlist(lapply(object, function(x){ifelse(class(x[["posteriors"]][["foreign"]]) == "list",
-                                                      nrow(x[["posteriors"]][["foreign"]][[1]]),
-                                                      nrow(x[["posteriors"]][["foreign"]]))}))
+  # Use sigma variables, since those have to be always there
+  draws_i <- unlist(lapply(object, function(x){ifelse(class(x[["posteriors"]][["sigma"]][["coeffs"]]) == "list",
+                                                      nrow(x[["posteriors"]][["sigma"]][["coeffs"]][[1]]),
+                                                      nrow(x[["posteriors"]][["sigma"]][["coeffs"]]))}))
   
   # Check if the number of posterior draws is equal across country models
   draws <- unique(draws_i)
@@ -95,7 +97,7 @@ combine_submodels <- function(object, period = NULL, thin = 1){
     stop("Number of posterior draws must be equal across all country models.")
   }
   
-  tt_i <- unlist(lapply(object, function(x) {NROW(x[["data"]][["Y"]])}))
+  tt_i <- unlist(lapply(object, function(x) {NROW(x[["data"]][["y"]])}))
   tt <- unique(tt_i)
   if (length(tt) > 1) {
     stop("Number of observations is not equal across all country models.")
@@ -105,60 +107,52 @@ combine_submodels <- function(object, period = NULL, thin = 1){
   n_countries <- length(object)
   country_names <- names(object)
   
-  k_domestic_i <- unlist(lapply(object, function(x){length(x[["model"]][["domestic"]][["variables"]])}))
-  k_foreign_i <- unlist(lapply(object, function(x){length(x[["model"]][["foreign"]][["variables"]])}))
+  k_domestic_i <- unlist(lapply(object, function(x){x[["model"]][["k_domestic"]]}))
+  k_foreign_i <- unlist(lapply(object, function(x){x[["model"]][["k_foreign"]]}))
+  m_i <- unlist(lapply(object, function(x){x[["model"]][["m"]]}))
+  m <- max(m_i)
+  global <- m > 0
+  n_i <- unlist(lapply(object, function(x){x[["model"]][["n"]]}))
+  n <- max(n_i)
   k <- sum(k_domestic_i) # Total number of endogenous variables
   k_pos <- cumsum(k_domestic_i) - k_domestic_i
   # Get lags for each country model
-  p_domestic_i <- unlist(lapply(object, function(x){x[["model"]][["domestic"]][["lags"]]}))
-  p_foreign_i <- unlist(lapply(object, function(x){x[["model"]][["foreign"]][["lags"]]}))
+  p_domestic_i <- unlist(lapply(object, function(x){x[["model"]][["p_domestic"]]}))
+  p_foreign_i <- unlist(lapply(object, function(x){x[["model"]][["p_foreign"]]}))
+  s_i <- unlist(lapply(object, function(x){x[["model"]][["s"]]}))
   p <- max(c(p_domestic_i, p_foreign_i)) # Lag of endogenous variables in the global model
+  s <- max(s_i)
   
-  # Produce a vector of positions. Each position will be used during solving
-  # the model while the others will be omitted.
-  pos_thin <- seq(from = thin, to = draws, by = thin)
-  draws <- length(pos_thin)
+  n_domestic_i <- k_domestic_i * k_domestic_i * p_domestic_i
+  n_foreign_i <- k_domestic_i * k_foreign_i * (p_foreign_i + 1)
+  n_global_i <- k_domestic_i * m_i * (s_i + 1)
+  n_c_i <- k_domestic_i * n_i
   
   # Create skeleton
   result <- NULL
-  result[["a0"]] <- matrix(NA, k^2, draws)
-  result[["a"]] <- matrix(NA, k^2 * p, draws)
+  result[["a0"]] <- matrix(NA, draws, k * k)
+  result[["a"]] <- matrix(NA, draws, k * k * p)
   
-  global_i <- unlist(lapply(object, function(x){!is.null(x[["data"]][["global"]])}))
-  global <- any(global_i)
+  
   if (global) {
-    # Get global variables
-    k_global_i <- unlist(lapply(object, function(x){length(x[["model"]][["global"]][["variables"]])}))
-    k_global <- max(k_global_i)
-    p_global_i <- unlist(lapply(object, function(x){x[["model"]][["global"]][["lags"]]}))
-    s <- max(p_global_i) # Lag of global variables in the global model
-    result[["b"]] <- matrix(0, k * k_global * (1 + s), draws)
+    s <- max(s_i) # Lag of global variables in the global model
+    result[["b"]] <- matrix(NA, draws, k * m * (1 + s))
   }
   
   # Get deterministic terms
-  deter_i <- unlist(lapply(object, function(x){!is.null(x[["data"]][["deterministic"]])}))
-  deter <- any(deter_i)
-  if (deter) {
-    k_deter_i <- unlist(lapply(object, function(x){ifelse(class(x[["data"]][["deterministic"]]) == "list",
-                                                          ncol(x[["data"]][["deterministic"]][[1]]),
-                                                          ncol(x[["data"]][["deterministic"]]))}))
-    k_deter <- max(k_deter_i)
-    result[["c"]] <- matrix(NA, k * k_deter, draws)
+  if (length(unique(n_i)) > 1) {
+    stop("Heterogeneous specification of deterministic terms not supported yet.")
+  }
+  if (n > 0) {
+    result[["c"]] <- matrix(NA, draws, k * n)
   }
   
-  result[["sigma"]] <- matrix(NA, k * k, draws)
+  result[["sigma"]] <- matrix(NA, draws, k * k)
   
-  tvp_i <- matrix(NA, n_countries, 6)
-  dimnames(tvp_i) <- list(country_names,
-                          c("domestic", "foreign", "global", "deterministic", "a0", "sigma"))
-  for (i in country_names) {
-    for (j in c("domestic", "foreign", "global", "deterministic", "a0", "sigma")) {
-      if (!is.null(object[[i]][["posteriors"]][[j]])) {
-        tvp_i[i, j] <- is.list(object[[i]][["posteriors"]][[j]]) 
-      } 
-    }
-  }
-  tvp <- any(tvp_i, na.rm = TRUE)
+  tvp_i <- unlist(lapply(object, function(x){x[["model"]][["tvp"]]}))
+  tvp <- any(tvp_i)
+  
+  sv_i <- unlist(lapply(object, function(x){x[["model"]][["error"]] %in% c("sv", "sv+covar")}))
   
   if (is.null(period)) {
     period <- tt
@@ -181,64 +175,70 @@ combine_submodels <- function(object, period = NULL, thin = 1){
   names(W) <- names(object)
   rm(temp)
   
-  cat(paste("Generating GVAR model...\n"))
+  cat(paste("Combining submodels to global model...\n"))
   pb <- utils::txtProgressBar(style = 3)
-  for (draw_i in 1:draws) {
-    
-    # Select draw that should be used considering thinning
-    draw <- pos_thin[draw_i]
+  for (draw in 1:draws) {
     
     #### Put together A0 ####
-    a0_temp <- NULL
+    a0_temp <- matrix(NA, k, k)
     for (i in country_names) {
       
+      pos_a0_foreign <- n_domestic_i[i] + 1:(k_domestic_i[i] * k_foreign_i[i])
       # Structural
       if (object[[i]][["model"]][["structural"]]) {
-        if (!is.null(object[[i]][["posteriors"]][["a0"]]) & tvp_i[i, "a0"]) {
-          A0 <- matrix(object[[i]][["posteriors"]][["a0"]][[period]][draw_i, ], k_domestic_i[i]) 
+        stop("implement structural")
+        if (!is.null(object[[i]][["posteriors"]][["a"]][["coeffs"]]) & tvp_i[i, "a0"]) {
+          A0 <- matrix(object[[i]][["posteriors"]][["a"]][["coeffs"]][[period]][draw, ], k_domestic_i[i]) 
         } else {
-          A0 <- matrix(object[[i]][["posteriors"]][["a0"]][draw_i, ], k_domestic_i[i]) 
+          A0 <- matrix(object[[i]][["posteriors"]][["a"]][["coeffs"]][draw, ], k_domestic_i[i]) 
         }
       } else {
         A0 <- diag(1, k_domestic_i[i])
       }
       
       # Contemporary foreign
-      if (tvp_i[i, "foreign"]) {
-        A0_for <- matrix(object[[i]][["posteriors"]][["foreign"]][[period]][draw_i, 1:(k_domestic_i[i] * k_foreign_i[i])], k_domestic_i[i])
+      if (tvp_i[i]) {
+        stop("Implement TVP")
+        A0_for <- matrix(object[[i]][["posteriors"]][["a"]][["coeffs"]][[period]][draw, pos_a0_foreign], k_domestic_i[i])
       } else {
-        A0_for <- matrix(object[[i]][["posteriors"]][["foreign"]][draw_i, 1:(k_domestic_i[i] * k_foreign_i[i])], k_domestic_i[i])
+        A0_for <- matrix(object[[i]][["posteriors"]][["a"]][["coeffs"]][draw, pos_a0_foreign], k_domestic_i[i])
       }
       
-      a0_temp <- rbind(a0_temp, cbind(A0, -A0_for) %*% W[[i]])
+      a0_temp[k_pos[i] + 1:k_domestic_i[i],] <- cbind(A0, -A0_for) %*% W[[i]]
     }
-    result[["a0"]][, draw_i] <- a0_temp
+    result[["a0"]][draw, ] <- matrix(a0_temp)
+    rm(a0_temp)
     
     #### Put together G ####
     for (j in 1:p) {
       # Create global matrix of [A_d, A_*] for lag j
       g_temp <- matrix(NA_real_, k, k)
+      
       for (i in country_names) {
+        
         # Create a country matrix [A_d, A_*] and fill it with A_D and A_*
         temp_i <- matrix(0, k_domestic_i[i], k_domestic_i[i] + k_foreign_i[i])
         
         # Domestic draws of lag j
         if (j <= p_domestic_i[i]) { # If j is larger than p_domestic_i, leave the country matrix 0
-          if (tvp_i[i, "domestic"]) {
-            temp_i[, 1:k_domestic_i[i]] <- object[[i]][["posteriors"]][["domestic"]][[period]][draw, (j - 1) * k_domestic_i[i]^2 + 1:k_domestic_i[i]^2]
+          pos_dom <- (j - 1) * k_domestic_i[i] * k_domestic_i[i] + 1:(k_domestic_i[i] * k_domestic_i[i])
+          if (tvp_i[i]) {
+            stop("Implement TVP")
+            temp_i[, 1:k_domestic_i[i]] <- object[[i]][["posteriors"]][["domestic"]][[period]][draw, pos_dom]
           } else {
-            temp_i[, 1:k_domestic_i[i]] <- object[[i]][["posteriors"]][["domestic"]][draw, (j - 1) * k_domestic_i[i]^2 + 1:k_domestic_i[i]^2] 
+            temp_i[, 1:k_domestic_i[i]] <- object[[i]][["posteriors"]][["a"]][["coeffs"]][draw, pos_dom] 
           }
         }
-        # foreign draws of lag j
-        if (tvp_i[i, "foreign"]) {
-          if (j <= p_foreign_i[i]) { # If j is larger than p_foreign_i, leave the country matrix 0
-            temp_i[, k_domestic_i[i] + 1:k_foreign_i[i]] <- object[[i]][["posteriors"]][["foreign"]][[period]][draw, j * k_domestic_i[i] * k_foreign_i[i]  + 1:(k_domestic_i[i] * k_foreign_i[i])]  
-          } 
-        } else {
-          if (j <= p_foreign_i[i]) { # If j is larger than p_foreign_i, leave the country matrix 0
-            temp_i[, k_domestic_i[i] + 1:k_foreign_i[i]] <- object[[i]][["posteriors"]][["foreign"]][draw, j * k_domestic_i[i] * k_foreign_i[i]  + 1:(k_domestic_i[i] * k_foreign_i[i])]  
-          }  
+        
+        # Foreign draws of lag j
+        if (j <= p_foreign_i[i]) { # If j is larger than p_foreign_i, leave the country matrix 0
+          pos_for <-  n_domestic_i[i] + j * (k_domestic_i[i] * k_foreign_i[i]) + 1:(k_domestic_i[i] * k_foreign_i[i])
+          if (tvp_i[i]) {
+            stop("Implement TVP")
+            temp_i[, k_domestic_i[i] + 1:k_foreign_i[i]] <- object[[i]][["posteriors"]][["a"]][["coeffs"]][[period]][draw, pos_for]  
+          } else {
+            temp_i[, k_domestic_i[i] + 1:k_foreign_i[i]] <- object[[i]][["posteriors"]][["a"]][["coeffs"]][draw, pos_for]  
+          }
         }
         
         g_temp[k_pos[i] + 1:k_domestic_i[i],] <- temp_i %*% W[[i]]
@@ -246,126 +246,136 @@ combine_submodels <- function(object, period = NULL, thin = 1){
       }
       
       # Store
-      result[["a"]][(j - 1) * k^2 + 1:k^2, draw_i] <- matrix(g_temp)
+      result[["a"]][draw, (j - 1) * k^2 + 1:(k^2)] <- matrix(g_temp)
       rm(g_temp)
     }
     
     #### Put together H ####
     if (global) {
       for (j in 1:(s + 1)) {
-        h_temp <- matrix(0, k, k_global)
+        h_temp <- matrix(0, k, m)
         for (i in country_names) {
-          if (j <= p_global_i[i] + 1) {
-            if (tvp_i[i, "global"]) {
-              h_temp[k_pos[i] + 1:k_domestic_i[i],] <- object[[i]][["posteriors"]][["global"]][[period]][draw, (j - 1) * k_domestic_i[i] * k_global_i[i]  + 1:(k_domestic_i[i] * k_global_i[i])]
-            } else {
-              h_temp[k_pos[i] + 1:k_domestic_i[i],] <- object[[i]][["posteriors"]][["global"]][draw, (j - 1) * k_domestic_i[i] * k_global_i[i]  + 1:(k_domestic_i[i] * k_global_i[i])] 
-            }
-          } 
+          if (m_i[i] > 0) {
+            if (j <= s_i[i] + 1) {
+              pos_global <- n_domestic_i[i] + n_foreign_i[i] + (j - 1) * k_domestic_i[i] * m_i[i] + 1:(k_domestic_i[i] * m_i[i])
+              if (tvp_i[i]) {
+                h_temp[k_pos[i] + 1:k_domestic_i[i],] <- object[[i]][["posteriors"]][["a"]][["coeffs"]][[period]][draw, pos_global]
+              } else {
+                h_temp[k_pos[i] + 1:k_domestic_i[i],] <- object[[i]][["posteriors"]][["a"]][["coeffs"]][draw, pos_global] 
+              }
+            }  
+          }
         }
         
         # Store
-        result[["b"]][(j - 1) * k * k_global + 1:(k * k_global), draw_i] <- h_temp
+        result[["b"]][draw, (j - 1) * k * m + 1:(k * m)] <- matrix(h_temp)
         rm(h_temp)
       }
     }
     
     #### Put together D ####
-    if (deter) {
-      d_temp <- matrix(0, k, k_deter)
+    if (n > 0) {
+      d_temp <- matrix(0, k, n)
       for (i in country_names) {
-        if (deter_i[i]) {
-          if (tvp_i[i, "deterministic"]) {
-            d_temp[k_pos[i] + 1:k_domestic_i[i],] <- object[[i]][["posteriors"]][["deterministic"]][[period]][draw, ]
+        pos_det <- n_domestic_i[i] + n_foreign_i[i] + n_global_i[i] + 1:(k_domestic_i[i] * n_i[i])
+        if (n_i[i] > 0) {
+          if (tvp_i[i]) {
+            d_temp[k_pos[i] + 1:k_domestic_i[i],] <- object[[i]][["posteriors"]][["a"]][["coeffs"]][[period]][draw, pos_det]
           } else {
-            d_temp[k_pos[i] + 1:k_domestic_i[i],] <- object[[i]][["posteriors"]][["deterministic"]][draw, ] 
+            d_temp[k_pos[i] + 1:k_domestic_i[i],] <- object[[i]][["posteriors"]][["a"]][["coeffs"]][draw, pos_det] 
           }
         }
       }
       
       # Premultiply by A0_i and store
-      result[["c"]][, draw_i] <- d_temp
+      result[["c"]][draw, ] <- matrix(d_temp)
       rm(d_temp)
     }
     
     #### Put together Sigma ####
     sigma_temp <- matrix(0, k, k)
     for (i in country_names) {
-      if (tvp_i[i, "sigma"]) {
-        sigma_temp[k_pos[i] + 1:k_domestic_i[i], k_pos[i] + 1:k_domestic_i[i]] <- object[[i]][["posteriors"]][["sigma"]][[period]][draw, ] 
+      if (sv_i[i]) {
+        sigma_temp[k_pos[i] + 1:k_domestic_i[i], k_pos[i] + 1:k_domestic_i[i]] <- object[[i]][["posteriors"]][["sigma"]][["coeffs"]][[period]][draw, ] 
       } else {
-        sigma_temp[k_pos[i] + 1:k_domestic_i[i], k_pos[i] + 1:k_domestic_i[i]] <- object[[i]][["posteriors"]][["sigma"]][draw, ]  
+        sigma_temp[k_pos[i] + 1:k_domestic_i[i], k_pos[i] + 1:k_domestic_i[i]] <- object[[i]][["posteriors"]][["sigma"]][["coeffs"]][draw, ]  
       }
     }
-    result[["sigma"]][, draw_i] <- sigma_temp
+    result[["sigma"]][draw, ] <- sigma_temp
     rm(sigma_temp)
     
-    utils::setTxtProgressBar(pb, value = draw_i / draws)
+    utils::setTxtProgressBar(pb, value = draw / draws)
   }
   
   # Convert posterior draws to coda objects ----
-  mc_start <- unique(unlist(lapply(object, function(x){ifelse(class(x[["posteriors"]][["foreign"]]) == "list",
-                                                              attributes(x[["posteriors"]][["foreign"]][[1]])$mcpar[1],
-                                                              attributes(x[["posteriors"]][["foreign"]])$mcpar[1])})))
-  mc_end <- unique(unlist(lapply(object, function(x){ifelse(class(x[["posteriors"]][["foreign"]]) == "list",
-                                                            attributes(x[["posteriors"]][["foreign"]][[1]])$mcpar[2],
-                                                            attributes(x[["posteriors"]][["foreign"]])$mcpar[2])})))
-  mc_thin <- unique(unlist(lapply(object, function(x){ifelse(class(x[["posteriors"]][["foreign"]]) == "list",
-                                                             attributes(x[["posteriors"]][["foreign"]][[1]])$mcpar[3],
-                                                             attributes(x[["posteriors"]][["foreign"]])$mcpar[3])})))
+  mc_start <- unique(unlist(lapply(object, function(x){ifelse("list" %in% class(x[["posteriors"]][["a"]][["coeffs"]]),
+                                                              attributes(x[["posteriors"]][["a"]][["coeffs"]][[1]])$mcpar[1],
+                                                              attributes(x[["posteriors"]][["a"]][["coeffs"]])$mcpar[1])})))
+  # mc_end <- unique(unlist(lapply(object, function(x){ifelse("list" %in% class(x[["posteriors"]][["a"]][["coeffs"]]),
+  #                                                           attributes(x[["posteriors"]][["a"]][["coeffs"]][[1]])$mcpar[2],
+  #                                                           attributes(x[["posteriors"]][["a"]][["coeffs"]])$mcpar[2])})))
+  mc_thin <- unique(unlist(lapply(object, function(x){ifelse("list" %in% class(x[["posteriors"]][["a"]][["coeffs"]]),
+                                                             attributes(x[["posteriors"]][["a"]][["coeffs"]][[1]])$mcpar[3],
+                                                             attributes(x[["posteriors"]][["a"]][["coeffs"]])$mcpar[3])})))
   
-  mc_seq <- seq(from = mc_start, to = mc_end, by = mc_thin)[pos_thin]
-  mc_start <- mc_seq[1]
-  mc_thin <- mc_seq[2] - mc_seq[1]
-  
-  result[["a0"]] <- coda::mcmc(t(result[["a0"]]), start = mc_start, thin = mc_thin)
-  result[["a"]] <- coda::mcmc(t(result[["a"]]), start = mc_start, thin = mc_thin)
+  result[["a0"]] <- coda::mcmc(result[["a0"]], start = mc_start, thin = mc_thin)
+  result[["a"]] <- coda::mcmc(result[["a"]], start = mc_start, thin = mc_thin)
   if (global) {
-    result[["b"]] <- coda::mcmc(t(result[["b"]]), start = mc_start, thin = mc_thin)
+    result[["b"]] <- coda::mcmc(result[["b"]], start = mc_start, thin = mc_thin)
   }
-  if (deter) {
-    result[["c"]] <- coda::mcmc(t(result[["c"]]), start = mc_start, thin = mc_thin)
+  if (n > 0) {
+    result[["c"]] <- coda::mcmc(result[["c"]], start = mc_start, thin = mc_thin)
   }
-  result[["sigma"]] <- coda::mcmc(t(result[["sigma"]]), start = mc_start, thin = mc_thin)
-  
-  #### Create variable index ----
-  result[["data"]][["endogen"]] <- NULL
-  data_names <- NULL
-  country_names <- NULL
-  for (i in names(object)) {
-    result[["data"]][["endogen"]] <- cbind(result[["data"]][["endogen"]], object[[i]][["data"]][["domestic"]])
-    data_names <- c(data_names, dimnames(object[[i]][["data"]][["domestic"]])[[2]])
-    country_names <- c(country_names, rep(i, length(dimnames(object[[i]][["data"]][["domestic"]])[[2]])))
-  }
-  dimnames(result[["data"]][["endogen"]])[[2]] <- data_names
-  index <- data.frame("country" = country_names,
-                      "variable" = data_names,
-                      stringsAsFactors = FALSE)
-  result[["index"]] <- index
-  
-  # Model specs
-  result[["model"]] <- list()
-  result[["model"]][["endogen"]] <- list(variables = data_names, lags = p)
-  
+  result[["sigma"]] <- coda::mcmc(result[["sigma"]], start = mc_start, thin = mc_thin)
   
   # Collect raw data ----
-  ## Put together deterministic terms ----
-  if (deter) {
-    data_names <- NULL
-    for (i in names(object)) {
-      if (object[[i]]$model$type == "VEC" & !is.null(object[[i]]$data$deterministic)) {
-        if (!is.null(object[[i]]$data$deterministic$unrestricted)) {
-          result$data$deterministic <- cbind(result$data$deterministic, object[[i]]$data$deterministic$unrestricted)
-          data_names <- c(data_names, dimnames(object[[i]]$data$deterministic$unrestricted)[[2]])
+  #### Create variable index ----
+  result[["data"]][["y"]] <- NULL
+  index <- NULL
+  for (i in country_names) {
+    result[["data"]][["y"]] <- cbind(result[["data"]][["y"]], object[[i]][["data"]][["domestic"]])
+    data_names <- dimnames(object[[i]][["data"]][["domestic"]])[[2]]
+    index <- rbind(index, data.frame("country" = i, "variable" = data_names, stringsAsFactors = FALSE))
+  }
+  dimnames(result[["data"]][["y"]])[[2]] <- index[, "variable"]
+  
+  ## Put together global data ----
+  if (global) {
+    exogen <- NULL
+    exogen_names <- NULL
+    for (i in country_names) {
+      if (m_i[i]) {
+        data_names_i <- dimnames(object[[i]][["data"]][["global"]])[[2]]
+        pos <- which(!data_names_i %in% exogen_names)
+        if (length(pos) > 0) {
+          exogen <- cbind(exogen, object[[i]][["data"]][["global"]][, pos])
+          exogen_names <- c(exogen_names, data_names_i[pos])        
         }
-        if (!is.null(object[[i]]$data$deterministic$restricted)) {
-          result$data$deterministic <- cbind(result$data$deterministic, object[[i]]$data$deterministic$restricted) 
-          data_names <- c(data_names, dimnames(object[[i]]$data$deterministic$restricted)[[2]])
-        }
-      } else {
-        result$data$deterministic <- cbind(result$data$deterministic, object[[i]]$data$deterministic)
-        data_names <- c(data_names, dimnames(object[[i]]$data$deterministic)[[2]])
       }
+    }
+    temp_tsp <- stats::tsp(exogen)
+    result[["data"]][["x"]] <- stats::as.ts(as.matrix(exogen))
+    dimnames(result[["data"]][["x"]])[[2]] <- exogen_names
+    stats::tsp(result[["data"]][["x"]]) <- temp_tsp
+  }
+  
+  ## Put together deterministic terms ----
+  if (n > 0) {
+    data_names <- NULL
+    for (i in country_names) {
+      # if (object[[i]]$model$type == "VEC" & !is.null(object[[i]]$data$deterministic)) {
+      #   if (!is.null(object[[i]]$data$deterministic$unrestricted)) {
+      #     result$data$deterministic <- cbind(result$data$deterministic, object[[i]]$data$deterministic$unrestricted)
+      #     data_names <- c(data_names, dimnames(object[[i]]$data$deterministic$unrestricted)[[2]])
+      #   }
+      #   if (!is.null(object[[i]]$data$deterministic$restricted)) {
+      #     result$data$deterministic <- cbind(result$data$deterministic, object[[i]]$data$deterministic$restricted) 
+      #     data_names <- c(data_names, dimnames(object[[i]]$data$deterministic$restricted)[[2]])
+      #   }
+      # } else {
+      result$data$deterministic <- cbind(result$data$deterministic, object[[i]]$data$deterministic)
+      data_names <- c(data_names, dimnames(object[[i]]$data$deterministic)[[2]])
+      #}
     }
     dimnames(result$data$deterministic)[[2]] <- data_names
     pos_det_name <- NULL
@@ -380,34 +390,17 @@ combine_submodels <- function(object, period = NULL, thin = 1){
     result$data$deterministic <- stats::as.ts(as.matrix(result$data$deterministic[, pos_det]))
     dimnames(result$data$deterministic)[[2]] <- pos_det_name
     stats::tsp(result$data$deterministic) <- temp_tsp
-    
-    # Update specs
-    result[["model"]][["deterministic"]] <- list(variables = pos_det_name)
   }
   
-  ## Put together global data ----
-  if (global) {
-    exogen <- NULL
-    exogen_names <- NULL
-    for (i in names(object)) {
-      if (global_i[i]) {
-        data_names_i <- dimnames(object[[i]][["data"]][["global"]])[[2]]
-        pos <- which(!data_names_i %in% exogen_names)
-        if (length(pos) > 0) {
-          exogen <- cbind(exogen, object[[i]][["data"]][["global"]][, pos])
-          exogen_names <- c(exogen_names, data_names_i[pos])        
-        }
-      }
-    }
-    temp_tsp <- stats::tsp(exogen)
-    result[["data"]][["global"]] <- stats::as.ts(as.matrix(exogen))
-    dimnames(result[["data"]][["global"]])[[2]] <- exogen_names
-    stats::tsp(result[["data"]][["global"]]) <- temp_tsp
+  # Model specs
+  result[["model"]] <- list()
+  result[["model"]][["k"]] <- k
+  result[["model"]][["p"]] <- p
+  result[["model"]][["m"]] <- m
+  result[["model"]][["s"]] <- s
+  result[["model"]][["n"]] <- n
+  result[["model"]][["index"]] <- index
   
-    # Update specs
-    result[["model"]][["global"]] <- list(variables = exogen_names, lags = s)  
-  }
-  
-  class(result) <- list("bgvar", "list")
+  class(result) <- append("bgvar", class(result))
   return(result)
 }

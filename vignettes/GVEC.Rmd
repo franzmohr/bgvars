@@ -1,0 +1,549 @@
+---
+title: "Global Vector Error Correction Models"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Global Vector Error Correction Models}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+  
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+### Data
+
+The `bgvars` packages comes with the updated GVAR database of Mohaddes and Raissi (2020), which contains economic time series for 33 countries and 3 commodities from 1979Q2 to 2019Q4.[^gvar2019]
+
+```{r data, message=FALSE, eval = TRUE}
+#library(bgvars)
+devtools::load_all(".")
+data("dees2007")
+
+submodel_data <- dees2007[["submodel_data"]]
+global_data <- dees2007[["global_data"]]
+```
+
+```{r poil-into-us-model, message=FALSE, eval = TRUE}
+# Add global series to US series
+vars_us <- c(dimnames(submodel_data[["US"]][["endogen"]])[[2]], "poil")
+submodel_data[["US"]][["endogen"]] <- cbind(submodel_data[["US"]][["endogen"]], global_data)
+dimnames(submodel_data[["US"]][["endogen"]])[[2]] <- vars_us
+```
+
+
+### Preparation
+
+```{r initialise, eval = TRUE}
+object <- create_gvecmodel(submodel_data = submodel_data)
+```
+
+Weight matrices for each country/region can be calculated with the function `add_weight_matrices`.
+
+
+```{r weights, eval = TRUE}
+# Generate weight matrices
+object <- add_weight_matrices(object = object,
+                              submodel_data = submodel_data,
+                              period = 1999:2001)
+```
+
+
+### Model specification
+
+To reproduce the results of Dees et al. (2007), each sub-model is added manually for each country based on the specifications provided in the article's supplementary material.
+
+```{r}
+submodel <- "US"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "rl", "q", "poil"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "ep"),
+  p_exogen = 2,
+  r = 2,
+  const = "unrestricted",
+  trend = "restricted"
+)
+```
+
+
+```{r}
+submodel <- "EA"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 2,
+  r = 2,
+  const = "unrestricted",
+  trend = "restricted"
+)
+```
+
+
+```{r}
+submodel <- "CN"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  r = 1,
+  const = "unrestricted",
+  trend = "restricted"
+)
+```
+
+
+```{r}
+submodel <- "JP"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
+  p_endogen = 1,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  r = 4,
+  const = "unrestricted",
+  trend = "restricted"
+)
+```
+
+
+```{r}
+submodel <- "GB"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  r = 3,
+  const = "unrestricted",
+  trend = "restricted"
+)
+```
+
+
+```{r}
+submodel <- "SE"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  r = 3,
+  const = "unrestricted",
+  trend = "restricted"
+)
+```
+
+
+```{r}
+submodel <- "CH"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
+  p_endogen = 1,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  r = 3,
+  const = "unrestricted",
+  trend = "restricted"
+)
+```
+
+
+```{r}
+submodel <- "NO"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  r = 2,
+  const = "unrestricted",
+  trend = "restricted"
+)
+```
+
+
+```{r}
+submodel <- "AR"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "q", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  const = "unrestricted",
+  trend = "restricted",
+  r = 2
+)
+```
+
+
+```{r}
+submodel <- "BR"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  const = "unrestricted",
+  trend = "restricted",
+  r = 1
+)
+```
+
+
+```{r}
+submodel <- "CL"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "q", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  const = "unrestricted",
+  trend = "restricted",
+  r = 2
+)
+```
+
+
+```{r}
+submodel <- "MX"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "ep"),
+  p_endogen = 1,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  const = "unrestricted",
+  trend = "restricted",
+  r = 3
+)
+```
+
+
+```{r}
+submodel <- "PE"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  const = "unrestricted",
+  trend = "restricted",
+  r = 3
+)
+```
+
+
+```{r}
+submodel <- "AU"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
+  p_endogen = 1,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  const = "unrestricted",
+  trend = "restricted",
+  r = 4
+)
+```
+
+
+```{r}
+submodel <- "CA"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
+  p_endogen = 1,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  const = "unrestricted",
+  trend = "restricted",
+  r = 4
+)
+```
+
+
+```{r}
+submodel <- "NZ"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  const = "unrestricted",
+  trend = "restricted",
+  r = 3
+)
+```
+
+
+```{r}
+submodel <- "ID"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  const = "unrestricted",
+  trend = "restricted",
+  r = 3
+)
+```
+
+
+```{r}
+submodel <- "KR"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  const = "unrestricted",
+  trend = "restricted",
+  r = 4
+)
+```
+
+
+```{r}
+submodel <- "MY"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "q", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  const = "unrestricted",
+  trend = "restricted",
+  r = 1
+)
+```
+
+
+```{r}
+submodel <- "PH"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "q", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  const = "unrestricted",
+  trend = "restricted",
+  r = 2
+)
+```
+
+
+```{r}
+submodel <- "SG"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "q", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  const = "unrestricted",
+  trend = "restricted",
+  r = 3
+)
+```
+
+
+```{r}
+submodel <- "TH"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "q", "ep"),
+  p_endogen = 1,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  const = "unrestricted",
+  trend = "restricted",
+  r = 3
+)
+```
+
+
+```{r}
+submodel <- "IN"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "q", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  const = "unrestricted",
+  trend = "restricted",
+  r = 2
+)
+```
+
+
+
+```{r}
+submodel <- "ZA"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  const = "unrestricted",
+  trend = "restricted",
+  r = 1
+)
+```
+
+
+```{r}
+submodel <- "SA"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  const = "unrestricted",
+  trend = "restricted",
+  r = 1
+)
+```
+
+
+```{r}
+submodel <- "TR"
+object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+  submodel = submodel,
+  endogen = c("y", "Dp", "rs", "ep"),
+  p_endogen = 2,
+  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+  p_exogen = 1,
+  const = "unrestricted",
+  trend = "restricted",
+  r = 1
+)
+```
+
+
+The resulting sub-models have different sample sizes. Function `align_model_obs` can be employed to ensure that all sub-models use the same set of observations that are common to all sub-models.
+
+```{r}
+object <- align_model_obs(object)
+```
+
+
+
+### Prior specification
+
+```{r, eval = TRUE}
+object <- add_priors(object,
+                     coef = list(v_i = 0),
+                     coint = list(v_i = 0, p_tau_i = 1),
+                     sigma = list(df = 3, scale = 0.0001))
+```
+
+### Initial values
+
+```{r, eval = TRUE}
+object <- add_initial_values(object)
+```
+
+Since the function creates initial values based on the reduced rank maximum likelihood estimator, closer inspection of the sub-models should show that the produced estimates are equal to the values provided in the supplementary material to Dees et al. (2007).
+
+### Posterior simulation
+
+#### BayesTS
+
+# ```{r, echo = FALSE, eval = FALSE, message=FALSE, results='hide'}
+# write_to_hdf5(object, folder = "D:/models/gvec-test")
+# ```
+# ```{r, echo = TRUE, eval = FALSE, message=FALSE, results='hide'}
+# write_to_hdf5(object, folder = "C:/path/to/gvar")
+# ```
+# 
+# ```{bash, eval = FALSE}
+# bayests posterior C:/path/to/gvar/submodels
+# ```
+# 
+# ```{r, eval = FALSE, message=FALSE, results='hide'}
+# object <- read_gvar_from_folder("C:/path/to/gvar")
+# ```
+
+#### Package 
+
+```{r, eval = TRUE, message=FALSE, results='hide'}
+object <- add_posterior_coefficients(object)
+```
+
+```{r, eval = TRUE, message=FALSE, results='hide'}
+object <- add_posterior_loglik(object)
+```
+
+### Model selection
+
+
+```{r, eval = TRUE, message=FALSE, results='hide'}
+sc <- selection_criteria(object)
+```
+
+
+The estimated country models can be combined and solved with the function `combine_submodels`.
+
+```{r, message=FALSE, results='hide'}
+gvar <- combine_submodels(object)
+```
+
+### Impulse response analysis
+
+Impulse response analysis can be done with the `girf` function.
+
+```{r, eval = TRUE, fig.width=5.5, fig.height=4.5}
+gvar_irf <- girf(gvar, impulse = c("US", "r"),
+                 response = c("EA", "y"),
+                 n.ahead = 20, ci = .68)
+
+plot(gvar_irf)
+```
+
+
+## References
+
+Chudik, A. & Pesaran, M. H. (2016). Theory and practice of GVAR modelling. *Journal of Economic Surveys 30*(1), 165-197. <https://doi.org/10.1111/joes.12095>
+
+Dees, S., Mauro, F., Pesaran, M. H., & Smith, V. L. (2007). Exploring the international linkages of the euro area: A global VAR analysis. *Journal of Applied Econometrics 22*(1), 1-38. <https://doi.org/10.1002/jae.932>
+
+George, E. I., Sun, D., & Ni, S. (2008). Bayesian stochastic search for VAR model restrictions. *Journal of Econometrics, 142*(1), 553-580. <https://doi.org/10.1016/j.jeconom.2007.08.017>
+
+Koop, G., Pesaran, M. H., & Potter, S.M. (1996). Impulse response analysis in nonlinear multivariate models. *Journal of Econometrics 74*(1), 119-147. <https://doi.org/10.1016/0304-4076(95)01753-4>
+
+Lütkepohl, H. (2007). *New introduction to multiple time series analysis* (2nd ed.). Berlin: Springer.
+
+Mohaddes, K., & Raissi, M. (2020). Compilation, revision and updating of the global VAR (GVAR) database, 1979Q2--2019Q4 (mimeo). <https://www.mohaddes.org/gvar>.
+
+Pesaran, H. H., & Shin, Y. (1998). Generalized impulse response analys is in linear multivariate models. *Economics Letters, 58*(1), 17-29. <https://doi.org/10.1016/S0165-1765(97)00214-0>
+
+Pesaran, M., Schuermann, T., & Weiner, S. M. (2004). Modeling regional interdependencies using a global error-correcting macroeconometric model. *Journal of Business & Economic Statistics 22*(2), 129-162. <https://doi.org/10.1198/073500104000000019>
+
+[^gvar2019]: The paper and data set can be downloaded from <https://www.mohaddes.org/gvar>.

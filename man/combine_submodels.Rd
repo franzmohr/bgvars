@@ -4,23 +4,20 @@
 \alias{combine_submodels}
 \title{Generate a GVAR Model}
 \usage{
-combine_submodels(object, period = NULL, thin = 1)
+combine_submodels(object, period = NULL)
 }
 \arguments{
-\item{object}{a list containing the results of the country estimates, usually, the
+\item{object}{a list containing the results of the submodel estimates, usually, the
 result of a call to \code{\link{draw_posterior}}.}
 
 \item{period}{an integer of the time index for which the GVAR should be solved. Only used
 when time varying weights or parameters are used.}
-
-\item{thin}{an integer specifying the thinning factor for the MCMC output.
-Defaults to 1 to obtain the full MCMC sequence.}
 }
 \value{
-An object of class \code{"bgvar"}.
+An object of class 'bgvar'.
 }
 \description{
-Combines the country model results to a global VAR model and solves it.
+Combines the submodels of a global VAR model and solves it.
 }
 \examples{
 # Load data

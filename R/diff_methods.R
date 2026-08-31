@@ -37,7 +37,8 @@ diff.submodeldata <- function(data, variables = NULL, multi = NULL){
 
 .diff_func <- function(x, variables, multi){
   
-  x <- x[["endogen"]]
+  result <- x
+  x <- result[["endogen"]]
   tsp_all <- stats::tsp(x)
   tsp_all[1] <- tsp_all[1] + 1 / tsp_all[3]
   if (is.null(multi)) {
@@ -56,5 +57,7 @@ diff.submodeldata <- function(data, variables = NULL, multi = NULL){
   }
   x <- x[-1, ]
   x <- stats::ts(x, start = tsp_all[1], frequency = tsp_all[3])
-  return(x)
+  
+  result[["endogen"]] <- x
+  return(result)
 }

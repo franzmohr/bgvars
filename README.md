@@ -3,9 +3,18 @@
 
 # bgvars: Bayesian Inference for Global Vector Autoregressive (GVAR) and Global Vector Error Correction (GVEC) Models
 
+<!-- badges: start -->
+
 [![CRAN
 status](https://www.r-pkg.org/badges/version/bgvars)](https://cran.r-project.org/package=bgvars)
+[![CRAN
+downloads](https://cranlogs.r-pkg.org/badges/bgvars)](https://cran.r-project.org/package=bgvars)
+[![Total
+downloads](https://cranlogs.r-pkg.org/badges/grand-total/bgvars)](https://cran.r-project.org/package=bgvars)
 [![R-CMD-check](https://github.com/franzmohr/bgvars/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/franzmohr/bgvars/actions/workflows/R-CMD-check.yaml)
+[![License: GPL (\>=
+3)](https://img.shields.io/badge/license-GPL%20%28%3E%3D%203%29-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+<!-- badges: end -->
 
 ## Overview
 

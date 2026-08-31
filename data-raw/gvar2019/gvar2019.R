@@ -99,9 +99,18 @@ for (i in ctr) {
   dimnames(weight.data[[i]])[[2]] <- ctr
 }
 
-#### Save result ####
-gvar2019 <- list("country_data" = country.data,
+ctry_names <- names(country.data)
+submodel_data <- NULL
+for (i in ctry_names) {
+  submodel_data[[i]] <- list("endogen" = country.data[[i]],
+                             "weights" = weight.data[[i]])
+}
+class(submodel_data) <- list("submodeldata", "list")
+
+# Save result ----
+gvar2019 <- list("submodel_data" = submodel_data,
                  "global_data" = global.data,
-                 "region_weights" = PPP,
-                 "weight_data" = weight.data)
+                 "region_weights" = PPP)
+
+
 save(gvar2019, file = "data/gvar2019.rda", version = 2)

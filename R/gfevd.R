@@ -4,7 +4,7 @@
 #' 
 #' @param object an object of class \code{"bgvar"}, usually, a result of a call to \code{\link{combine_submodels}}.
 #' @param response a character vector of the response country and variable, respectively.
-#' @param n.ahead number of steps ahead.
+#' @param n_ahead number of steps ahead.
 #' @param normalise_gir logical. Should the GFEVD be normalised?
 #' @param mc.cores the number of cores to use, i.e. at most how many child
 #' processes will be run simultaneously. The option is initialized from
@@ -96,9 +96,9 @@
 #' 
 #'  
 #' @export
-gfevd <- function(object, response, n.ahead = 5, normalise_gir = FALSE, mc.cores = NULL) {
+gfevd <- function(object, response, n_ahead = 5, normalise_gir = FALSE, mc.cores = NULL) {
   
-  # rm(list = ls()[-which(ls() == "object")]); response = c("US", "y"); n.ahead = 5; normalise_gir = FALSE; mc.cores = NULL
+  # rm(list = ls()[-which(ls() == "object")]); response = c("US", "y"); n_ahead = 5; normalise_gir = FALSE; mc.cores = NULL
   
   if (!"bgvar" %in% class(object)) {
     stop("Object must be of class 'bgvar'.")
@@ -107,35 +107,35 @@ gfevd <- function(object, response, n.ahead = 5, normalise_gir = FALSE, mc.cores
     stop("The 'bgvar' object must include draws of the variance-covariance matrix Sigma.")
   }
   
-  response <- which(object$index[, "country"] == response[1] & object$index[, "variable"] == response[2])
+  response <- which(object$model$index[, "country"] == response[1] & object$model$index[, "variable"] == response[2])
   if (length(response) == 0){stop("Response variable not available.")}
   
   k <- sqrt(NCOL(object$a0)) # Number of endogenous variables
-  store <- NROW(object$a0) # Number of draws
+  draws <- NROW(object$a0) # Number of draws
   
   # Produce FEIR
   a <- NULL # Prepare data for lapply
-  for (i in 1:store) {
+  for (i in 1:draws) {
     a[[i]] <- list(a0 = matrix(object$a0[i, ], k),
                    a = matrix(object$a[i, ], k),
                    sigma = matrix(object$sigma[i, ], k))
   }
   
   if (is.null(mc.cores)) {
-    phi <- lapply(a, .vardecomp, h = n.ahead, response = response)
+    phi <- lapply(a, .vardecomp, h = n_ahead, response = response)
   } else {
-    phi <- parallel::mclapply(a, .vardecomp, h = n.ahead, response = response,
+    phi <- parallel::mclapply(a, .vardecomp, h = n_ahead, response = response,
                               mc.cores = mc.cores)
   }
   
-  result <- matrix(rowMeans(matrix(unlist(phi), (n.ahead + 1) * k)), n.ahead + 1)
+  result <- matrix(rowMeans(matrix(unlist(phi), (n_ahead + 1) * k)), n_ahead + 1)
 
   # Normalise
   if (normalise_gir) {
     result <- t(apply(result, 1, function(x) {x / sum(x)}))
   }
   # Name columns
-  dimnames(result) <- list(NULL, paste(object$index[, "country"], object$index[, "variable"], sep = "_"))
+  dimnames(result) <- list(NULL, paste(object$model$index[, "country"], object$model$index[, "variable"], sep = "_"))
   # Turn into time-series object
   result <- stats::ts(result, start = 0, frequency = 1)
   # Define class

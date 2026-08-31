@@ -1,11 +1,9 @@
 #' Specifications of the Submodels of a GVAR Model
 #'
-#' Obtains the model specification of the country-specific VARX or 
-#' VECX models of a GVAR model.
+#' Obtains the model specification of the submodels of a GVAR model.
 #'
-#' @param object an object of class \code{"bgvarest"} or \code{"bgvecest"}, usually,
-#' a result of a call to \code{\link{draw_posterior.gvarsubmodels}} or 
-#' \code{\link{draw_posterior.gvecsubmodels}}, respectively.
+#' @param object an object of class 'submodelestlist', usually,
+#' a result of a call to \code{\link[bvartools]{draw_posterior}}.
 #'
 #' @return A data frame.
 #' 
@@ -71,7 +69,7 @@ get_submodel_specifications <- function(object){
   
   n_models <- length(object)
   
-  result <- data.frame(ctry = rep(NA, n_models),
+  result <- data.frame(group = rep(NA, n_models),
                        type = rep(NA, n_models),
                        r = rep(NA, n_models),
                        var_domestic = rep(NA, n_models),
@@ -80,17 +78,16 @@ get_submodel_specifications <- function(object){
                        lag_foreign = rep(NA, n_models),
                        var_global = rep(NA, n_models),
                        lag_global = rep(NA, n_models),
-                       ssvs = rep(NA, n_models),
-                       bvs = rep(NA, n_models),
+                       varsel = rep(NA, n_models),
                        stringsAsFactors = FALSE)
   
   for (i in 1:n_models) {
-    result[i, "ctry"] <- names(object)[i]
+    result[i, "group"] <- names(object)[i]
     type <- object[[i]][["model"]][["type"]]
     if (object[[i]][["model"]][["structural"]]) {
      type <- paste0("S", type) 
     }
-    if (object[[i]][["model"]][["sv"]]) {
+    if (object[[i]][["model"]][["error"]] %in% c("sv", "sv+covar")) {
       type <- paste0("SV-", type) 
     }
     if (object[[i]][["model"]][["tvp"]]) {
@@ -98,19 +95,19 @@ get_submodel_specifications <- function(object){
     }
     result[i, "type"] <- type
     rm(type)
-    result[i, "var_domestic"] <- paste(object[[i]][["model"]][["domestic"]][["variables"]], collapse = ", ")
-    result[i, "lag_domestic"] <- object[[i]][["model"]][["domestic"]][["lags"]]
-    result[i, "var_foreign"] <- paste(object[[i]][["model"]][["foreign"]][["variables"]], collapse = ", ")
-    result[i, "lag_foreign"] <- object[[i]][["model"]][["foreign"]][["lags"]]
-    if (!is.null(object[[i]][["model"]][["global"]])) {
-      result[i, "var_global"] <- paste(object[[i]][["model"]][["global"]][["variables"]], collapse = ", ")
-      result[i, "lag_global"] <- object[[i]][["model"]][["global"]][["lags"]] 
+    result[i, "var_domestic"] <- paste(object[[i]][["model"]][["domestic_vars"]], collapse = ", ")
+    result[i, "lag_domestic"] <- object[[i]][["model"]][["p_domestic"]]
+    result[i, "var_foreign"] <- paste(object[[i]][["model"]][["foreign_vars"]], collapse = ", ")
+    result[i, "lag_foreign"] <- object[[i]][["model"]][["p_foreign"]]
+    if (object[[i]][["model"]][["m"]] > 0) {
+      result[i, "var_global"] <- paste(object[[i]][["model"]][["global_vars"]], collapse = ", ")
+      result[i, "lag_global"] <- object[[i]][["model"]][["s"]] 
     }
     if (!is.null(object[[i]][["model"]][["rank"]])) {
       result[i, "r"] <- object[[i]][["model"]][["rank"]] 
     }
-    if (!is.null(object[[i]][["model"]][["varselect"]])) {
-      result[i, "varselect"] <- object[[i]][["model"]][["varselect"]] 
+    if (!is.null(object[[i]][["model"]][["varsel"]])) {
+      result[i, "varsel"] <- object[[i]][["model"]][["varsel"]] 
     }
   }
   

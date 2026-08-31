@@ -8,7 +8,7 @@ girf(
   object,
   impulse,
   response,
-  n.ahead = 5,
+  n_ahead = 5,
   shock = "sd",
   ci = 0.95,
   cumulative = FALSE,
@@ -22,7 +22,7 @@ girf(
 
 \item{response}{a character vector of the response country and variable, respectively.y.}
 
-\item{n.ahead}{number of steps ahead.}
+\item{n_ahead}{number of steps ahead.}
 
 \item{shock}{size of the shock. Either \code{"sd"} (default) for a standard deviation of
 the impulse variable, \code{"nsd"} for a negativ standard deviation, or a numeric.}
@@ -42,7 +42,7 @@ A time-series object of class \code{"bgvarirf"}.
 }
 \description{
 Computes the generalised impulse response coefficients of an object of class \code{"bgvar"} for
-`n.ahead` steps.
+`n_ahead` steps.
 }
 \examples{
 # Load data
@@ -101,14 +101,14 @@ object <- draw_posterior(models_with_priors)
 gvar <- combine_submodels(object)
 
 # Obtain GIRF
-gvar_girf <- girf(gvar, impulse = c("EA", "r"), response = c("EA", "y"), n.ahead = 20)
+gvar_girf <- girf(gvar, impulse = c("EA", "r"), response = c("EA", "y"), n_ahead = 20)
 
 # Plot GIRF
 plot(gvar_girf)
 
 }
 \references{
-Lütkepohl, H. (2007). \emph{New introduction to multiple time series analyis} (2nd ed.). Berlin: Springer.
+Lütkepohl, H. (2006). \emph{New introduction to multiple time series analyis} (2nd ed.). Berlin: Springer.
 
 Pesaran, H. H., & Shin, Y. (1998). Generalized impulse response analysis in linear multivariate models. \emph{Economics Letters, 58}, 17-29.
 }

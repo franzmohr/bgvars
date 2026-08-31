@@ -7,16 +7,14 @@
 get_submodel_specifications(object)
 }
 \arguments{
-\item{object}{an object of class \code{"bgvarest"} or \code{"bgvecest"}, usually,
-a result of a call to \code{\link{draw_posterior.gvarsubmodels}} or 
-\code{\link{draw_posterior.gvecsubmodels}}, respectively.}
+\item{object}{an object of class 'submodelestlist', usually,
+a result of a call to \code{\link[bvartools]{draw_posterior}}.}
 }
 \value{
 A data frame.
 }
 \description{
-Obtains the model specification of the country-specific VARX or 
-VECX models of a GVAR model.
+Obtains the model specification of the submodels of a GVAR model.
 }
 \examples{
 # Load data

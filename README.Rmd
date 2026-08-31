@@ -16,7 +16,14 @@ knitr::opts_chunk$set(
 # bgvars: Bayesian Inference for Global Vector Autoregressive (GVAR) and Global Vector Error Correction (GVEC) Models
 
 [![CRAN status](https://www.r-pkg.org/badges/version/bgvars)](https://cran.r-project.org/package=bgvars)
+[![CRAN downloads](https://cranlogs.r-pkg.org/badges/bgvars)](https://cran.r-project.org/package=bgvars)
+[![Total downloads](https://cranlogs.r-pkg.org/badges/grand-total/bgvars)](https://cran.r-project.org/package=bgvars)
 [![R-CMD-check](https://github.com/franzmohr/bgvars/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/franzmohr/bgvars/actions/workflows/R-CMD-check.yaml)
+[![License: GPL (>= 3)](https://img.shields.io/badge/license-GPL%20%28%3E%3D%203%29-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ea4aaa?logo=github-sponsors&logoColor=white)](https://github.com/sponsors/franzmohr)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/franzmohr)
+
 
 ## Overview
 
@@ -48,93 +55,116 @@ The `bgvars` package allows Bayesian inference of GVAR models. It separates a ty
 
 The `bgvars` packages comes with the updated GVAR database of Mohaddes and Raissi (2020), which contains economic time series for 33 countries and 3 commodities from 1979Q2 to 2019Q4.[^gvar2019]
 
-```{r, eval = TRUE}
-library(bgvars)
-data("gvar2019")
+```{r data, eval = TRUE}
+#library(bgvars)
+devtools::load_all(".")
+data("gvar2023")
 
-country_data <- gvar2019$country_data # Country series
-global_data <- gvar2019$global_data # Global commodities data
-region_weights <- gvar2019$region_weights # Data for regional weights
-weight_data <- gvar2019$weight_data # Data for trade weights
+submodel_data <- gvar2023[["submodel_data"]] # Country series including weights
+global_data <- gvar2023[["global_data"]] # Global commodities data
+region_weights <- gvar2023[["region_weights"]] # Data for regional weights
+
+
 
 # Take first differences of non-stationary series  
-country_data <- diff_variables(country_data, variables = c("y", "Dp", "r"), multi = 100)
-global_data <- diff_variables(global_data, multi = 100)
+#submodel_data <- diff(submodel_data, variables = c("p"), multi = 100)
 ```
 
 ### Preparation
 
-Regional series can be calculated from individual country series with the function `create_regions`.
+Regional series can be calculated from individual submodel series with the function `create_regions`. It calculates a region based on the time series specified in `region_weights`. The resulting object is of class `submodeldata` and contains an updated version of `submodel_data`.
 
-```{r, eval = TRUE}
+```{r region, eval = TRUE}
 # Generate EA area region with 3 year rolling window weights
 ea <- c("AT", "BE", "DE", "ES", "FI", "FR", "IT", "NL")
-temp <- create_regions(country_data = country_data,
-                       regions = list("EA" = ea),
-                       period = 3,
-                       region_weights = region_weights,
-                       weight_data = weight_data)
-
-country_data <- temp$country_data
-weight_data <- temp$weight_data
+submodel_data <- create_regions(submodel_data = submodel_data,
+                                regions = list("EA" = ea),
+                                period = 3,
+                                region_weights = region_weights)
 ```
 
-Weight matrices for each country/region can be calculated with the function `create_weights`.
+```{r initialise, eval = TRUE}
+object <- create_gvarmodel(submodel_data = submodel_data,
+                           global_data = global_data)
+```
 
-```{r, eval = TRUE}
+Weight matrices for each country/region can be calculated with the function `add_weight_matrices`.
+
+
+```{r weights, eval = TRUE}
 # Generate weight matrices as 3 year, rolling window averages
-gvar_weights <- create_weights(weight_data = weight_data, period = 3,
-                               country_data = country_data)
-
+object <- add_weight_matrices(object = object,
+                              submodel_data = submodel_data,
+                              period = 3)
 ```
+
 
 ### Model specification
 
-`bgvars` assists in the set-up country models by producing a list, where each element contains all the information required to estimate a model. First, the function `create_specifications` produces an object, which contains the specifications for each country.
-
 ```{r, eval = TRUE}
 # Create an object with country model specifications
-model_specs <- create_specifications(country_data = country_data,
-                                     global_data = global_data,
-                                     domestic = list(variables = c("y", "Dp", "r"), lags = 2),
-                                     foreign = list(variables = c("y", "Dp", "r"), lags = 1),
-                                     global = list(variables = c("poil"), lags = 1),
-                                     deterministic = list(const = TRUE),
-                                     countries = c("EA", "US", "JP", "CA", "GB", "CN"),
-                                     iterations = 3000, burnin = 1000,
-                                     type = "VAR")
+object <- add_submodels(object,
+                        endogen = c("y", "Dp"),
+                        p_endogen = 0:2,
+                        exogen = c("y", "Dp"),
+                        p_exogen = 0:1,
+                        global = "poil",
+                        s = 0,
+                        deterministic = "const",
+                        error = "wishart",
+                        iterations = 3000, burnin = 1000)
 ```
 
-Country specifications can be changed by accessing the elements of the list directly:
+<!-- `bgvars` assists in the set-up country models by producing a list, where each element contains all the information required to estimate a model. First, the function `create_specifications` produces an object, which contains the specifications for each country. -->
 
-```{r, eval = TRUE}
-model_specs$US$domestic$variables <- c("y", "Dp", "r")
-model_specs$US$foreign$variables <- c("y", "Dp")
-```
 
-`create_models` produces all country models, which should be estimated. This allows for easy parallelisation. The number of elements of the resulting list depends on the specification of domestic lags, foreign lags, global lags, and the rank of the cointegration matrix `r`, if sepecified. For example, if the lags of domestic variables were set to `lags = 1:2`, the function produces two country submodels for each specification.
+<!-- Country specifications can be changed by accessing the elements of the list directly: -->
 
-```{r, eval = TRUE}
-# Create estimable objects
-object <- create_models(country_data = country_data,
-                        weight_data = gvar_weights,
-                        global_data = global_data,
-                        model_specs = model_specs)
-```
+<!-- ```{r, eval = TRUE} -->
+<!-- model_specs$US$domestic$variables <- c("y", "Dp", "r") -->
+<!-- model_specs$US$foreign$variables <- c("y", "Dp") -->
+<!-- ``` -->
+
+<!-- `create_models` produces all country models, which should be estimated. This allows for easy parallelisation. The number of elements of the resulting list depends on the specification of domestic lags, foreign lags, global lags, and the rank of the cointegration matrix `r`, if sepecified. For example, if the lags of domestic variables were set to `lags = 1:2`, the function produces two country submodels for each specification. -->
+
+<!-- ```{r, eval = TRUE} -->
+<!-- # Create estimable objects -->
+<!-- object <- create_models(country_data = country_data, -->
+<!--                         weight_data = gvar_weights, -->
+<!--                         global_data = global_data, -->
+<!--                         model_specs = model_specs) -->
+<!-- ``` -->
 
 Finally, priors must be specified with `add_priors`.
 
 ```{r, eval = TRUE}
-object <- add_priors(object)
+object <- add_priors(object,
+                     coef = list(v_i = 1),
+                     sigma = list(df = 3, scale = 0.0001))
 ```
 
-### Estimate and solve the model
+```{r, eval = TRUE}
+object <- add_initial_values(object)
+```
 
-`estimate_gvar` can be used to estimate the country models. Parallel computating can be activated by specifying the argument `mc.cores`.
+### Estimate model
 
 ```{r, eval = TRUE, message=FALSE, results='hide'}
-object <- draw_posterior(object)
+object <- add_posterior_coefficients(object)
 ```
+
+### Model selection
+
+
+```{r, eval = TRUE, message=FALSE, results='hide'}
+object <- add_posterior_loglik(object)
+```
+
+
+```{r, eval = TRUE, message=FALSE, results='hide'}
+sc <- add_posterior_loglik(object)
+```
+
 
 The estimated country models can be combined and solved with the function `combine_submodels`.
 

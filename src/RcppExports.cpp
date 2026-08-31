@@ -11,65 +11,20 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// bgvaralg
-Rcpp::List bgvaralg(Rcpp::List object);
-RcppExport SEXP _bgvars_bgvaralg(SEXP objectSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::List >::type object(objectSEXP);
-    rcpp_result_gen = Rcpp::wrap(bgvaralg(object));
-    return rcpp_result_gen;
-END_RCPP
-}
-// bgvartvpalg
-Rcpp::List bgvartvpalg(Rcpp::List object);
-RcppExport SEXP _bgvars_bgvartvpalg(SEXP objectSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::List >::type object(objectSEXP);
-    rcpp_result_gen = Rcpp::wrap(bgvartvpalg(object));
-    return rcpp_result_gen;
-END_RCPP
-}
-// bgvecalg
-Rcpp::List bgvecalg(Rcpp::List object);
-RcppExport SEXP _bgvars_bgvecalg(SEXP objectSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::List >::type object(objectSEXP);
-    rcpp_result_gen = Rcpp::wrap(bgvecalg(object));
-    return rcpp_result_gen;
-END_RCPP
-}
-// bgvectvpalg
-Rcpp::List bgvectvpalg(Rcpp::List object);
-RcppExport SEXP _bgvars_bgvectvpalg(SEXP objectSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::List >::type object(objectSEXP);
-    rcpp_result_gen = Rcpp::wrap(bgvectvpalg(object));
-    return rcpp_result_gen;
-END_RCPP
-}
 // draw_forecast
-arma::mat draw_forecast(int& i, int& k, arma::mat& a0, arma::mat& a, Rcpp::Nullable<Rcpp::NumericMatrix>& b_, Rcpp::Nullable<Rcpp::NumericMatrix>& c_, arma::mat& sigma, arma::mat pred);
-RcppExport SEXP _bgvars_draw_forecast(SEXP iSEXP, SEXP kSEXP, SEXP a0SEXP, SEXP aSEXP, SEXP b_SEXP, SEXP c_SEXP, SEXP sigmaSEXP, SEXP predSEXP) {
+arma::mat draw_forecast(int& k, int& p, arma::mat& a0_i, bool& use_a, arma::mat& a, arma::mat& sigma, arma::mat pred);
+RcppExport SEXP _bgvars_draw_forecast(SEXP kSEXP, SEXP pSEXP, SEXP a0_iSEXP, SEXP use_aSEXP, SEXP aSEXP, SEXP sigmaSEXP, SEXP predSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int& >::type i(iSEXP);
     Rcpp::traits::input_parameter< int& >::type k(kSEXP);
-    Rcpp::traits::input_parameter< arma::mat& >::type a0(a0SEXP);
+    Rcpp::traits::input_parameter< int& >::type p(pSEXP);
+    Rcpp::traits::input_parameter< arma::mat& >::type a0_i(a0_iSEXP);
+    Rcpp::traits::input_parameter< bool& >::type use_a(use_aSEXP);
     Rcpp::traits::input_parameter< arma::mat& >::type a(aSEXP);
-    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericMatrix>& >::type b_(b_SEXP);
-    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericMatrix>& >::type c_(c_SEXP);
     Rcpp::traits::input_parameter< arma::mat& >::type sigma(sigmaSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type pred(predSEXP);
-    rcpp_result_gen = Rcpp::wrap(draw_forecast(i, k, a0, a, b_, c_, sigma, pred));
+    rcpp_result_gen = Rcpp::wrap(draw_forecast(k, p, a0_i, use_a, a, sigma, pred));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -117,11 +72,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_bgvars_bgvaralg", (DL_FUNC) &_bgvars_bgvaralg, 1},
-    {"_bgvars_bgvartvpalg", (DL_FUNC) &_bgvars_bgvartvpalg, 1},
-    {"_bgvars_bgvecalg", (DL_FUNC) &_bgvars_bgvecalg, 1},
-    {"_bgvars_bgvectvpalg", (DL_FUNC) &_bgvars_bgvectvpalg, 1},
-    {"_bgvars_draw_forecast", (DL_FUNC) &_bgvars_draw_forecast, 8},
+    {"_bgvars_draw_forecast", (DL_FUNC) &_bgvars_draw_forecast, 7},
     {"_bgvars_gir", (DL_FUNC) &_bgvars_gir, 4},
     {"_bgvars_ir", (DL_FUNC) &_bgvars_ir, 5},
     {"_bgvars_vardecomp", (DL_FUNC) &_bgvars_vardecomp, 3},
