@@ -20,6 +20,10 @@ LazyData: true
 Encoding: UTF-8
 URL: https://github.com/franzmohr/bgvars
 BugReports: https://github.com/franzmohr/bgvars/issues
-Suggests: knitr, rmarkdown
+Suggests:
+    knitr,
+    rmarkdown,
+    testthat (>= 3.1.5)
+Config/testthat/edition: 3
 Config/roxygen2/version: 8.0.0
 VignetteBuilder: knitr
