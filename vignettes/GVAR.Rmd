@@ -83,8 +83,30 @@ object <- add_initial_values(object)
 
 #### BayesTS
 
-```{r, echo = FALSE, eval = FALSE, message=FALSE, results='hide'}
-write_to_hdf5(object, folder = "D:/models/gvar-test")
+Given the weight matrices, the sub-models of a global model are independent of
+one another, which makes it possible to estimate them outside R.
+`write_to_hdf5` exports the model to a folder, one HDF5 file per sub-model
+beside a `model.h5` holding the global data, the weight matrices and a table
+describing every sub-model file.
+
+```{r, eval = FALSE}
+write_to_hdf5(object, folder = "C:/path/to/gvar")
+```
+
+[BayesTS](https://github.com/franzmohr/BayesTS) is then pointed at the folder of
+sub-models and writes the posterior draws back into the files it read.
+
+```{bash, eval = FALSE}
+bayests posterior C:/path/to/gvar/submodels
+```
+
+`read_gvar_from_folder` brings the whole model back, draws included. The
+sub-models are found through the table in `model.h5` rather than through the
+directory tree, so the names they are known by survive a folder that has been
+moved or renamed.
+
+```{r, eval = FALSE}
+object <- read_gvar_from_folder("C:/path/to/gvar")
 ```
 
 #### Package 
