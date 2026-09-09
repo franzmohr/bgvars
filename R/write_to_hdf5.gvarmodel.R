@@ -1,76 +1,58 @@
-#' Export to HDF5 File
+#' Export to HDF5 Files
 #'
 #' Exports the content of an object of class 'gvarmodel' to a dedicated folder.
 #'
 #' @param object list of class 'gvarmodel'.
 #' @param folder path to the folder where the content of argument
 #' \code{object} should be saved.
+#' @param overwrite logical. If \code{TRUE}, an export already present in
+#' \code{folder} is replaced. Defaults to \code{FALSE}, which makes the function
+#' stop rather than touch it.
 #' @param ... further arguments passed to or from other methods.
-#' 
+#'
+#' @details
+#'
+#' The export consists of one file for the global model and one file per
+#' sub-model:
+#'
+#' \describe{
+#'   \item{\code{model.h5}}{The global data in group \code{global}, one weight
+#'   matrix per sub-model in group \code{weights}, and a \code{submodels} table
+#'   describing every sub-model file.}
+#'   \item{\code{submodels/<sub-model>/<nnn>.h5}}{One estimable model each,
+#'   numbered in the order in which \code{\link{add_submodels}} produced them.
+#'   The \code{submodels} table in \code{model.h5} says which specification each
+#'   of them holds.}
+#' }
+#'
+#' Sub-models are kept in separate files because that is the unit an external
+#' sampler can work on independently: HDF5 does not support concurrent writers
+#' to one file.
+#'
+#' @return The path to \code{folder}, invisibly.
+#'
 #' @examples
-#' 
-#' 
+#'
+#' # Load data
+#' data("gvar2023")
+#' submodel_data <- gvar2023[["submodel_data"]]
+#' global_data <- gvar2023[["global_data"]]
+#'
+#' # Set up a model
+#' object <- create_gvarmodel(submodel_data = submodel_data,
+#'                            global_data = global_data)
+#' object <- add_weight_matrices(object = object,
+#'                               submodel_data = submodel_data,
+#'                               period = 3)
+#'
+#' # Export it
+#' folder <- file.path(tempdir(), "gvar")
+#' dir.create(folder)
+#' write_to_hdf5(object, folder = folder)
+#'
 #' @export
 #' @method write_to_hdf5 gvarmodel
-write_to_hdf5.gvarmodel <- function(object, folder, ...) {
-  
-  if (!dir.exists(folder)) {
-    stop(paste("Folder", folder, "does not exist."))
-  }
-  
-  try({
-    
-    # **************************************************************************
-    # Save global data ----
-    filename_global <- file.path(folder, "global.h5")
-    
-    if (file.exists(filename_global)) {
-      stop(paste0("File ", filename_global, " already exists."))
-    }
-    
-    global <- hdf5r::h5file(filename_global, mode = "a")
-    for (i in c("endogen", "exogen")) {
-      if (!is.null(object[["global"]][[i]])) {
-        global[[i]] <- object[["global"]][[i]]
-        hdf5r::h5attr(global[[i]], "variables") <- dimnames(object[["global"]][[i]])[[2]]
-        hdf5r::h5attr(global[[i]], "tsp") <- stats::tsp(object[["global"]][[i]])
-      } 
-    }
-    global[["index"]] <- object[["global"]][["index"]]
-    
-    # Close file
-    global$close_all()
-    
-    # **************************************************************************
-    # Save weight data ----
-    filename_weights <- file.path(folder, "weights.h5")
-    
-    if (file.exists(filename_weights)) {
-      stop(paste0("File ", filename_weights, " already exists."))
-    }
-    
-    weights <- hdf5r::h5file(filename_weights, mode = "a")
-    for (i in names(object[["weights"]])) {
-      weights[[i]] <- object[["weights"]][[i]]
-    }
-    
-    # Close file
-    weights$close_all()
-    
-    # **************************************************************************
-    # Save sub-model data ----
-    
-    # Create submodel folder
-    path_submodels <- file.path(folder, "submodels")
-    if (!dir.exists(path_submodels)) {
-      dir.create(path_submodels) 
-    }
-    for (s_i in names(object[["submodels"]])) {
-      path_submodel_i <- file.path(path_submodels, s_i)
-      if (!dir.exists(path_submodel_i)) {
-        dir.create(path_submodel_i) 
-      }
-      bvartools::write_to_hdf5(object = object[["submodels"]][[s_i]], folder = path_submodel_i)
-    }
-  })
+write_to_hdf5.gvarmodel <- function(object, folder, overwrite = FALSE, ...) {
+
+  .write_gvar_to_hdf5(object = object, folder = folder, overwrite = overwrite)
 }

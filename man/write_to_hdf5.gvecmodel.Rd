@@ -2,9 +2,9 @@
 % Please edit documentation in R/write_to_hdf5.gvecmodel.R
 \name{write_to_hdf5.gvecmodel}
 \alias{write_to_hdf5.gvecmodel}
-\title{Export to HDF5 File}
+\title{Export to HDF5 Files}
 \usage{
-\method{write_to_hdf5}{gvecmodel}(object, folder, ...)
+\method{write_to_hdf5}{gvecmodel}(object, folder, overwrite = FALSE, ...)
 }
 \arguments{
 \item{object}{list of class 'gvecmodel'.}
@@ -12,8 +12,39 @@
 \item{folder}{path to the folder where the content of argument
 \code{object} should be saved.}
 
+\item{overwrite}{logical. If \code{TRUE}, an export already present in
+\code{folder} is replaced. Defaults to \code{FALSE}, which makes the function
+stop rather than touch it.}
+
 \item{...}{further arguments passed to or from other methods.}
+}
+\value{
+The path to \code{folder}, invisibly.
 }
 \description{
 Exports the content of an object of class 'gvecmodel' to a dedicated folder.
+}
+\details{
+The export has the same shape as the one produced for an object of class
+'gvarmodel'. See \code{\link{write_to_hdf5.gvarmodel}}.
+}
+\examples{
+
+# Load data
+data("dees2007")
+submodel_data <- dees2007[["submodel_data"]]
+global_data <- dees2007[["global_data"]]
+
+# Set up a model
+object <- create_gvecmodel(submodel_data = submodel_data,
+                           global_data = global_data)
+object <- add_weight_matrices(object = object,
+                              submodel_data = submodel_data,
+                              period = 1999:2001)
+
+# Export it
+folder <- file.path(tempdir(), "gvec")
+dir.create(folder)
+write_to_hdf5(object, folder = folder)
+
 }
