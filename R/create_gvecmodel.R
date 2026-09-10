@@ -1,7 +1,7 @@
 #' Create a Global Vector Error Correction Model
 #'
 #' Initialises an object of class 'gvecmodel', which contains all elements necessary
-#' to set up, estimate and evaluate a Bayesian GVEV model.
+#' to set up, estimate and evaluate a Bayesian GVEC model.
 #'
 #' @param submodel_data an object of class 'submodeldata', which is a named list
 #' of time-series objects of with endogenous data for sub-models.

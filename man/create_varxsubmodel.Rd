@@ -2,7 +2,7 @@
 % Please edit documentation in R/create_varxsubmodel.R
 \name{create_varxsubmodel}
 \alias{create_varxsubmodel}
-\title{Create Submodel Specifications}
+\title{Create Sub-Models}
 \usage{
 create_varxsubmodel(
   object,
@@ -30,7 +30,7 @@ create_varxsubmodel(
 based on the input in argument \code{object}.}
 
 \item{endogen}{character vector of variables that should enter each sub-model
-as endogenous variables, if they are available for the respective sub-model.}
+as endogenous variables, if they are available.}
 
 \item{p_endogen}{an integer vector of the lag order (default is \code{p_endogen = 1})
 of a sub-model's endogenous variables.}
@@ -58,7 +58,8 @@ time-series object provided in \code{object}. Defaults to \code{FALSE}.}
 \item{structural}{logical indicating whether data should be prepared for the estimation of a
 structural VAR model. Defaults to \code{FALSE}.}
 
-\item{tvp}{logical indicating whether the model parameters are time varying.}
+\item{tvp}{logical indicating whether the model parameters are time varying.
+Defaults to \code{FALSE}.}
 
 \item{error}{character specifying the model that should be used for the estimation
 of the covariance matrix of the error term. Default is \code{"wishart"}. See 'Details'.}
@@ -74,12 +75,17 @@ to 10000).}
 moments, forecasts etc.}
 }
 \value{
-An object of class 'modellist'.
+An object of class 'modellist', which contains at least one element
+of class 'varxsubmodel'.
 }
 \description{
-Produces a list of model specifications for each entity in a GVAR model.
+Produces a list of VARX models for each sub-model in a GVAR model.
 }
 \details{
+If an integer vector is provided as argument \code{p_endogen}, \code{p_exogen}
+or \code{s}, the function will produce a distinct model for all
+possible combinations of those specifications.
+
 Argument \code{error} specifies the structure of the covariance matrix of
 the error term and how it is estimated. Possible specifications are:
 \itemize{
@@ -106,30 +112,35 @@ Available specifications for argument \code{varsel} are:
 }
 }
 \examples{
-# Load data
-data("gvar2023")
-submodel_data <- gvar2023[["submodel_data"]]
-global_data <- gvar2023[["global_data"]]
 
-# Create empty model
+# Load data
+data("gvar2019")
+global_data <- gvar2019[["global_data"]]
+submodel_data <- gvar2019[["submodel_data"]]
+
+# Limit number of sub-models
+submodel_data <- select_list_elements(submodel_data, c("AT", "DE", "US"))
+
+# Create global model
 object <- create_gvarmodel(submodel_data = submodel_data,
                            global_data = global_data)
 
-# Add weight matrices
+# Generate and add weight matrices
 object <- add_weight_matrices(object = object,
                               submodel_data = submodel_data,
-                              period = 3)
+                              period = 2013:2016)
 
-# Create sub-models
-model <- create_varxsubmodel(object,
-                             submodel = "AT",
-                             endogen = c("y","p", "rs"), p_endogen = 1,
-                             exogen = c("y", "p"), p_exogen = 1,
-                             global = "poil", s = 0,
-                             deterministic = "const", seasonal = FALSE,
-                             structural = FALSE, tvp = FALSE,
-                             error = "wishart", varsel = "none",
-                             iterations = 10000, burnin = 2000)
+# Create sub-model
+object <- create_varxsubmodel(object,
+                              submodel = "AT",
+                              endogen = c("y","Dp", "r"), p_endogen = 1,
+                              exogen = c("y", "Dp"), p_exogen = 1,
+                              global = "poil", s = 0,
+                              deterministic = "const", seasonal = FALSE,
+                              structural = FALSE, tvp = FALSE,
+                              error = "wishart", varsel = "none",
+                              iterations = 10, burnin = 10)
+# Number of iterations and burn-in should be much higher.
 
 
 }

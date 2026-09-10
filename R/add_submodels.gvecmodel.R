@@ -58,6 +58,9 @@
 #' submodel_data <- dees2007[["submodel_data"]]
 #' global_data <- dees2007[["global_data"]]
 #' 
+#' # Limit number of sub-models
+#' submodel_data <- select_list_elements(submodel_data, c("EA", "US"))
+#' 
 #' # Create empty model
 #' object <- create_gvecmodel(submodel_data = submodel_data,
 #'                            global_data = global_data)
@@ -68,8 +71,15 @@
 #'                               period = 1999:2001)
 #' 
 #' # Create sub-models
-#' object <- add_submodels(object, r = 1)
-#' 
+#' object <- add_submodels(object,
+#'                         p_endogen = 1, p_exogen = 1,
+#'                         global = "poil",
+#'                         s = 1,
+#'                         r = 1,
+#'                         error = "wishart",
+#'                         iterations = 10,
+#'                         burnin = 10)
+#' # Number of iterations and burn-in should be much higher.
 #' 
 #' 
 #' @export
@@ -93,24 +103,7 @@ add_submodels.gvecmodel <- function(object,
                                     burnin = 2000,
                                     ...){
   
-  # submodel <- "BR"; endogen = c("y","p", "rs"); p_endogen = 1; exogen = c("y", "p"); p_exogen = 1; global = "poil";
-  # s = 0; deterministic = "const"; seasonal = FALSE;  structural = FALSE;
-  # tvp = FALSE; error = "wishart"; varsel = "none"; iterations = 10000; burnin = 2000
-  # for (i in submodels) {
-  #   temp <- create_varxsubmodel(i,
-  #   object = object,
-  #   endogen = endogen, p_endogen = p_endogen,
-  #   exogen = exogen, p_exogen = p_exogen,
-  #   global = global, s = s,
-  #   deterministic = deterministic,
-  #   seasonal = seasonal,
-  #   structural = structural,
-  #   tvp = tvp, error = error, varsel = varsel,
-  #   iterations = iterations, burnin = burnin)
-  # }
-  
-  index <- object[["global"]][["index"]]
-  submodels <- unique(index[, "submodel"])
+  submodels <- unique(object[["global"]][["index"]][, "submodel"])
   
   for (i in submodels) {
     object[["submodels"]][[i]] <- create_vecxsubmodel(object, submodel = i,
@@ -120,7 +113,7 @@ add_submodels.gvecmodel <- function(object,
                                                       r = r,
                                                       const = const, trend = trend, seasonal = seasonal,
                                                       structural = structural,
-                                                      error = error, tvp = tvp, varsel = varsel,
+                                                      tvp = tvp, error = error, varsel = varsel,
                                                       algorithm = algorithm,
                                                       iterations = iterations, burnin = burnin)
   }

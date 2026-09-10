@@ -139,16 +139,54 @@
 #' 
 #' Lütkepohl, H. (2006). \emph{New introduction to multiple time series analysis} (2nd ed.). Berlin: Springer.
 #' 
-#' @examples 
+#' @examples
+#' 
+#' # Load data
+#' data("gvar2019")
+#' global_data <- gvar2019[["global_data"]]
+#' submodel_data <- gvar2019[["submodel_data"]]
+#' 
+#' # Limit number of sub-models
+#' submodel_data <- select_list_elements(submodel_data, c("AT", "DE", "US"))
+#' 
+#' # Create global model
+#' object <- create_gvarmodel(submodel_data = submodel_data,
+#'                            global_data = global_data)
+#' 
+#' # Generate and add weight matrices
+#' object <- add_weight_matrices(object = object,
+#'                               submodel_data = submodel_data,
+#'                               period = 2013:2016)
+#' 
+#' # Create sub-model
+#' object <- create_varxsubmodel(object,
+#'                               submodel = "AT",
+#'                               endogen = c("y","Dp", "r"), p_endogen = 1,
+#'                               exogen = c("y", "Dp"), p_exogen = 1,
+#'                               global = "poil", s = 0,
+#'                               deterministic = "const", seasonal = FALSE,
+#'                               structural = FALSE, tvp = FALSE,
+#'                               error = "wishart", varsel = "none",
+#'                               iterations = 10, burnin = 10)
+#' # Number of iterations and burn-in should be much higher.
+#' 
+#' # The previous function returns a model list. Extract the first model to proceed.
+#' object <- object[[1]]
+#' 
+#' # Add priors
+#' object <- add_priors(object,
+#'                      coef = list(v_i = 0),
+#'                      sigma = list(df = 3, scale = 0.0001))
+#'                               
 #' 
 #' 
 #' @export
 #' @method add_priors varxsubmodel
 add_priors.varxsubmodel <- function(object,
-                                 coef,
-                                 sigma,
-                                 varsel = NULL,
-                                 ...){
+                                    coef,
+                                    sigma,
+                                    varsel = NULL,
+                                    ...){
   
   # Input checks
   ## Coefficient priors ----
@@ -306,6 +344,23 @@ add_priors.varxsubmodel <- function(object,
   if (covar & structural) {
     stop("Error covariances and structural coefficients cannot be estimated at the same time.")
   }
+  
+  # A constant coefficient sampler selects over one set of coefficients or over
+  # both: it reads a single selection scheme for the whole model, so a
+  # covariance block it is given goes into the selection with the rest. Only the
+  # time varying samplers take the covariance block's scheme separately, which
+  # is why the same call is allowed there. Left to run, this combination fails
+  # inside the sampler on a prior it was never given.
+  if ((use_ssvs | use_bvs) & covar & !varsel_covar &
+      !object[["model"]][["tvp"]] & k > 1) {
+    stop("Variable selection cannot be restricted to the coefficients when the ",
+         "model has an error covariance block and constant coefficients: this ",
+         "sampler applies one selection scheme to both. Set 'varsel$covar' to ",
+         "TRUE to select over the covariances as well, drop the covariances with ",
+         "an 'error' of \"gamma\" or \"sv\", or use a time varying model, where ",
+         "the two blocks can differ.")
+  }
+  
   n_struct <- 0
   if (structural & k > 1) {
     n_struct <- (k - 1) * k / 2
@@ -425,7 +480,8 @@ add_priors.varxsubmodel <- function(object,
     
     #### BVS prior ----
     if (use_bvs) {
-      temp <- inclusion_prior(object, prob = varsel[["inprior"]], exclude_deterministics = varsel[["exclude_det"]],
+      temp <- inclusion_prior(object, prob = varsel[["inprior"]],
+                              exclude_deterministics = varsel[["exclude_det"]],
                               minnesota_like = !is.null(varsel[["minnesota"]]),
                               kappa1 = varsel[["minnesota"]][1],
                               kappa2 = varsel[["minnesota"]][2],

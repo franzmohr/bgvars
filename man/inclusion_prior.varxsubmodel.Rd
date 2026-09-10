@@ -9,12 +9,15 @@
   prob = 0.5,
   exclude_deterministics = TRUE,
   minnesota_like = FALSE,
-  kappa = c(0.8, 0.5, 0.5, 0.8)
+  kappa1 = 0.8,
+  kappa2 = 0.5,
+  kappa3 = 0.5,
+  kappa4 = 0.8
 )
 }
 \arguments{
-\item{object}{an object of class \code{"bvarmodel"}, usually, a result of a
-call to \code{\link{create_var_model}}.}
+\item{object}{an object of class \code{"varxsubmodel"}, usually, a result of a
+call to \code{\link{create_varxsubmodel}}.}
 
 \item{prob}{a numeric specifying the prior inclusion probability of all model parameters.}
 
@@ -24,10 +27,22 @@ included variables does not include the positions of deterministic terms.}
 \item{minnesota_like}{logical. If \code{TRUE}, the prior inclusion probabilities of the
 parameters are calculated in a similar way as the Minnesota prior. See 'Details'.}
 
-\item{kappa}{a numeric vector of four elements containing the prior inclusion probabilities
-of coefficients that correspond to own lags of endogenous variables, to endogenous variables,
-which do not correspond to own lags, to exogenous variables and deterministic terms, respectively.
+\item{kappa1}{a numeric specifying the prior inclusion probability of
+coefficients that correspond to own lags of endogenous variables.
 Only used if \code{minnesota_like = TRUE}. See 'Details'.}
+
+\item{kappa2}{a numeric specifying the size of the prior inclusion probabilities
+of endogenous variables, which do not correspond to own lags.
+Only used if \code{minnesota_like = TRUE}. See 'Details'.}
+
+\item{kappa3}{a numeric specifying the size of the prior inclusion probabilities
+of non-deterministic exogenous variables. Default is \code{NULL}, which indicates that the formula
+for the calculation of the prior inclusion probabilities of deterministic terms
+is used for all exogenous variables.
+Only used if \code{minnesota_like = TRUE}. See 'Details'.}
+
+\item{kappa4}{a numeric specifying the size of the prior inclusion probabilities
+of deterministic terms. Only used if \code{minnesota_like = TRUE}. See 'Details'.}
 }
 \value{
 A list containing a matrix of prior inclusion probabilities and an integer vector
@@ -43,22 +58,44 @@ are calculated as
 \tabular{cl}{
 \eqn{\frac{\kappa_1}{r}} \tab for own lags of endogenous variables, \cr
 \eqn{\frac{\kappa_2}{r}} \tab for other endogenous variables, \cr
-\eqn{\frac{\kappa_3}{1 + r}} \tab for foreign and global variables, \cr
-\eqn{\kappa_{4}} \tab for deterministic variables, 
+\eqn{\frac{\kappa_3}{1 + r}} \tab for unmodelled exogenous variables, \cr
+\eqn{\kappa_{4}} \tab for deterministic variables.
 }
-for lag \eqn{r} with \eqn{\kappa_1}, \eqn{\kappa_2}, \eqn{\kappa_3}, \eqn{\kappa_4} as the first, second,
-third and forth element in \code{kappa}, respectively.
 }
 \examples{
 
-# Prepare data
-data("e1")
-e1 <- diff(log(e1)) * 100
+# Load data
+data("gvar2019")
+global_data <- gvar2019[["global_data"]]
+submodel_data <- gvar2019[["submodel_data"]]
 
-# Generate model input
-object <- create_var_model(e1)
+# Limit number of sub-models
+submodel_data <- select_list_elements(submodel_data, c("AT", "DE", "US"))
 
-# Obtain inclusion prior
-incl <- inclusion_prior(object)
+# Create global model
+object <- create_gvarmodel(submodel_data = submodel_data,
+                           global_data = global_data)
+
+# Generate and add weight matrices
+object <- add_weight_matrices(object = object,
+                              submodel_data = submodel_data,
+                              period = 2013:2016)
+
+# Create sub-model
+object <- create_varxsubmodel(object,
+                              submodel = "AT",
+                              endogen = c("y","Dp", "r"), p_endogen = 1,
+                              exogen = c("y", "Dp"), p_exogen = 1,
+                              global = "poil", s = 0,
+                              deterministic = "const", seasonal = FALSE,
+                              structural = FALSE, tvp = FALSE,
+                              error = "wishart", varsel = "none",
+                              iterations = 10, burnin = 10)
+# Number of iterations and burn-in should be much higher.
+
+# The previous function returns a model list. Extract the first model to proceed.
+object <- object[[1]]
+
+prior <- inclusion_prior(object)
 
 }

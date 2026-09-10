@@ -17,7 +17,7 @@
 }
 \arguments{
 \item{object}{an object of class \code{"varxsubmodel"}, usually, a result of
-a call to \code{\link{add_submodels}}.}
+a call to \code{\link{add_submodels}} or \code{\link{create_varxsubmodel}}.}
 
 \item{kappa1}{a numeric specifying the prior variance of coefficients that correspond to
 own lags of endogenous variables.}
@@ -64,6 +64,43 @@ In case structural parameters are estimated, the formula
 If \eqn{kappa_{3}} is not provided, prior variances are calculated in the same way as for
 deterministic terms.
 If the model does not contain exogenous variables, argument \code{kappa3} will be ignored.
+}
+\examples{
+
+# Load data
+data("gvar2019")
+global_data <- gvar2019[["global_data"]]
+submodel_data <- gvar2019[["submodel_data"]]
+
+# Limit number of sub-models
+submodel_data <- select_list_elements(submodel_data, c("AT", "DE", "US"))
+
+# Create global model
+object <- create_gvarmodel(submodel_data = submodel_data,
+                           global_data = global_data)
+
+# Generate and add weight matrices
+object <- add_weight_matrices(object = object,
+                              submodel_data = submodel_data,
+                              period = 2013:2016)
+
+# Create sub-model
+object <- create_varxsubmodel(object,
+                              submodel = "AT",
+                              endogen = c("y","Dp", "r"), p_endogen = 1,
+                              exogen = c("y", "Dp"), p_exogen = 1,
+                              global = "poil", s = 0,
+                              deterministic = "const", seasonal = FALSE,
+                              structural = FALSE, tvp = FALSE,
+                              error = "wishart", varsel = "none",
+                              iterations = 10, burnin = 10)
+# Number of iterations and burn-in should be much higher.
+
+# The previous function returns a model list. Extract the first model to proceed.
+object <- object[[1]]
+
+prior <- minnesota_prior(object)
+
 }
 \references{
 Chan, J., Koop, G., Poirier, D. J., & Tobias, J. L. (2020). \emph{Bayesian Econometric Methods}

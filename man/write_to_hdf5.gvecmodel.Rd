@@ -4,7 +4,13 @@
 \alias{write_to_hdf5.gvecmodel}
 \title{Export to HDF5 Files}
 \usage{
-\method{write_to_hdf5}{gvecmodel}(object, folder, overwrite = FALSE, ...)
+\method{write_to_hdf5}{gvecmodel}(
+  object,
+  folder,
+  overwrite = FALSE,
+  mc.cores = .default_cores(),
+  ...
+)
 }
 \arguments{
 \item{object}{list of class 'gvecmodel'.}
@@ -15,6 +21,13 @@
 \item{overwrite}{logical. If \code{TRUE}, an export already present in
 \code{folder} is replaced. Defaults to \code{FALSE}, which makes the function
 stop rather than touch it.}
+
+\item{mc.cores}{the number of cores to use, i.e. at most how many sub-models
+are written at the same time. Defaults to the number of available cores, up
+to eight. Use \code{1} to write the sub-models one after the other.
+Sub-models are written to separate files, so nothing is shared between the
+workers. In contrast to the rest of the package this uses a socket cluster,
+which also runs in parallel under Windows.}
 
 \item{...}{further arguments passed to or from other methods.}
 }

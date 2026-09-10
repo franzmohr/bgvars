@@ -25,12 +25,16 @@
 #' @return A list class 'gvarmodel' or 'gvecmodel'.
 #' 
 #' @examples
-#' # Load data
-#' data("gvar2023")
-#' submodel_data <- gvar2023[["submodel_data"]] # Country series including weights
-#' global_data <- gvar2023[["global_data"]] # Global commodities data
 #' 
-#' # Create 'gvarmodel' object
+#' # Load data
+#' data("gvar2019")
+#' global_data <- gvar2019[["global_data"]]
+#' submodel_data <- gvar2019[["submodel_data"]]
+#' 
+#' # Limit number of sub-models
+#' submodel_data <- select_list_elements(submodel_data, c("AT", "DE", "US"))
+#' 
+#' # Create global model
 #' object <- create_gvarmodel(submodel_data = submodel_data,
 #'                            global_data = global_data)
 #' 

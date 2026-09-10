@@ -8,6 +8,12 @@
 #' @param overwrite logical. If \code{TRUE}, an export already present in
 #' \code{folder} is replaced. Defaults to \code{FALSE}, which makes the function
 #' stop rather than touch it.
+#' @param mc.cores the number of cores to use, i.e. at most how many sub-models
+#' are written at the same time. Defaults to the number of available cores, up
+#' to eight. Use \code{1} to write the sub-models one after the other.
+#' Sub-models are written to separate files, so nothing is shared between the
+#' workers. In contrast to the rest of the package this uses a socket cluster,
+#' which also runs in parallel under Windows.
 #' @param ... further arguments passed to or from other methods.
 #'
 #' @details
@@ -37,22 +43,52 @@
 #' data("gvar2023")
 #' submodel_data <- gvar2023[["submodel_data"]]
 #' global_data <- gvar2023[["global_data"]]
+#' 
+#' # Limit number of sub-models
+#' submodel_data <- select_list_elements(submodel_data, c("AT", "DE", "US"))
 #'
 #' # Set up a model
 #' object <- create_gvarmodel(submodel_data = submodel_data,
 #'                            global_data = global_data)
+#'                            
+#' # Generate and add weight matrices
 #' object <- add_weight_matrices(object = object,
 #'                               submodel_data = submodel_data,
-#'                               period = 3)
+#'                               period = 2014:2016)
+#'                               
+#' # Create sub-models
+#' object <- add_submodels(object,
+#'                         endogen = c("y", "Dp", "r"),
+#'                         p_endogen = 1,
+#'                         exogen = c("y", "Dp", "r"),
+#'                         p_exogen = 1,
+#'                         global = "poil",
+#'                         s = 1,
+#'                         r = 1,
+#'                         error = "wishart",
+#'                         iterations = 10,
+#'                         burnin = 10)
+#' # Number of iterations and burn-in should be much higher.
+#' 
+#' # Add priors
+#' object <- add_priors(object,
+#'                      coef = list(v_i = 0),
+#'                      coint = list(v_i = 0, p_tau_i = 1),
+#'                      sigma = list(df = 3, scale = 0.0001))
+#'                      
+#' # Add initial values
+#' object <- add_initial_values(object)
 #'
-#' # Export it
+#' # Export models
 #' folder <- file.path(tempdir(), "gvar")
 #' dir.create(folder)
 #' write_to_hdf5(object, folder = folder)
 #'
 #' @export
 #' @method write_to_hdf5 gvarmodel
-write_to_hdf5.gvarmodel <- function(object, folder, overwrite = FALSE, ...) {
+write_to_hdf5.gvarmodel <- function(object, folder, overwrite = FALSE,
+                                    mc.cores = .default_cores(), ...) {
 
-  .write_gvar_to_hdf5(object = object, folder = folder, overwrite = overwrite)
+  .write_gvar_to_hdf5(object = object, folder = folder, overwrite = overwrite,
+                      mc.cores = mc.cores)
 }

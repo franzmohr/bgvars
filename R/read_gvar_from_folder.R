@@ -27,13 +27,41 @@
 #' data("gvar2023")
 #' submodel_data <- gvar2023[["submodel_data"]]
 #' global_data <- gvar2023[["global_data"]]
+#' 
+#' # Limit number of sub-models
+#' submodel_data <- select_list_elements(submodel_data, c("AT", "DE", "US"))
 #'
-#' # Set up and export a model
+#' # Set up a model
 #' object <- create_gvarmodel(submodel_data = submodel_data,
 #'                            global_data = global_data)
+#'                            
+#' # Generate and add weight matrices
 #' object <- add_weight_matrices(object = object,
 #'                               submodel_data = submodel_data,
-#'                               period = 3)
+#'                               period = 2014:2016)
+#'                               
+#' # Create sub-models
+#' object <- add_submodels(object,
+#'                         endogen = c("y", "Dp", "r"),
+#'                         p_endogen = 1,
+#'                         exogen = c("y", "Dp", "r"),
+#'                         p_exogen = 1,
+#'                         global = "poil",
+#'                         s = 1,
+#'                         r = 1,
+#'                         error = "wishart",
+#'                         iterations = 10,
+#'                         burnin = 10)
+#' # Number of iterations and burn-in should be much higher.
+#' 
+#' # Add priors
+#' object <- add_priors(object,
+#'                      coef = list(v_i = 0),
+#'                      coint = list(v_i = 0, p_tau_i = 1),
+#'                      sigma = list(df = 3, scale = 0.0001))
+#'                      
+#' # Add initial values
+#' object <- add_initial_values(object)
 #'
 #' folder <- file.path(tempdir(), "gvar-export")
 #' dir.create(folder)
@@ -43,7 +71,7 @@
 #' object <- read_gvar_from_folder(folder)
 #'
 #' @export
-read_gvar_from_folder <- function(folder) {
+read_gvar_from_folder <- function(folder, submodels = NULL) {
 
   if (!dir.exists(folder)) {
     stop(paste0("Folder ", folder, " does not exist."))
@@ -105,6 +133,15 @@ read_gvar_from_folder <- function(folder) {
   model_file$close_all()
 
   if (!is.null(manifest) && nrow(manifest) > 0) {
+    
+    if (!is.null(submodels)) {
+      model_number <- as.integer(sub(".*?(\\d+)\\.h5$", "\\1", manifest[, "file"]))
+      avail_models <- paste0(manifest[, "submodel"], "-", model_number)
+      best_models <- paste0(best_models[, "submodel"], "-", best_models[, "position"])
+      pos <- which(avail_models %in% best_models)
+      manifest <- manifest[pos,]
+    }
+    
     result[["submodels"]] <- .read_submodels(folder, manifest)
   }
 

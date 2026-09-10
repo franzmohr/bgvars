@@ -1,23 +1,22 @@
-#' Create Sub-Model Specifications
+#' Create Sub-Models
 #' 
-#' Produces a list of model specifications for each entity in a GVAR model.
+#' Produces a list of VECX models for each sub-model in a GVEC model.
 #' 
+#' @param object an object of class 'gvarmodel' or 'gvecmodel'.
 #' @param submodel name of the sub-model, for which input data should be generated
 #' based on the input in argument \code{object}.
-#' @param object an object of class 'gvecmodel'.
-#' @param endogen a character vector of variables that should be included as
-#' endogenous variables.
-#' @param p_endogen an integer vector of the lag order of endogenous variables
-#' (default is \code{p = 1}).
-#' @param exogen a character vector of variables that should be included as
-#' weakly endogenous variables.
-#' @param p_exogen an integer vector of the lag order of weakly exogenous variables
-#' (default is \code{p = 1}).
+#' @param endogen character vector of variables that should enter each sub-model
+#' as endogenous variables, if they are available.
+#' @param p_endogen an integer vector of the lag order (default is \code{p_endogen = 1})
+#' of a sub-model's endogenous variables.
+#' @param exogen character vector of variables that should enter each sub-model
+#' as weakly exogenous variables.
+#' @param p_exogen an integer vector of the lag order (default is \code{p_exogen = 1})
+#' of a sub-model's weakly exogenous variables.
 #' @param global character vector of variables that should enter each sub-model
 #' as global variables.
-#' @param s an integer vector of the lag order of global variables
-#' (default is \code{NULL}). Only used, if global variables are included in the
-#' model.
+#' @param s an integer vector of the lag order of a sub-model's global variables.
+#' If \code{NULL} (default), models do not include global variables.
 #' @param r an integer vector of the cointegration rank. See 'Details'.
 #' @param const a character specifying whether a constant term enters the error correction
 #' term (\code{"restricted"}) or the non-cointegration term as an \code{"unrestricted"} variable.
@@ -31,7 +30,7 @@
 #' will be automatically detected and depends on the frequency of the time-series object provided
 #' in \code{data}.
 #' @param structural logical indicating whether data should be prepared for the estimation of a
-#' structural VAR model. Defaults to \code{FALSE}.
+#' structural VEC model. Defaults to \code{FALSE}.
 #' @param tvp logical indicating whether the model parameters are time varying.
 #' Defaults to \code{FALSE}.
 #' @param error character specifying the model that should be used for the estimation
@@ -42,7 +41,7 @@
 #' (default), standard algorithms will be used. See 'Details' for available
 #' non-standard options.
 #' @param iterations an integer of MCMC draws excluding burn-in draws (defaults
-#' to 20000).
+#' to 10000).
 #' @param burnin an integer of MCMC draws used to initialize the sampler
 #' (defaults to 2000). These draws do not enter the computation of posterior
 #' moments, forecasts etc.
@@ -80,10 +79,11 @@
 #' 
 #' Available specifications for argument \code{algorithm} are:
 #' \itemize{
-#'  \item{\code{"KLGS2010"}: Algorithm proposed in Koop, León-González & Strachan (2010).}
+#'    \item{\code{"KLGS2010"}: Algorithm proposed in Koop, León-González & Strachan (2010).}
 #' }
 #' 
-#' @return An object of class 'modellist'.
+#' @return An object of class 'modellist', which contains at least one element
+#' of class 'vecxsubmodel'.
 #' 
 #' 
 #' @examples
@@ -92,6 +92,9 @@
 #' data("dees2007")
 #' submodel_data <- dees2007[["submodel_data"]]
 #' global_data <- dees2007[["global_data"]]
+#' 
+#' # Limit number of sub-models
+#' submodel_data <- select_list_elements(submodel_data, c("EA", "CA", "US"))
 #' 
 #' # Create empty model
 #' object <- create_gvecmodel(submodel_data = submodel_data,
@@ -103,8 +106,14 @@
 #'                               period = 1999:2001)
 #' 
 #' # Create sub-models
-#' model <- create_vecxsubmodel(object, submodel = "EA", r = 1,
-#'                              global = "poil", s = 1)
+#' model <- create_vecxsubmodel(object,
+#'                              submodel = "EA",
+#'                              r = 1,
+#'                              global = "poil",
+#'                              s = 1,
+#'                              iterations = 10,
+#'                              burnin = 10)
+#' # Number of iterations and burn-in should be much higher.
 #' 
 #' 
 #' @export
@@ -121,12 +130,12 @@ create_vecxsubmodel <- function(object,
                                 trend = NULL,
                                 seasonal = NULL,
                                 structural = FALSE,
-                                error = "wishart",
                                 tvp = FALSE,
+                                error = "wishart",
                                 varsel = "none",
                                 algorithm = NULL,
-                                iterations = 5000,
-                                burnin = 1000){
+                                iterations = 10000,
+                                burnin = 2000){
   
   if (length(submodel) > 1) {
     stop("Argument 'submodel' may only contain one element.")
@@ -465,15 +474,22 @@ create_vecxsubmodel <- function(object,
     }
   }
   
-  use_det_r <- FALSE
-  if (length(det_name_r) > 0) {
-    use_det_r <- TRUE
-    model[["n_restricted"]] <- length(det_name_r)
-  }
+  det_data <- NULL
+  
   use_det_ur <- FALSE
   if (length(det_name_ur) > 0) {
     use_det_ur <- TRUE
     model[["n"]] <- length(det_name_ur)
+    model[["deterministic"]] <- det_name_ur
+    det_data <- x[, which(x_names %in% det_name_ur)]
+  }
+  
+  use_det_r <- FALSE
+  if (length(det_name_r) > 0) {
+    use_det_r <- TRUE
+    model[["n_restricted"]] <- length(det_name_r)
+    model[["deterministic_restricted"]] <- det_name_r
+    det_data <- cbind(det_data, ect[, which(ect_names %in% det_name_r)])
   }
   
   if (is.null(r)) {
@@ -533,6 +549,12 @@ create_vecxsubmodel <- function(object,
     x <- NULL
   }
   
+  if (!is.null(det_data)) {
+    det_data <- stats::ts(as.matrix(det_data), class = c("mts", "ts", "matrix"))
+    stats::tsp(det_data) <- ts_info
+    dimnames(det_data)[[2]] <- c(det_name_ur, det_name_r)
+  }
+  
   # Structural data
   y_A0 <- NULL
   if (structural & n_endogen > 1) {
@@ -544,7 +566,7 @@ create_vecxsubmodel <- function(object,
     y_A0 <- y_A0[, -pos]
   }
   
-  # Use fake loop iteration range to handle modesl without global variables
+  # Use fake loop iteration range to handle models without global variables
   if (!use_global) {
     s <- 99
   }
@@ -585,6 +607,7 @@ create_vecxsubmodel <- function(object,
           
           model_i[["k_beta"]] <- as.integer(n_ect)
           model_i[["rank"]] <- as.integer(rank)
+          
           x_i <- NULL
           z <- NULL
           if (length(pos) > 0) {
@@ -608,7 +631,8 @@ create_vecxsubmodel <- function(object,
           # Create individual model
           result_i <- list("model" = model_i,
                            "data" = list("original" = list("endogen" = endogen,
-                                                           "exogen" = exogen),
+                                                           "exogen" = exogen,
+                                                           "deterministic" = det_data),
                                          "train" = list("y" = y,
                                                         "w" = ect,
                                                         "x" = x_i,

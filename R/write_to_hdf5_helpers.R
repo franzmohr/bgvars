@@ -83,7 +83,7 @@
 
       rows[[length(rows) + 1]] <- data.frame(
         submodel = submodel,
-        file = .submodel_file(submodel, i),
+        file = .submodel_file(i = i, submodel = submodel),
         algorithm = field(specs, "algorithm", "character"),
         type = field(specs, "type", "character"),
         k = field(specs, "k", "integer"),
@@ -117,11 +117,52 @@
 }
 
 # Path of one sub-model's file, relative to the export folder.
-.submodel_file <- function(submodel, i) {
+.submodel_file <- function(i, submodel) {
   paste0("submodels/", submodel, "/", sprintf("%03d", i), ".h5")
 }
 
-.write_gvar_to_hdf5 <- function(object, folder, overwrite = FALSE) {
+# How many cores an export uses when the caller does not say.
+#
+# Capped rather than taken whole: an export is not the only thing the machine
+# is doing, and the gain flattens out well before the last core. Eight was
+# where it flattened on a sixteen-core machine.
+.default_cores <- function(limit = 8L) {
+
+  # R CMD check sets this, and CRAN allows a check no more than two cores.
+  # Honoured here
+  # rather than in every example and test, so that no call site has to know.
+  if (identical(Sys.getenv("_R_CHECK_LIMIT_CORES_"), "TRUE")) {
+    limit <- 2L
+  }
+
+  available <- parallel::detectCores()
+
+  # detectCores() is documented to return NA where it cannot tell.
+  if (is.na(available)) {
+    return(1L)
+  }
+
+  as.integer(max(1L, min(limit, available)))
+}
+
+# Writes every model of one sub-model.
+#
+# The unit a worker is given when an export runs on more than one core, and the
+# body of the loop when it does not. It takes the file names rather than
+# working them out, so that a worker is sent nothing but the models it writes
+# and the paths to write them to.
+.write_submodel_to_hdf5 <- function(task) {
+
+  for (i in seq_along(task[["models"]])) {
+    bvartools::write_to_hdf5(task[["models"]][[i]],
+                             filename = task[["filenames"]][i])
+  }
+
+  invisible(NULL)
+}
+
+.write_gvar_to_hdf5 <- function(object, folder, overwrite = FALSE,
+                                mc.cores = .default_cores()) {
 
   if (!dir.exists(folder)) {
     stop(paste0("Folder ", folder, " does not exist."))
@@ -184,15 +225,41 @@
   # manifest above says which model each file holds.
   if (!is.null(manifest)) {
     dir.create(path_submodels)
-
     for (submodel in names(object[["submodels"]])) {
       dir.create(file.path(path_submodels, submodel))
+    }
 
+    # One task per sub-model, carrying only the models it writes and where they
+    # go, so that a worker is never sent the whole object.
+    tasks <- lapply(names(object[["submodels"]]), function(submodel) {
       models <- object[["submodels"]][[submodel]]
-      for (i in seq_along(models)) {
-        bvartools::write_to_hdf5(models[[i]],
-                                 filename = file.path(folder, .submodel_file(submodel, i)))
-      }
+      list("models" = models,
+           "filenames" = file.path(folder,
+                                   vapply(seq_along(models), .submodel_file,
+                                          character(1), submodel = submodel)))
+    })
+
+    # No more workers than there is work for them, and never a cluster to write
+    # a single sub-model: starting one costs more than it can save there.
+    if (is.null(mc.cores) || is.na(mc.cores)) {
+      mc.cores <- 1L
+    }
+    mc.cores <- min(as.integer(mc.cores), length(tasks))
+
+    if (mc.cores < 2L) {
+      lapply(tasks, .write_submodel_to_hdf5)
+    } else {
+      # A socket cluster rather than parallel::mclapply, which is what the rest
+      # of the package uses: mclapply forks, has nothing to fall back on under
+      # Windows and runs serially there, and an export is long enough that
+      # quietly doing nothing is the wrong trade. Every sub-model has its own
+      # files and its directory already exists, so the workers share nothing.
+      cluster <- parallel::makePSOCKcluster(mc.cores)
+      on.exit(parallel::stopCluster(cluster), add = TRUE)
+
+      # Balanced, because sub-models differ in how many models they hold and in
+      # how large those are.
+      parallel::parLapplyLB(cluster, tasks, .write_submodel_to_hdf5)
     }
   }
 

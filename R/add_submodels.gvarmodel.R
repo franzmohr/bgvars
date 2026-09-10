@@ -35,30 +35,33 @@
 #' moments, forecasts etc.
 #' 
 #' @examples
-#' # Load data
-#' data("gvar2023")
-#' submodel_data <- gvar2023[["submodel_data"]]
-#' global_data <- gvar2023[["global_data"]]
 #' 
-#' # Create empty model
+#' # Load data
+#' data("gvar2019")
+#' global_data <- gvar2019[["global_data"]]
+#' submodel_data <- gvar2019[["submodel_data"]]
+#' 
+#' # Limit number of sub-models
+#' submodel_data <- select_list_elements(submodel_data, c("AT", "DE", "US"))
+#' 
+#' # Create global model
 #' object <- create_gvarmodel(submodel_data = submodel_data,
 #'                            global_data = global_data)
 #' 
-#' # Add weight matrices
+#' # Generate and add weight matrices
 #' object <- add_weight_matrices(object = object,
 #'                               submodel_data = submodel_data,
-#'                               period = 3)
+#'                               period = 2013:2016)
 #' 
-#' # Create sub-models
 #' object <- add_submodels(object,
-#'                         endogen = c("y","p", "rs"), p_endogen = 1,
-#'                         exogen = c("y", "p"), p_exogen = 1,
-#'                         global = "poil", s = 0,
-#'                         deterministic = "const", seasonal = FALSE,
-#'                         structural = FALSE, tvp = FALSE,
-#'                         error = "wishart", varsel = "none",
-#'                         iterations = 10000, burnin = 2000)
-#' 
+#'                         p_endogen = 1,
+#'                         p_exogen = 1,
+#'                         global = "poil",
+#'                         s = 1,
+#'                         error = "wishart",
+#'                         iterations = 10,
+#'                         burnin = 10)
+#' # Number of iterations and burn-in should be much higher.
 #' 
 #' 
 #' @export

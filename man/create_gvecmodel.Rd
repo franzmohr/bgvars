@@ -26,7 +26,7 @@ A list of class 'gvecmodel', which consists of the following elements:
 }
 \description{
 Initialises an object of class 'gvecmodel', which contains all elements necessary
-to set up, estimate and evaluate a Bayesian GVEV model.
+to set up, estimate and evaluate a Bayesian GVEC model.
 }
 \details{
 The function creates a list of class 'gvecmodel', which provides the basic

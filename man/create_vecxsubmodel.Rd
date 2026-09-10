@@ -2,7 +2,7 @@
 % Please edit documentation in R/create_vecxsubmodel.R
 \name{create_vecxsubmodel}
 \alias{create_vecxsubmodel}
-\title{Create Sub-Model Specifications}
+\title{Create Sub-Models}
 \usage{
 create_vecxsubmodel(
   object,
@@ -18,38 +18,37 @@ create_vecxsubmodel(
   trend = NULL,
   seasonal = NULL,
   structural = FALSE,
-  error = "wishart",
   tvp = FALSE,
+  error = "wishart",
   varsel = "none",
   algorithm = NULL,
-  iterations = 5000,
-  burnin = 1000
+  iterations = 10000,
+  burnin = 2000
 )
 }
 \arguments{
-\item{object}{an object of class 'gvecmodel'.}
+\item{object}{an object of class 'gvarmodel' or 'gvecmodel'.}
 
 \item{submodel}{name of the sub-model, for which input data should be generated
 based on the input in argument \code{object}.}
 
-\item{endogen}{a character vector of variables that should be included as
-endogenous variables.}
+\item{endogen}{character vector of variables that should enter each sub-model
+as endogenous variables, if they are available.}
 
-\item{p_endogen}{an integer vector of the lag order of endogenous variables
-(default is \code{p = 1}).}
+\item{p_endogen}{an integer vector of the lag order (default is \code{p_endogen = 1})
+of a sub-model's endogenous variables.}
 
-\item{exogen}{a character vector of variables that should be included as
-weakly endogenous variables.}
+\item{exogen}{character vector of variables that should enter each sub-model
+as weakly exogenous variables.}
 
-\item{p_exogen}{an integer vector of the lag order of weakly exogenous variables
-(default is \code{p = 1}).}
+\item{p_exogen}{an integer vector of the lag order (default is \code{p_exogen = 1})
+of a sub-model's weakly exogenous variables.}
 
 \item{global}{character vector of variables that should enter each sub-model
 as global variables.}
 
-\item{s}{an integer vector of the lag order of global variables
-(default is \code{NULL}). Only used, if global variables are included in the
-model.}
+\item{s}{an integer vector of the lag order of a sub-model's global variables.
+If \code{NULL} (default), models do not include global variables.}
 
 \item{r}{an integer vector of the cointegration rank. See 'Details'.}
 
@@ -68,13 +67,13 @@ will be automatically detected and depends on the frequency of the time-series o
 in \code{data}.}
 
 \item{structural}{logical indicating whether data should be prepared for the estimation of a
-structural VAR model. Defaults to \code{FALSE}.}
-
-\item{error}{character specifying the model that should be used for the estimation
-of the covariance matrix of the error term. Default is \code{"wishart"}. See 'Details'.}
+structural VEC model. Defaults to \code{FALSE}.}
 
 \item{tvp}{logical indicating whether the model parameters are time varying.
 Defaults to \code{FALSE}.}
+
+\item{error}{character specifying the model that should be used for the estimation
+of the covariance matrix of the error term. Default is \code{"wishart"}. See 'Details'.}
 
 \item{varsel}{character specifying the type of variable selection algorithm
 that should be employed. Default is \code{"none"}. See 'Details'.}
@@ -84,17 +83,18 @@ that should be employed. Default is \code{"none"}. See 'Details'.}
 non-standard options.}
 
 \item{iterations}{an integer of MCMC draws excluding burn-in draws (defaults
-to 20000).}
+to 10000).}
 
 \item{burnin}{an integer of MCMC draws used to initialize the sampler
 (defaults to 2000). These draws do not enter the computation of posterior
 moments, forecasts etc.}
 }
 \value{
-An object of class 'modellist'.
+An object of class 'modellist', which contains at least one element
+of class 'vecxsubmodel'.
 }
 \description{
-Produces a list of model specifications for each entity in a GVAR model.
+Produces a list of VECX models for each sub-model in a GVEC model.
 }
 \details{
 If an integer vector is provided as argument \code{p_endogen}, \code{p_exogen},
@@ -128,7 +128,7 @@ Available specifications for argument \code{varsel} are:
 
 Available specifications for argument \code{algorithm} are:
 \itemize{
- \item{\code{"KLGS2010"}: Algorithm proposed in Koop, León-González & Strachan (2010).}
+   \item{\code{"KLGS2010"}: Algorithm proposed in Koop, León-González & Strachan (2010).}
 }
 }
 \examples{
@@ -137,6 +137,9 @@ Available specifications for argument \code{algorithm} are:
 data("dees2007")
 submodel_data <- dees2007[["submodel_data"]]
 global_data <- dees2007[["global_data"]]
+
+# Limit number of sub-models
+submodel_data <- select_list_elements(submodel_data, c("EA", "CA", "US"))
 
 # Create empty model
 object <- create_gvecmodel(submodel_data = submodel_data,
@@ -148,8 +151,14 @@ object <- add_weight_matrices(object = object,
                               period = 1999:2001)
 
 # Create sub-models
-model <- create_vecxsubmodel(object, submodel = "EA", r = 1,
-                             global = "poil", s = 1)
+model <- create_vecxsubmodel(object,
+                             submodel = "EA",
+                             r = 1,
+                             global = "poil",
+                             s = 1,
+                             iterations = 10,
+                             burnin = 10)
+# Number of iterations and burn-in should be much higher.
 
 
 }

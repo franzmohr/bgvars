@@ -30,6 +30,7 @@ align_model_obs.gvecmodel <- function(object, ...) {
   min_date <- max(avail[, 1]) # First period overall is latest in start
   max_date <- min(avail[, 2]) # First period overall is earlierst in end
   
+  # Actual filter
   object <- stats::window(x = object, start = min_date, end = max_date)
   
 }

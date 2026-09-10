@@ -19,3 +19,38 @@ A list of class 'gvarmodel'.
 Adds prior specifications to a list of models by passing each element to
 the respective method.
 }
+\examples{
+
+# Load data
+data("gvar2019")
+global_data <- gvar2019[["global_data"]]
+submodel_data <- gvar2019[["submodel_data"]]
+
+# Limit number of sub-models
+submodel_data <- select_list_elements(submodel_data, c("AT", "DE", "US"))
+
+# Create global model
+object <- create_gvarmodel(submodel_data = submodel_data,
+                           global_data = global_data)
+
+# Generate and add weight matrices
+object <- add_weight_matrices(object = object,
+                              submodel_data = submodel_data,
+                              period = 2013:2016)
+
+object <- add_submodels(object,
+                        p_endogen = 1,
+                        p_exogen = 1,
+                        global = "poil",
+                        s = 1,
+                        error = "wishart",
+                        iterations = 10,
+                        burnin = 10)
+# Number of iterations and burn-in should be much higher.
+
+# Add priors
+object <- add_priors(object,
+                     coef = list(v_i = 0),
+                     sigma = list(df = 3, scale = 0.0001))
+
+}

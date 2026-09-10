@@ -152,6 +152,43 @@ for lag \eqn{l} with \eqn{\kappa_1}, \eqn{\kappa_2}, \eqn{\kappa_3},
 \eqn{\kappa_4} as the first, second, third and forth element in
 \code{varsel$minnesota}, respectively.
 }
+\examples{
+
+# Load data
+data("dees2007")
+submodel_data <- dees2007[["submodel_data"]]
+global_data <- dees2007[["global_data"]]
+
+# Limit number of sub-models
+submodel_data <- select_list_elements(submodel_data, c("EA", "US"))
+
+# Create empty model
+object <- create_gvecmodel(submodel_data = submodel_data,
+                           global_data = global_data)
+
+# Add weight matrices
+object <- add_weight_matrices(object = object,
+                              submodel_data = submodel_data,
+                              period = 1999:2001)
+
+# Create sub-models
+object <- add_submodels(object,
+                        p_endogen = 1, p_exogen = 1,
+                        global = "poil",
+                        s = 1,
+                        r = 1,
+                        error = "wishart",
+                        iterations = 10,
+                        burnin = 10)
+# Number of iterations and burn-in should be much higher.
+
+# Add priors
+object <- add_priors(object[["submodels"]][["EA"]][[1]],
+                     coef = list(v_i = 0),
+                     coint = list(v_i = 0, p_tau_i = 1),
+                     sigma = list(df = 3, scale = 0.0001))
+
+}
 \references{
 Chan, J., Koop, G., Poirier, D. J., & Tobias J. L. (2019). \emph{Bayesian econometric methods}
 (2nd ed.). Cambridge: Cambridge University Press.

@@ -139,6 +139,48 @@ for lag \eqn{l} with \eqn{\kappa_1}, \eqn{\kappa_2}, \eqn{\kappa_3},
 \eqn{\kappa_4} as the first, second, third and forth element in
 \code{varsel$minnesota}, respectively.
 }
+\examples{
+
+# Load data
+data("gvar2019")
+global_data <- gvar2019[["global_data"]]
+submodel_data <- gvar2019[["submodel_data"]]
+
+# Limit number of sub-models
+submodel_data <- select_list_elements(submodel_data, c("AT", "DE", "US"))
+
+# Create global model
+object <- create_gvarmodel(submodel_data = submodel_data,
+                           global_data = global_data)
+
+# Generate and add weight matrices
+object <- add_weight_matrices(object = object,
+                              submodel_data = submodel_data,
+                              period = 2013:2016)
+
+# Create sub-model
+object <- create_varxsubmodel(object,
+                              submodel = "AT",
+                              endogen = c("y","Dp", "r"), p_endogen = 1,
+                              exogen = c("y", "Dp"), p_exogen = 1,
+                              global = "poil", s = 0,
+                              deterministic = "const", seasonal = FALSE,
+                              structural = FALSE, tvp = FALSE,
+                              error = "wishart", varsel = "none",
+                              iterations = 10, burnin = 10)
+# Number of iterations and burn-in should be much higher.
+
+# The previous function returns a model list. Extract the first model to proceed.
+object <- object[[1]]
+
+# Add priors
+object <- add_priors(object,
+                     coef = list(v_i = 0),
+                     sigma = list(df = 3, scale = 0.0001))
+                              
+
+
+}
 \references{
 Chan, J., Koop, G., Poirier, D. J., & Tobias J. L. (2019). \emph{Bayesian econometric methods}
 (2nd ed.). Cambridge: Cambridge University Press.

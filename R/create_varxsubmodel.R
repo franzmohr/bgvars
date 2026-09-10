@@ -1,12 +1,12 @@
-#' Create Submodel Specifications
+#' Create Sub-Models
 #' 
-#' Produces a list of model specifications for each entity in a GVAR model.
+#' Produces a list of VARX models for each sub-model in a GVAR model.
 #' 
 #' @param object an object of class 'gvarmodel' or 'gvecmodel'.
 #' @param submodel name of the sub-model, for which input data should be generated
 #' based on the input in argument \code{object}.
 #' @param endogen character vector of variables that should enter each sub-model
-#' as endogenous variables, if they are available for the respective sub-model.
+#' as endogenous variables, if they are available.
 #' @param p_endogen an integer vector of the lag order (default is \code{p_endogen = 1})
 #' of a sub-model's endogenous variables.
 #' @param exogen character vector of variables that should enter each sub-model
@@ -26,6 +26,7 @@
 #' @param structural logical indicating whether data should be prepared for the estimation of a
 #' structural VAR model. Defaults to \code{FALSE}.
 #' @param tvp logical indicating whether the model parameters are time varying.
+#' Defaults to \code{FALSE}.
 #' @param error character specifying the model that should be used for the estimation
 #' of the covariance matrix of the error term. Default is \code{"wishart"}. See 'Details'.
 #' @param varsel character specifying the type of variable selection algorithm
@@ -37,6 +38,10 @@
 #' moments, forecasts etc.
 #' 
 #' @details
+#' 
+#' If an integer vector is provided as argument \code{p_endogen}, \code{p_exogen}
+#' or \code{s}, the function will produce a distinct model for all
+#' possible combinations of those specifications.
 #' 
 #' Argument \code{error} specifies the structure of the covariance matrix of
 #' the error term and how it is estimated. Possible specifications are:
@@ -63,34 +68,40 @@
 #'  \item{\code{"ssvs"}: Stochastic search variable selection as proposed in George et al. (2008).}
 #' }
 #' 
-#' @return An object of class 'modellist'.
+#' @return An object of class 'modellist', which contains at least one element
+#' of class 'varxsubmodel'.
 #' 
 #' 
 #' @examples
-#' # Load data
-#' data("gvar2023")
-#' submodel_data <- gvar2023[["submodel_data"]]
-#' global_data <- gvar2023[["global_data"]]
 #' 
-#' # Create empty model
+#' # Load data
+#' data("gvar2019")
+#' global_data <- gvar2019[["global_data"]]
+#' submodel_data <- gvar2019[["submodel_data"]]
+#' 
+#' # Limit number of sub-models
+#' submodel_data <- select_list_elements(submodel_data, c("AT", "DE", "US"))
+#' 
+#' # Create global model
 #' object <- create_gvarmodel(submodel_data = submodel_data,
 #'                            global_data = global_data)
 #' 
-#' # Add weight matrices
+#' # Generate and add weight matrices
 #' object <- add_weight_matrices(object = object,
 #'                               submodel_data = submodel_data,
-#'                               period = 3)
+#'                               period = 2013:2016)
 #' 
-#' # Create sub-models
-#' model <- create_varxsubmodel(object,
-#'                              submodel = "AT",
-#'                              endogen = c("y","p", "rs"), p_endogen = 1,
-#'                              exogen = c("y", "p"), p_exogen = 1,
-#'                              global = "poil", s = 0,
-#'                              deterministic = "const", seasonal = FALSE,
-#'                              structural = FALSE, tvp = FALSE,
-#'                              error = "wishart", varsel = "none",
-#'                              iterations = 10000, burnin = 2000)
+#' # Create sub-model
+#' object <- create_varxsubmodel(object,
+#'                               submodel = "AT",
+#'                               endogen = c("y","Dp", "r"), p_endogen = 1,
+#'                               exogen = c("y", "Dp"), p_exogen = 1,
+#'                               global = "poil", s = 0,
+#'                               deterministic = "const", seasonal = FALSE,
+#'                               structural = FALSE, tvp = FALSE,
+#'                               error = "wishart", varsel = "none",
+#'                               iterations = 10, burnin = 10)
+#' # Number of iterations and burn-in should be much higher.
 #' 
 #' 
 #' @export
@@ -126,31 +137,32 @@ create_varxsubmodel <- function(object,
   n_exogen_old <- length(vars_exogen_old)
   n_z_old <- n_endogen_old + n_exogen_old
   
-  # Get positions for submodel
+  # Get positions of sub-model's variables in its weight matrix
+  vars_endogen <- index[index[, "submodel"] == submodel, "variable"]
   if (is.null(endogen)) {
-    pos_endogen <- which(index[, "submodel"] == submodel)
-    vars_endogen <- index[pos_endogen, "variable"]
+    pos_endogen <- 1:length(vars_endogen)
   } else {
-    pos_endogen <- which(index[, "submodel"] == submodel & index[, "variable"] %in% endogen)
+    pos_endogen <- match(endogen, vars_endogen)
     if (length(pos_endogen) == 0) {
-      stop(paste0("For submodel ", submodel, " no variable from argument 'endogen' is available."))
+      stop(paste0("For sub-model ", submodel, " no variable from argument 'endogen' is available."))
     }
-    vars_endogen <- index[pos_endogen, "variable"]
+    vars_endogen <- vars_endogen[pos_endogen]
   }
-  pos_endogen <- which(vars_endogen_old %in% vars_endogen)
   n_endogen <- length(vars_endogen)
   
   
   vars_exogen <- unique(index[index[, "submodel"] != submodel, "variable"])
   if (is.null(exogen)) {
     pos_exogen <- n_endogen_old + 1:length(vars_exogen)
-    n_exogen <- length(vars_exogen)
   } else {
-    pos_exogen <- which(vars_exogen %in% exogen)
+    pos_exogen <- match(exogen, vars_exogen)
+    if (any(is.na(pos_exogen))) {
+      stop(paste0("For sub-model ", submodel, " at least one specified exogenous variable is not available."))
+    }
     vars_exogen <- vars_exogen[pos_exogen]
-    n_exogen <- length(vars_exogen)
     pos_exogen <- n_endogen_old + pos_exogen
   }
+  n_exogen <- length(vars_exogen)
   n_z <- n_endogen + n_exogen
   
   pos_new <- c(pos_endogen, pos_exogen)
@@ -253,6 +265,7 @@ create_varxsubmodel <- function(object,
   model[["m"]] <- 0L
   model[["s"]] <- 0L
   model[["n"]] <- 0L
+  
   model[["k_endogen"]] <- n_endogen
   model[["p_endogen"]] <- 0L
   model[["k_exogen"]] <- n_exogen
@@ -371,6 +384,7 @@ create_varxsubmodel <- function(object,
   use_det <- FALSE
   if (length(det_name) > 0) {
     model[["n"]] <- length(det_name)
+    model[["deterministic"]] <- det_name
     use_det <- TRUE
     det_data <- temp[, det_pos + 1:model[["n"]]]
     
@@ -440,8 +454,10 @@ create_varxsubmodel <- function(object,
   for (i in p_endogen) { # for each lag p_endogen
     for (j in p_exogen) { # for each lag p_exogen
       for (k in s) {
+        
         pos <- NULL
         model_i <- model
+        
         if (i >= 1) {
           pos <- c(pos, n_endogen + 1:(n_endogen * i))
           model_i[["p"]] <- as.integer(i)

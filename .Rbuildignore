@@ -6,3 +6,5 @@
 ^\.travis\.yml$
 ^cran-comments\.md$
 ^\.github$
+^vignettes/.*\.orig$
+^vignettes/precompile\.R$

@@ -3,7 +3,7 @@
 #' Calculates the Minnesota prior for a VAR model.
 #' 
 #' @param object an object of class \code{"varxsubmodel"}, usually, a result of
-#' a call to \code{\link{add_submodels}}.
+#' a call to \code{\link{add_submodels}} or \code{\link{create_varxsubmodel}}.
 #' @param kappa1 a numeric specifying the prior variance of coefficients that correspond to
 #' own lags of endogenous variables.
 #' @param kappa2 a numeric specifying the size of the prior variance of endogenous
@@ -46,7 +46,44 @@
 #' 
 #' Lütkepohl, H. (2006). \emph{New introduction to multiple time series analysis} (2nd ed.). Berlin: Springer.
 #' 
+#' @examples
+#' 
+#' # Load data
+#' data("gvar2019")
+#' global_data <- gvar2019[["global_data"]]
+#' submodel_data <- gvar2019[["submodel_data"]]
+#' 
+#' # Limit number of sub-models
+#' submodel_data <- select_list_elements(submodel_data, c("AT", "DE", "US"))
+#' 
+#' # Create global model
+#' object <- create_gvarmodel(submodel_data = submodel_data,
+#'                            global_data = global_data)
+#' 
+#' # Generate and add weight matrices
+#' object <- add_weight_matrices(object = object,
+#'                               submodel_data = submodel_data,
+#'                               period = 2013:2016)
+#' 
+#' # Create sub-model
+#' object <- create_varxsubmodel(object,
+#'                               submodel = "AT",
+#'                               endogen = c("y","Dp", "r"), p_endogen = 1,
+#'                               exogen = c("y", "Dp"), p_exogen = 1,
+#'                               global = "poil", s = 0,
+#'                               deterministic = "const", seasonal = FALSE,
+#'                               structural = FALSE, tvp = FALSE,
+#'                               error = "wishart", varsel = "none",
+#'                               iterations = 10, burnin = 10)
+#' # Number of iterations and burn-in should be much higher.
+#' 
+#' # The previous function returns a model list. Extract the first model to proceed.
+#' object <- object[[1]]
+#' 
+#' prior <- minnesota_prior(object)
+#' 
 #' @export
+#' @method minnesota_prior varxsubmodel
 minnesota_prior.varxsubmodel <- function(object, kappa1 = 2, kappa2 = .5, kappa3 = NULL, kappa4 = 5,
                                          max_var = NULL, coint_var = FALSE, sigma = "AR") {
   
@@ -73,8 +110,9 @@ minnesota_prior.varxsubmodel <- function(object, kappa1 = 2, kappa2 = .5, kappa3
     stop("Argument 'sigma' must be either 'AR' or 'VAR'.")
   }
   
-  y <- t(object[["data"]][["train"]][["y"]])
   k <- object[["model"]][["k_endogen"]]
+  y <- t(object[["data"]][["train"]][["y"]])
+  
   
   mu <- NULL
   V <- NULL
@@ -85,7 +123,7 @@ minnesota_prior.varxsubmodel <- function(object, kappa1 = 2, kappa2 = .5, kappa3
     if (!is.null(object[["data"]][["train"]][["x"]])) {
       
       x <- t(object[["data"]][["train"]][["x"]])
-      tt <- nrow(object[["data"]][["train"]][["y"]])
+      tt <- NCOL(y)
       tot_par <- k * NROW(x)
       p_endogen <- object[["model"]][["p_endogen"]]
       k_exogen <- object[["model"]][["k_exogen"]]

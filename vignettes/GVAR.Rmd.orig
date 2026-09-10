@@ -10,7 +10,8 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.path = "figures/"
 )
 ```
 
@@ -21,10 +22,14 @@ The `bgvars` packages comes with the updated GVAR database of Mohaddes and Raiss
 ```{r data, message=FALSE, eval = TRUE}
 #library(bgvars)
 devtools::load_all(".")
-data("gvar2019")
 
-submodel_data <- gvar2019[["submodel_data"]]
+# Load data
+data("gvar2019")
 global_data <- gvar2019[["global_data"]]
+submodel_data <- gvar2019[["submodel_data"]]
+
+# Limit number of sub-models
+submodel_data <- select_list_elements(submodel_data, c("AT", "DE", "US"))
 ```
 
 ### Preparation
@@ -50,8 +55,10 @@ object <- add_weight_matrices(object = object,
 ```{r}
 object <- add_submodels(object,
                         p_endogen = 0:2,
+                        exogen = c("y", "Dp", "eq", "r", "lr"),
                         p_exogen = 0:2,
-                        s_global = 0:2,
+                        global = "poil",
+                        s = 0:2,
                         error = "wishart",
                         iterations = 2000,
                         burnin = 1000)
@@ -90,31 +97,21 @@ beside a `model.h5` holding the global data, the weight matrices and a table
 describing every sub-model file.
 
 ```{r, eval = FALSE}
-write_to_hdf5(object, folder = "C:/path/to/gvar")
+write_to_hdf5(object, folder = "D:/models/gvar", overwrite = TRUE)
 ```
 
 [BayesTS](https://github.com/franzmohr/BayesTS) is then pointed at the folder of
 sub-models and writes the posterior draws back into the files it read.
 
 ```{bash, eval = FALSE}
-bayests posterior C:/path/to/gvar/submodels
+bayests posterior D:/models/gvar/submodels
 ```
 
-`read_gvar_from_folder` brings the whole model back, draws included. The
-sub-models are found through the table in `model.h5` rather than through the
-directory tree, so the names they are known by survive a folder that has been
-moved or renamed.
-
-```{r, eval = FALSE}
-object <- read_gvar_from_folder("C:/path/to/gvar")
-```
-
-#### Package 
+#### Use `bvartools`' functions
 
 ```{r, eval = TRUE, message=FALSE, results='hide'}
 object <- add_posterior_coefficients(object)
 ```
-
 
 ```{r, eval = TRUE, message=FALSE, results='hide'}
 object <- add_posterior_loglik(object)
@@ -122,32 +119,83 @@ object <- add_posterior_loglik(object)
 
 ### Model selection
 
-
-
+Model performance is evaluated for each sub-model.
 
 ```{r, eval = TRUE, message=FALSE, results='hide'}
-sc <- add_posterior_loglik(object)
+model <- read_submodel_from_folder(folder = "D:/models/gvar", submodel = "AT")
+```
+
+The output of the function is an object of class `modellist`. Hence, `bvartools`'
+functionality can be employed to evaluate model performance using `selection_criteria`.
+
+```{r}
+sc <- selection_criteria(model)
+
+plot(sc, criterion = "BIC")
 ```
 
 
-The estimated country models can be combined and solved with the function `combine_submodels`.
+```{r}
+choose_best_model(sc, criterion = "AIC")
+```
+
+The process can be automated using `choose_best_model_from_hdf5`.
+
+```{r}
+best_models <- choose_best_model_from_hdf5(folder = "D:/models/gvar",
+                                           criterion = "BIC")
+```
+
+
+
+Finally, import the global model with the final sub-models.
+
+`read_gvar_from_folder` brings the whole model back, draws included. The
+sub-models are found through the table in `model.h5` rather than through the
+directory tree, so the names they are known by survive a folder that has been
+moved or renamed.
+
+
+```{r, eval = FALSE}
+object <- read_gvar_from_folder(folder = "D:/models/gvar",
+                                submodels = best_models)
+```
+
+### Solve the model
+
+The estimated sub-models can be combined and solved with the function `submodels_to_gvar`.
 
 ```{r, message=FALSE, results='hide'}
-gvar <- combine_submodels(object)
+gvar <- submodels_to_gvar(object)
 ```
+
+The resulting object is of class `bvarmodel`. That the global model can be
+evaluated and analysed as any other BVAR model.
 
 ### Impulse response analysis
 
 Impulse response analysis can be done with the `girf` function.
 
 ```{r, eval = TRUE, fig.width=5.5, fig.height=4.5}
-gvar_irf <- girf(gvar, impulse = c("US", "r"),
-                 response = c("EA", "y"),
-                 n.ahead = 20, ci = .68)
+gvar_irf <- irf(gvar,
+                impulse = "US_r", response = "AT_y",
+                n_ahead = 20, ci = .68,
+                type = "gir")
 
 plot(gvar_irf)
 ```
 
+### Error variance decomposition
+
+```{r, eval = TRUE, fig.width=5.5, fig.height=4.5}
+gvar_irf <- fevd(gvar,
+                 response = "AT_y",
+                 n_ahead = 20,
+                 type = "gir",
+                 normalise_gir = TRUE)
+
+plot(gvar_irf)
+```
 
 ## References
 
