@@ -7,13 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  fig.path = "figures/"
-)
-```
+
 
 This vignette walks through a complete GVAR analysis: setting up the model,
 specifying priors, simulating the posterior, choosing between competing
@@ -23,7 +17,8 @@ sub-model specifications, solving the global model and analysing it.
 
 The `bgvars` packages comes with the updated GVAR database of Mohaddes and Raissi (2020), which contains economic time series for 33 countries and 3 commodities from 1979Q2 to 2019Q4.[^gvar2019]
 
-```{r data, message=FALSE, eval = TRUE}
+
+``` r
 #library(bgvars)
 devtools::load_all(".")
 
@@ -38,7 +33,8 @@ submodel_data <- select_list_elements(submodel_data, c("AT", "DE", "US"))
 
 ### Preparation
 
-```{r initialise, eval = TRUE}
+
+``` r
 object <- create_gvarmodel(submodel_data = submodel_data,
                            global_data = global_data)
 ```
@@ -46,7 +42,8 @@ object <- create_gvarmodel(submodel_data = submodel_data,
 Weight matrices for each country/region can be calculated with the function `add_weight_matrices`.
 
 
-```{r weights, eval = TRUE}
+
+``` r
 # Generate weight matrices
 object <- add_weight_matrices(object = object,
                               submodel_data = submodel_data,
@@ -57,9 +54,23 @@ A weight matrix links the vector of the endogenous variables of the global
 model to the endogenous and weakly exogenous variables of one sub-model. It can
 be inspected with `get_weight_matrix`.
 
-```{r, eval = TRUE}
+
+``` r
 w <- get_weight_matrix(object, "AT")
 round(w[, 1:6], 3)
+#>    AT_y AT_Dp AT_eq AT_ep AT_r AT_lr
+#> y     1     0     0     0    0     0
+#> Dp    0     1     0     0    0     0
+#> eq    0     0     1     0    0     0
+#> ep    0     0     0     1    0     0
+#> r     0     0     0     0    1     0
+#> lr    0     0     0     0    0     1
+#> y     0     0     0     0    0     0
+#> Dp    0     0     0     0    0     0
+#> eq    0     0     0     0    0     0
+#> ep    0     0     0     0    0     0
+#> r     0     0     0     0    0     0
+#> lr    0     0     0     0    0     0
 ```
 
 The upper block picks out Austria's own variables, the lower block averages the
@@ -71,7 +82,8 @@ Passing a vector rather than a single value to `p_endogen`, `p_exogen` or `s`
 creates one sub-model per combination, all of which are estimated and compared
 below.
 
-```{r}
+
+``` r
 object <- add_submodels(object,
                         p_endogen = 1:2,
                         exogen = c("y", "Dp", "eq", "r", "lr"),
@@ -85,7 +97,8 @@ object <- add_submodels(object,
 
 The resulting sub-models could have different sample sizes. Function `align_model_obs` can be employed to ensure that all sub-models use the same set of observations that are common to all sub-models.
 
-```{r}
+
+``` r
 object <- align_model_obs(object)
 ```
 
@@ -93,7 +106,8 @@ object <- align_model_obs(object)
 
 ### Prior specification
 
-```{r, eval = TRUE}
+
+``` r
 object <- add_priors(object,
                      coef = list(v_i = 0),
                      sigma = list(df = 3, scale = 0.0001))
@@ -101,7 +115,8 @@ object <- add_priors(object,
 
 ### Initial values
 
-```{r, eval = TRUE}
+
+``` r
 object <- add_initial_values(object)
 ```
 
@@ -112,7 +127,8 @@ object <- add_initial_values(object)
 The sub-models can be estimated inside R. `add_posterior_loglik` adds the draws
 of the log-likelihood, from which the selection criteria below are calculated.
 
-```{r, eval = TRUE, message=FALSE, results='hide'}
+
+``` r
 object <- add_posterior_coefficients(object)
 object <- add_posterior_loglik(object)
 ```
@@ -125,7 +141,8 @@ one another, which makes it possible to estimate them outside R.
 beside a `model.h5` holding the global data, the weight matrices and a table
 describing every sub-model file.
 
-```{r export, eval = TRUE}
+
+``` r
 folder <- file.path(tempdir(), "gvar")
 dir.create(folder, showWarnings = FALSE)
 
@@ -135,7 +152,8 @@ write_to_hdf5(object, folder = folder, overwrite = TRUE)
 [BayesTS](https://github.com/franzmohr/BayesTS) is then pointed at the folder of
 sub-models and writes the posterior draws back into the files it read.
 
-```{bash, eval = FALSE}
+
+``` bash
 bayests posterior /path/to/gvar/submodels
 ```
 
@@ -149,33 +167,44 @@ Model performance is evaluated for each sub-model. `read_submodel_from_folder`
 reads the models of a single sub-model, which avoids holding the whole global
 model in memory.
 
-```{r, eval = TRUE, message=FALSE, results='hide'}
+
+``` r
 model <- read_submodel_from_folder(folder = folder, submodel = "AT")
 ```
 
 The output of the function is an object of class `modellist`. Hence, `bvartools`'
 functionality can be employed to evaluate model performance using `selection_criteria`.
 
-```{r selection-criteria, fig.width=5.5, fig.height=4.5}
+
+``` r
 sc <- selection_criteria(model)
 
 plot(sc, criterion = "BIC")
 ```
 
+![plot of chunk selection-criteria](figures/selection-criteria-1.png)
 
-```{r}
+
+
+``` r
 choose_best_model(sc, criterion = "AIC")
+#> [1] 4
 ```
 
 The process can be automated using `choose_best_model_from_hdf5`, which ranks
 the models of every sub-model without reading their posterior draws of the
 coefficients.
 
-```{r}
+
+``` r
 best_models <- choose_best_model_from_hdf5(folder = folder,
                                            criterion = "BIC")
 
 best_models
+#>   submodel position
+#> 1       AT        4
+#> 2       DE        8
+#> 3       US        8
 ```
 
 
@@ -189,7 +218,8 @@ moved or renamed. Passing the table of best models keeps one model per
 sub-model, which is what solving the global model requires.
 
 
-```{r, eval = TRUE}
+
+``` r
 object <- read_gvar_from_folder(folder = folder,
                                 submodels = best_models)
 ```
@@ -198,7 +228,8 @@ object <- read_gvar_from_folder(folder = folder,
 
 The estimated sub-models can be combined and solved with the function `submodels_to_gvar`.
 
-```{r, message=FALSE, results='hide'}
+
+``` r
 gvar <- submodels_to_gvar(object)
 ```
 
@@ -212,8 +243,10 @@ representation the analysis below works on. The draws of $G$ are kept in element
 The resulting object is of class `bvarmodel`, so the global model can be
 evaluated and analysed as any other BVAR model.
 
-```{r}
+
+``` r
 gvar[["model"]][["k"]]
+#> [1] 17
 ```
 
 ### Impulse response analysis
@@ -222,7 +255,8 @@ Generalised impulse responses are obtained with `irf` and `type = "gir"`.
 `shock = "sd"` scales the shock to one standard deviation of the residual of
 the impulse variable.
 
-```{r girf, eval = TRUE, fig.width=5.5, fig.height=4.5}
+
+``` r
 gvar_irf <- irf(gvar,
                 impulse = "US_r", response = "AT_y",
                 n_ahead = 20, ci = .68,
@@ -231,9 +265,12 @@ gvar_irf <- irf(gvar,
 plot(gvar_irf)
 ```
 
+![plot of chunk girf](figures/girf-1.png)
+
 ### Error variance decomposition
 
-```{r gfevd, eval = TRUE, fig.width=5.5, fig.height=4.5}
+
+``` r
 gvar_fevd <- fevd(gvar,
                   response = "AT_y",
                   n_ahead = 20,
@@ -242,6 +279,8 @@ gvar_fevd <- fevd(gvar,
 
 plot(gvar_fevd)
 ```
+
+![plot of chunk gfevd](figures/gfevd-1.png)
 
 ## References
 

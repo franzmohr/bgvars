@@ -25,6 +25,11 @@ precompile <- function(name) {
     stop("no such vignette source: vignettes/", input, call. = FALSE)
   }
 
+  # A chunk that fails must fail the build. knitr's default is to record the
+  # error in the output and carry on, which once left a vignette whose every
+  # step after a missing folder was an error message.
+  knitr::opts_chunk$set(error = FALSE)
+
   message("Knitting ", input, " ...")
   started <- Sys.time()
   knitr::knit(input, paste0(name, ".Rmd"))

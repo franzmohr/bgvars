@@ -514,30 +514,68 @@ object <- add_posterior_coefficients(object)
 object <- add_posterior_loglik(object)
 ```
 
-### Model selection
+### Solve the model
 
+The sub-models are in error correction form, which `submodels_to_gvar` cannot
+stack: it combines sub-models in levels. `gvec_to_gvar` rewrites every one of
+them, turning the object into a `gvarmodel`.
 
-```{r, eval = TRUE, message=FALSE, results='hide'}
-sc <- selection_criteria(object)
+```{r, eval = TRUE}
+object <- gvec_to_gvar(object)
 ```
 
+The cointegration rank of a sub-model is a property of its error correction
+form, so it is kept alongside the level representation for reference, but plays
+no further role.
 
-The estimated country models can be combined and solved with the function `combine_submodels`.
+From here on the model is treated exactly as in the vignette on global vector
+autoregressive models.
 
-```{r, message=FALSE, results='hide'}
-gvar <- combine_submodels(object)
+```{r solve, eval = TRUE, message=FALSE, results='hide'}
+gvar <- submodels_to_gvar(object)
+```
+
+Stacking the sub-models gives the structural form
+$G y_t = A_1 y_{t-1} + \dots + u_t$, which `submodels_to_gvar` solves for the
+reduced form $y_t = G^{-1} A_1 y_{t-1} + \dots + G^{-1} u_t$. The draws of $G$
+are kept in element `g` of the result.
+
+```{r, eval = TRUE}
+gvar[["model"]][["k"]]
+```
+
+The restricted trend of the error correction term becomes an ordinary
+deterministic term of the level representation, beside the unrestricted
+constant.
+
+```{r, eval = TRUE}
+gvar[["model"]][["deterministic"]]
 ```
 
 ### Impulse response analysis
 
-Impulse response analysis can be done with the `girf` function.
+The solved model is of class `bvarmodel`, so generalised impulse responses are
+obtained with `irf` and `type = "gir"`.
 
-```{r, eval = TRUE, fig.width=5.5, fig.height=4.5}
-gvar_irf <- girf(gvar, impulse = c("US", "r"),
-                 response = c("EA", "y"),
-                 n.ahead = 20, ci = .68)
+```{r girf, eval = TRUE, fig.width=5.5, fig.height=4.5}
+gvar_irf <- irf(gvar, impulse = "US_rs", response = "EA_y",
+                n_ahead = 20, ci = .68,
+                type = "gir", shock = "sd")
 
 plot(gvar_irf)
+```
+
+### Error variance decomposition
+
+```{r gfevd, eval = TRUE, fig.width=5.5, fig.height=4.5}
+gvar_fevd <- fevd(gvar,
+                  response = "EA_y",
+                  n_ahead = 20,
+                  type = "gir",
+                  normalise_gir = TRUE,
+                  max_groups = 6)
+
+plot(gvar_fevd)
 ```
 
 

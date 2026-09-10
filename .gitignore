@@ -9,3 +9,4 @@ src/*.dll
 ^data-raw$
 .Rproj
 bgvars_dev.R
+Rplots.pdf
