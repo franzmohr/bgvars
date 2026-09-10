@@ -8,7 +8,7 @@
 }
 \arguments{
 \item{object}{a list of model specifications. Usually, the output of a call to 
-a model creation function in combination with \code{\link[bvartoosl]{add_priors}} and
+a model creation function in combination with \code{\link[bvartools]{add_priors}} and
 \code{\link[bvartools]{add_initial_values}}.}
 
 \item{start}{the start period of the prediction of the first iteration of the

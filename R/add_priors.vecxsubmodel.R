@@ -374,7 +374,7 @@ add_priors.vecxsubmodel <- function(object,
     n_beta <- r * n_ect / k_endogen
     
     if (object[["model"]][["tvp"]]) {
-      sto("TVP priors need to be implemented.")
+      stop("TVP priors need to be implemented.")
       object[["priors"]][["beta"]] <- list(type = "cointspace",
                                                     rho = coint[["rho"]],
                                                     mu = matrix(0, n_beta),
