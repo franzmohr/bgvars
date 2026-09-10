@@ -194,3 +194,27 @@ test_that("add_submodels builds a model list for every sub-model", {
   expect_equal(object[["submodels"]][["US"]][[1]][["model"]],
                object[["submodels"]][["JP"]][[1]][["model"]])
 })
+
+test_that("endogenous variables are used if they are available", {
+  object <- gvar_object()
+
+  # A specification is written for every sub-model at once, so it may well name
+  # a variable a particular one does not have. That one is dropped rather than
+  # objected to, and only a specification that leaves nothing is an error.
+  model <- create_varxsubmodel(object, submodel = "US",
+                               endogen = c("y", "not_a_variable", "Dp"),
+                               p_endogen = 1)[[1]]
+
+  expect_equal(model[["model"]][["endogen"]], c("y", "Dp"))
+  expect_equal(model[["model"]][["k_endogen"]], 2L)
+})
+
+test_that("the endogenous variables keep the order they were named in", {
+  object <- gvar_object()
+
+  model <- create_varxsubmodel(object, submodel = "US",
+                               endogen = c("Dp", "y"), p_endogen = 1)[[1]]
+
+  expect_equal(model[["model"]][["endogen"]], c("Dp", "y"))
+  expect_equal(dimnames(model[["data"]][["train"]][["y"]])[[2]], c("Dp", "y"))
+})

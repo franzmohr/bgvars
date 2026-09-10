@@ -161,7 +161,12 @@ create_vecxsubmodel <- function(object,
   if (is.null(endogen)) {
     pos_endogen <- 1:length(vars_endogen)
   } else {
+    # Endogenous variables are used if they are available, so the ones that are
+    # not are dropped rather than objected to. match() answers with NA for
+    # those, and testing the length of its result would never find them: it is
+    # the length of 'endogen'.
     pos_endogen <- match(endogen, vars_endogen)
+    pos_endogen <- pos_endogen[!is.na(pos_endogen)]
     if (length(pos_endogen) == 0) {
       stop(paste0("For sub-model ", submodel, " no variable from argument 'endogen' is available."))
     }
@@ -409,17 +414,26 @@ create_vecxsubmodel <- function(object,
   det_name_r <- NULL
   det_name_ur <- NULL
   n_det_ur <- 0
+
+  # The deterministic terms are taken from the global model rather than built
+  # here, so that every sub-model uses the same series whatever sample it ends
+  # up with. See .global_deterministic(). The window is the one 'temp' was
+  # trimmed to, so the columns line up with 'ect' and 'x' row by row.
+  tsp_temp <- stats::tsp(temp)
+  det_available <- dimnames(object[["global"]][["deterministic"]])[[2]]
+  det_global <- .submodel_deterministic(object, det_available,
+                                        start = tsp_temp[1], end = tsp_temp[2])
   
   if (!is.null(const)) {
     if (const == "restricted") {
-      ect <- cbind(ect, 1)
+      ect <- cbind(ect, det_global[, "const"])
       ect_names <- c(ect_names, "const") 
       det_name_r <- c(det_name_r, "const") 
       n_ect <- n_ect + 1
     }
     
     if (const == "unrestricted") {
-      x <- cbind(x, 1)
+      x <- cbind(x, det_global[, "const"])
       x_names <- c(x_names, "const")
       det_name_ur <- c(det_name_ur, "const") 
       n_det_ur <- n_det_ur + 1
@@ -428,14 +442,14 @@ create_vecxsubmodel <- function(object,
   
   if (!is.null(trend)) {
     if (trend == "restricted") {
-      ect <- cbind(ect, 1:tt)
+      ect <- cbind(ect, det_global[, "trend"])
       ect_names <- c(ect_names, "trend")
       det_name_r <- c(det_name_r, "trend") 
       n_ect <- n_ect + 1
     }
     
     if (trend == "unrestricted") {
-      x <- cbind(x, 1:tt)
+      x <- cbind(x, det_global[, "trend"])
       x_names <- c(x_names, "trend")
       det_name_ur <- c(det_name_ur, "trend")
       n_det_ur <- n_det_ur + 1
@@ -447,16 +461,8 @@ create_vecxsubmodel <- function(object,
     if (freq == 1) {
       warning("The frequency of the provided data is 1. No seasonal dummmies are generated.")
     } else {
-      pos <- which(stats::cycle(temp) == 1)[1]
-      pos <- rep(1:freq, 2)[pos:(pos + (freq - 2))]
-      seas <- NULL
-      s_name <- NULL
-      for (i in 1:(freq - 1)) {
-        s_temp <- rep(0, freq)
-        s_temp[pos[i]] <- 1
-        seas <- cbind(seas, rep(s_temp, length.out = tt))
-        s_name <- c(s_name, paste("season.", i, sep = ""))
-      }
+      s_name <- paste0("season.", 1:(freq - 1))
+      seas <- det_global[, s_name, drop = FALSE]
     }
     
     if (seasonal == "restricted") {

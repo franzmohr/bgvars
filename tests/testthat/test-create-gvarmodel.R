@@ -5,7 +5,18 @@ test_that("create_gvarmodel returns the documented structure", {
 
   expect_s3_class(object, "gvarmodel")
   expect_equal(names(object), c("global", "weights", "submodels"))
-  expect_equal(names(object[["global"]]), c("endogen", "exogen", "index"))
+  expect_equal(names(object[["global"]]),
+               c("endogen", "exogen", "deterministic", "index"))
+
+  # The deterministic terms are built once, on the time axis of the global
+  # data, so that every sub-model uses the same series.
+  deterministic <- object[["global"]][["deterministic"]]
+  expect_equal(stats::tsp(deterministic),
+               stats::tsp(object[["global"]][["endogen"]]))
+  expect_equal(dimnames(deterministic)[[2]],
+               c("const", "trend", "season.1", "season.2", "season.3"))
+  expect_true(all(deterministic[, "const"] == 1))
+  expect_equal(as.numeric(deterministic[, "trend"]), seq_len(nrow(deterministic)))
   expect_null(object[["weights"]])
   expect_null(object[["submodels"]])
 })

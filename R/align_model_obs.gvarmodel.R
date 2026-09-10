@@ -32,6 +32,7 @@ align_model_obs.gvarmodel <- function(object, ...) {
   
   # Actual filter
   object <- stats::window(x = object, start = min_date, end = max_date)
-  
+
+  return(object)
 }
 

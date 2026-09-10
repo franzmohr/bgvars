@@ -198,7 +198,7 @@
   hdf5r::h5attr(model_file, "rclass") <- class(object)
 
   group_global <- model_file$create_group("global")
-  for (i in c("endogen", "exogen")) {
+  for (i in c("endogen", "exogen", "deterministic")) {
     if (!is.null(object[["global"]][[i]])) {
       .write_series(group_global, i, object[["global"]][[i]])
     }

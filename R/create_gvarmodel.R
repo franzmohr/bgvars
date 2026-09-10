@@ -12,9 +12,27 @@
 #' structure for the creation of sub-models, prior specification, initial value
 #' generation, posterior simulation, model evaluation and structural analysis.
 #' 
+#' @details
+#' The deterministic terms of the global model --- a constant, a linear trend
+#' and, for data of a frequency above one, a set of seasonal dummies --- are
+#' built here, on the time axis of the data, and stored as element
+#' \code{deterministic}. Every sub-model takes the ones it uses from this
+#' series rather than building its own.
+#'
+#' The reason is the trend. A sub-model that counted a trend from its own first
+#' observation would not use the same regressor as its neighbours: a sub-model
+#' with fewer lags keeps more of the early observations, so its trend would be
+#' shifted against that of a sub-model with more lags. Each of them would be
+#' internally consistent, since a shift of the trend is absorbed by the
+#' constant, but the global model has a single trend regressor, and
+#' \code{\link{submodels_to_gvar}} could not stack sub-models that disagree on
+#' what it is.
+#'
 #' @return A list of class 'gvarmodel', which consists of the following elements:
 #' \describe{
-#'   \item{\strong{global}}{A named list containing the data objects of the global model.}
+#'   \item{\strong{global}}{A named list containing the data objects of the global
+#'   model: the endogenous variables of all units, the global variables, the
+#'   deterministic terms and an index of the variables. See 'Details'.}
 #'   \item{\strong{weights}}{The list entry, where the submodel weight matrices will go.
 #'   This entry is empty after the execution of \code{create_gvarmodel}, but will be
 #'   updated with \code{\link{add_weight_matrices}}.} 
@@ -77,6 +95,7 @@ create_gvarmodel <- function(submodel_data, global_data = NULL){
   
   result <- list("global" = list("endogen" = endogen,
                                  "exogen" = global_data,
+                                 "deterministic" = .global_deterministic(endogen),
                                  "index" = index),
                  "weights" = NULL,
                  "submodels" = NULL)

@@ -53,7 +53,8 @@ test_that("model.h5 holds the global data, the weights and the manifest", {
   expect_setequal(names(h5), c("global", "weights", "submodels"))
   expect_equal(hdf5r::h5attr(h5, "rclass"), class(object))
 
-  expect_setequal(names(h5[["global"]]), c("endogen", "exogen", "index"))
+  expect_setequal(names(h5[["global"]]),
+                  c("endogen", "exogen", "deterministic", "index"))
   expect_equal(hdf5r::h5attr(h5[["global"]][["endogen"]], "variables"),
                dimnames(object[["global"]][["endogen"]])[[2]])
   expect_equal(hdf5r::h5attr(h5[["global"]][["endogen"]], "tsp"),

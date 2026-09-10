@@ -142,7 +142,12 @@ create_varxsubmodel <- function(object,
   if (is.null(endogen)) {
     pos_endogen <- 1:length(vars_endogen)
   } else {
+    # Endogenous variables are used if they are available, so the ones that are
+    # not are dropped rather than objected to. match() answers with NA for
+    # those, and testing the length of its result would never find them: it is
+    # the length of 'endogen'.
     pos_endogen <- match(endogen, vars_endogen)
+    pos_endogen <- pos_endogen[!is.na(pos_endogen)]
     if (length(pos_endogen) == 0) {
       stop(paste0("For sub-model ", submodel, " no variable from argument 'endogen' is available."))
     }
@@ -348,46 +353,46 @@ create_varxsubmodel <- function(object,
   det_name <- NULL
   det_pos <- ncol(temp)
   
-  # Add intercept term
+  # Which terms are wanted. They are not built here: every sub-model takes them
+  # from the same series of the global model, so that they are the same
+  # regressor across sub-models. See .global_deterministic().
   if (deterministic %in% c("const", "both")) {
-    temp <- cbind(temp, 1)
-    temp_name <- c(temp_name, "const")
     det_name <- c(det_name, "const")
   }
-  
-  # Add linear trend
+
   if (deterministic %in% c("trend", "both")) {
-    temp <- cbind(temp, 1:nrow(temp) - max(p_endogen_max, p_exogen_max, s_max))
-    temp_name <- c(temp_name, "trend")
     det_name <- c(det_name, "trend")
   }
-  
-  # Add seasonal dummies
+
   if (seasonal) {
     freq <- stats::frequency(endogen)
     if (freq == 1) {
       warning("The frequency of the provided data is 1. No seasonal dummmies are generated.")
     } else {
-      pos <- which(stats::cycle(temp) == 1)[1]
-      pos <- rep(1:freq, 2)[pos:(pos + (freq - 2))]
-      for (i in 1:(freq - 1)) {
-        s_temp <- rep(0, freq)
-        s_temp[pos[i]] <- 1
-        temp <- cbind(temp, rep(s_temp, length.out = nrow(temp)))
-        temp_name <- c(temp_name, paste("season.", i, sep = ""))
-        det_name <- c(det_name, paste("season.", i, sep = ""))
-      }
+      det_name <- c(det_name, paste0("season.", 1:(freq - 1)))
     }
   }
+
+  if (length(det_name) > 0) {
+    # cbind aligns the two series by time and pads the periods the lags reach
+    # beyond the sample with NA, which na.omit() drops below along with the
+    # periods the lags themselves are missing for.
+    temp <- cbind(temp, .submodel_deterministic(object, det_name))
+    temp_name <- c(temp_name, det_name)
+  }
   
-  # Update model specs for deterministic terms
+  temp <- stats::na.omit(temp)
+
+  # Update model specs for deterministic terms. The series are taken after the
+  # sample has been trimmed, so that they cover the observations the sub-model
+  # is estimated on.
   use_det <- FALSE
   if (length(det_name) > 0) {
     model[["n"]] <- length(det_name)
     model[["deterministic"]] <- det_name
     use_det <- TRUE
     det_data <- temp[, det_pos + 1:model[["n"]]]
-    
+
     # If 'det_data' is a simple ts object, transform it into a matrix object
     # to keep variable name information
     tsp_det_data <- stats::tsp(det_data)
@@ -395,8 +400,6 @@ create_varxsubmodel <- function(object,
     stats::tsp(det_data) <- tsp_det_data
     dimnames(det_data) <- list(NULL, det_name)
   }
-  
-  temp <- stats::na.omit(temp)
   
   # Set if the model is structural
   if ("logical" %in% class(structural)) {
