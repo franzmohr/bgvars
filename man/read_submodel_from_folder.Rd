@@ -51,7 +51,6 @@ object <- add_submodels(object,
                         p_exogen = 1,
                         global = "poil",
                         s = 1,
-                        r = 1,
                         error = "wishart",
                         iterations = 10,
                         burnin = 10)
@@ -60,16 +59,15 @@ object <- add_submodels(object,
 # Add priors
 object <- add_priors(object,
                      coef = list(v_i = 0),
-                     coint = list(v_i = 0, p_tau_i = 1),
                      sigma = list(df = 3, scale = 0.0001))
                      
 # Add initial values
 object <- add_initial_values(object)
 
 # Export models
-folder <- file.path(tempdir(), "gvar")
-dir.create(folder)
-write_to_hdf5(object, folder = folder)
+folder <- file.path(tempdir(), "bgvars-example-read-submodel")
+dir.create(folder, showWarnings = FALSE)
+write_to_hdf5(object, folder = folder, overwrite = TRUE)
 
 # Import
 submodel <- read_submodel_from_folder(folder = folder, submodel = "AT")

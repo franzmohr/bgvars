@@ -14,7 +14,7 @@ and a \code{submodels} directory beside it.}
 An object of class 'gvarmodel' or 'gvecmodel'.
 }
 \description{
-Reads back a global model that was exported with \code{\link{write_to_hdf5}},
+Reads back a global model that was exported with \code{\link[bvartools]{write_to_hdf5}},
 including any posterior draws an external sampler has written into the
 sub-model files since.
 }
@@ -56,7 +56,6 @@ object <- add_submodels(object,
                         p_exogen = 1,
                         global = "poil",
                         s = 1,
-                        r = 1,
                         error = "wishart",
                         iterations = 10,
                         burnin = 10)
@@ -65,15 +64,14 @@ object <- add_submodels(object,
 # Add priors
 object <- add_priors(object,
                      coef = list(v_i = 0),
-                     coint = list(v_i = 0, p_tau_i = 1),
                      sigma = list(df = 3, scale = 0.0001))
                      
 # Add initial values
 object <- add_initial_values(object)
 
-folder <- file.path(tempdir(), "gvar-export")
-dir.create(folder)
-write_to_hdf5(object, folder = folder)
+folder <- file.path(tempdir(), "bgvars-example-read-gvar")
+dir.create(folder, showWarnings = FALSE)
+write_to_hdf5(object, folder = folder, overwrite = TRUE)
 
 # Read it back
 object <- read_gvar_from_folder(folder)

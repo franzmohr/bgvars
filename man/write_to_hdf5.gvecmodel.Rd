@@ -56,8 +56,8 @@ object <- add_weight_matrices(object = object,
                               period = 1999:2001)
 
 # Export it
-folder <- file.path(tempdir(), "gvec")
-dir.create(folder)
-write_to_hdf5(object, folder = folder)
+folder <- file.path(tempdir(), "bgvars-example-write-gvec")
+dir.create(folder, showWarnings = FALSE)
+write_to_hdf5(object, folder = folder, overwrite = TRUE)
 
 }

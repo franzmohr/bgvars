@@ -52,7 +52,7 @@ choose_best_model_from_hdf5 <- function(folder, criterion) {
   submodel <- unique(manifest[, "submodel"])
   
   result <- data.frame("submodel" = submodel, "position" = NA_integer_)
-  for (i in 1:length(submodel)) {
+  for (i in seq_along(submodel)) {
     
     files <- manifest[manifest[, "submodel"] == submodel[i], "file"]
     

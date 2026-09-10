@@ -1,6 +1,6 @@
 #' Import a Global Model from a Folder
 #'
-#' Reads back a global model that was exported with \code{\link{write_to_hdf5}},
+#' Reads back a global model that was exported with \code{\link[bvartools]{write_to_hdf5}},
 #' including any posterior draws an external sampler has written into the
 #' sub-model files since.
 #'
@@ -48,7 +48,6 @@
 #'                         p_exogen = 1,
 #'                         global = "poil",
 #'                         s = 1,
-#'                         r = 1,
 #'                         error = "wishart",
 #'                         iterations = 10,
 #'                         burnin = 10)
@@ -57,15 +56,14 @@
 #' # Add priors
 #' object <- add_priors(object,
 #'                      coef = list(v_i = 0),
-#'                      coint = list(v_i = 0, p_tau_i = 1),
 #'                      sigma = list(df = 3, scale = 0.0001))
 #'                      
 #' # Add initial values
 #' object <- add_initial_values(object)
 #'
-#' folder <- file.path(tempdir(), "gvar-export")
-#' dir.create(folder)
-#' write_to_hdf5(object, folder = folder)
+#' folder <- file.path(tempdir(), "bgvars-example-read-gvar")
+#' dir.create(folder, showWarnings = FALSE)
+#' write_to_hdf5(object, folder = folder, overwrite = TRUE)
 #'
 #' # Read it back
 #' object <- read_gvar_from_folder(folder)
@@ -95,7 +93,7 @@ read_gvar_from_folder <- function(folder, submodels = NULL) {
   }
 
   group_global <- model_file[["global"]]
-  for (i in c("endogen", "exogen")) {
+  for (i in c("endogen", "exogen", "deterministic")) {
     if (i %in% names(group_global)) {
       result[["global"]][[i]] <- .read_series(group_global[[i]])
     }
@@ -135,11 +133,7 @@ read_gvar_from_folder <- function(folder, submodels = NULL) {
   if (!is.null(manifest) && nrow(manifest) > 0) {
     
     if (!is.null(submodels)) {
-      model_number <- as.integer(sub(".*?(\\d+)\\.h5$", "\\1", manifest[, "file"]))
-      avail_models <- paste0(manifest[, "submodel"], "-", model_number)
-      best_models <- paste0(best_models[, "submodel"], "-", best_models[, "position"])
-      pos <- which(avail_models %in% best_models)
-      manifest <- manifest[pos,]
+      manifest <- .select_manifest_rows(manifest, submodels)
     }
     
     result[["submodels"]] <- .read_submodels(folder, manifest)
@@ -205,4 +199,48 @@ read_gvar_from_folder <- function(folder, submodels = NULL) {
   }
 
   return(result)
+}
+
+# The rows of the manifest that a selection of one model per sub-model picks
+# out.
+#
+# The 'position' of a model is its position among the models of its sub-model,
+# which is the order the manifest lists them in, the order they were written
+# in, and hence the order bvartools::read_models_from_folder reads them back
+# in. Selections made from either route therefore mean the same thing.
+.select_manifest_rows <- function(manifest, submodels) {
+
+  if (!is.data.frame(submodels)) {
+    submodels <- as.data.frame(submodels)
+  }
+
+  missing_cols <- setdiff(c("submodel", "position"), names(submodels))
+  if (length(missing_cols) > 0) {
+    stop("Argument 'submodels' must have the column(s) ",
+         paste0(missing_cols, collapse = ", "), ".")
+  }
+
+  unknown <- setdiff(submodels[, "submodel"], manifest[, "submodel"])
+  if (length(unknown) > 0) {
+    stop("This export does not contain the sub-model(s) ",
+         paste0(unknown, collapse = ", "), ".")
+  }
+
+  rows <- integer(0)
+  for (i in seq_len(nrow(submodels))) {
+
+    submodel <- submodels[i, "submodel"]
+    position <- submodels[i, "position"]
+
+    available <- which(manifest[, "submodel"] == submodel)
+
+    if (is.na(position) || position < 1 || position > length(available)) {
+      stop("Sub-model ", submodel, " was exported with ", length(available),
+           " model(s), so position ", position, " does not exist.")
+    }
+
+    rows <- c(rows, available[position])
+  }
+
+  return(manifest[rows, , drop = FALSE])
 }
