@@ -47,18 +47,26 @@
 #' @export
 add_weight_matrices <- function(object, submodel_data, period){
   
-  # Check input
-  .check_submodeldata(submodel_data)
-  
   index <- object[["global"]][["index"]]
   submodel_names <- unique(index[, "submodel"])
+
+  # A weight matrix expresses the weakly exogenous variables of a sub-model as
+  # weighted averages of the endogenous variables of the others. With a single
+  # sub-model there are none, and what would be built is not a global model.
+  if (length(submodel_names) < 2) {
+    stop("A global model requires at least two sub-models, but argument ",
+         "'object' contains ", length(submodel_names), ".")
+  }
+
+  # Check input
+  .check_submodeldata(submodel_data)
   
   weights <- lapply(submodel_data, .create_weights_submodel, period = period)
   
   # Ensure that the order of weights is consistent with order of sub-models themselves
   # This ensures that weights are attributed correctly later.
   for (s_i in submodel_names) {
-    weights[[s_i]] <- weights[[s_i]][, submodel_names]
+    weights[[s_i]] <- weights[[s_i]][, submodel_names, drop = FALSE]
   }
   
   # Add final weight matrices

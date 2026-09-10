@@ -110,3 +110,48 @@ test_that("weakly exogenous variables are weighted averages of foreign series", 
                as.numeric(row_y["JP_y"] * endogen[1, "JP_y"] +
                             row_y["CA_y"] * endogen[1, "CA_y"]))
 })
+
+test_that("get_weight_matrix validates its arguments", {
+  object <- gvar_object()
+
+  expect_error(get_weight_matrix(object, c("US", "JP")),
+               "may only contain one element")
+  expect_error(get_weight_matrix(object, "XX"),
+               "No weight matrix available")
+  expect_error(get_weight_matrix(object, "US", period = 0),
+               "must be a single integer")
+  expect_error(get_weight_matrix(object, "US", period = 1e6),
+               "must be a single integer")
+
+  plain <- create_gvarmodel(submodel_data = gvar_data(),
+                            global_data = gvar_global_data())
+  expect_error(get_weight_matrix(plain, "US"),
+               "does not contain weight matrices")
+})
+
+test_that("get_weight_matrix cuts out the matrix of the requested period", {
+  object <- gvar_object()
+
+  index <- object[["global"]][["index"]]
+  n_vars <- sum(index[, "submodel"] == "US") +
+    length(unique(index[index[, "submodel"] != "US", "variable"]))
+
+  for (period in c(1, 5)) {
+    expect_equal(get_weight_matrix(object, "US", period = period),
+                 object[["weights"]][["US"]][(period - 1) * n_vars + 1:n_vars, ],
+                 ignore_attr = TRUE, info = period)
+  }
+
+  # The weights are rolling window sums, so different periods really differ.
+  expect_false(isTRUE(all.equal(get_weight_matrix(object, "US", period = 1),
+                                get_weight_matrix(object, "US", period = 30))))
+})
+
+test_that("add_weight_matrices refuses a global model of one sub-model", {
+  submodel_data <- gvar_data("US")
+  object <- create_gvarmodel(submodel_data = submodel_data,
+                             global_data = gvar_global_data())
+
+  expect_error(add_weight_matrices(object, submodel_data, period = 3),
+               "requires at least two sub-models")
+})

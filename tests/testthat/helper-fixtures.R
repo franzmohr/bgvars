@@ -90,3 +90,72 @@ gvec_estimated <- function(iterations = 50, burnin = 10, r = 1) {
   object <- add_initial_values(object)
   add_posterior_coefficients(object)
 }
+
+# A fully estimated 'gvarmodel' with control over the sub-model specification.
+#
+# Everything passed through '...' reaches add_submodels(), which makes it
+# possible to vary the order and the selection of the endogenous variables, the
+# lag orders and the use of global variables from a test.
+gvar_estimated_spec <- function(..., iterations = 30, burnin = 10,
+                                submodels = c("US", "JP", "CA"),
+                                loglik = FALSE) {
+  object <- gvar_object(submodels)
+  object <- add_submodels(object, ..., iterations = iterations, burnin = burnin)
+  object <- align_model_obs(object)
+  object <- add_priors(object,
+                       coef = list(v_i = 1),
+                       sigma = list(df = 3, scale = 0.0001))
+  object <- add_initial_values(object)
+  object <- add_posterior_coefficients(object)
+  if (loglik) {
+    object <- add_posterior_loglik(object)
+  }
+  object
+}
+
+# An estimated 'gvarmodel' holding several candidate models per sub-model,
+# together with the draws of the log-likelihood the selection criteria need.
+gvar_estimated_grid <- function(iterations = 30, burnin = 10) {
+  gvar_estimated_spec(endogen = c("y", "Dp"), p_endogen = 1:2,
+                      exogen = c("y", "Dp"), p_exogen = 0,
+                      global = "poil", s = 0,
+                      deterministic = "const",
+                      iterations = iterations, burnin = burnin,
+                      loglik = TRUE)
+}
+
+# The Pesaran-Shin generalised impulse response of a reduced form 'bvarmodel',
+# calculated from its posterior draws without using bvartools.
+#
+# Used to check that what submodels_to_gvar() returns really is the reduced
+# form of the global model, rather than only having the right shape.
+reference_girf <- function(x, impulse, response, n_ahead) {
+
+  k <- x[["model"]][["k"]]
+  p <- x[["model"]][["p"]]
+  coeffs <- x[["posterior"]][["a"]][["coeffs"]]
+  precision <- x[["posterior"]][["u_sigma_inv"]][["coeffs"]]
+
+  j <- which(x[["model"]][["endogen"]] == impulse)
+  i <- which(x[["model"]][["endogen"]] == response)
+
+  one_draw <- function(draw) {
+    a <- matrix(coeffs[draw, 1:(k * k * p)], k)
+    sigma <- solve(matrix(precision[draw, ], k))
+
+    phi <- list(diag(1, k))
+    for (h in 1:n_ahead) {
+      temp <- matrix(0, k, k)
+      for (l in 1:min(h, p)) {
+        temp <- temp + phi[[h - l + 1]] %*% a[, (l - 1) * k + 1:k]
+      }
+      phi[[h + 1]] <- temp
+    }
+
+    # One standard deviation shock to the impulse variable.
+    vapply(phi, function(z) (z %*% sigma[, j])[i] / sqrt(sigma[j, j]),
+           numeric(1))
+  }
+
+  vapply(seq_len(nrow(coeffs)), one_draw, numeric(n_ahead + 1))
+}

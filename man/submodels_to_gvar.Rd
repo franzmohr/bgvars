@@ -4,8 +4,81 @@
 \alias{submodels_to_gvar}
 \title{Generate Global Model from Sub-Models}
 \usage{
-submodels_to_gvar(object)
+submodels_to_gvar(object, period = NULL)
+}
+\arguments{
+\item{object}{an object of class 'gvarmodel' containing exactly one
+estimated model per sub-model. Use \code{\link{select_submodels}} or the
+\code{submodels} argument of \code{\link{read_gvar_from_folder}} to
+reduce an object with multiple candidate models per sub-model to one.}
+
+\item{period}{integer of the period, whose weight matrices should be used to
+solve the model. Defaults to the last period of the estimation sample. Only
+relevant for time varying weights.}
+}
+\value{
+An object of class 'bvarmodel', which can be analysed with the
+functionality of \pkg{bvartools}.
 }
 \description{
-ddadsfsf
+Combines the estimated sub-models of a global model into the solved global
+model.
+}
+\details{
+Each sub-model \eqn{i} is a VARX* model in its endogenous variables
+\eqn{x_{it}} and its weakly exogenous variables \eqn{x^{*}_{it}}, which
+are weighted averages of the endogenous variables of the remaining
+sub-models. Written in terms of the vector \eqn{y_t} of the endogenous
+variables of all sub-models, the contemporaneous terms of sub-model \eqn{i}
+become \eqn{(A_{0i}, -A^{*}_{0i}) W_i y_t}, and stacking these blocks over
+all sub-models gives the global matrix \eqn{G}. The lagged terms are
+stacked the same way, which turns the sub-models into a single VAR in
+\eqn{y_t}.
+
+The model is returned in its reduced form, that is, premultiplied by
+\eqn{G^{-1}}, which is the form the methods of \pkg{bvartools} work on.
+\eqn{G} is a dense matrix and can therefore not be passed on as the
+structural form of a 'bvarmodel', which stores the free elements of a unit
+lower triangular matrix. Its draws are returned as element \code{g}
+instead.
+
+The error covariance matrix of the structural form is block diagonal, one
+block per sub-model. The reduced form errors \eqn{G^{-1} u_t} are
+correlated across sub-models accordingly.
+}
+\examples{
+
+# Load data
+data("gvar2019")
+global_data <- gvar2019[["global_data"]]
+submodel_data <- gvar2019[["submodel_data"]]
+
+# Limit number of sub-models
+submodel_data <- select_list_elements(submodel_data, c("AT", "DE", "US"))
+
+# Set up the model
+object <- create_gvarmodel(submodel_data = submodel_data,
+                           global_data = global_data)
+object <- add_weight_matrices(object = object,
+                              submodel_data = submodel_data,
+                              period = 3)
+object <- add_submodels(object,
+                        p_endogen = 1,
+                        exogen = c("y", "Dp", "eq", "r", "lr"),
+                        p_exogen = 1,
+                        global = "poil", s = 1,
+                        error = "wishart",
+                        iterations = 20, burnin = 10)
+# Number of iterations and burn-in should be much higher.
+
+object <- align_model_obs(object)
+object <- add_priors(object,
+                     coef = list(v_i = 0),
+                     sigma = list(df = 3, scale = 0.0001))
+object <- add_initial_values(object)
+object <- add_posterior_coefficients(object)
+
+# Solve the global model
+gvar <- submodels_to_gvar(object)
+
 }
