@@ -1,3 +1,15 @@
+#' Printing Model Information
+#'
+#' print method for objects of class 'gvarmodel'.
+#'
+#' @param x an object of class 'gvarmodel'.
+#' @param digits the number of significant digits to use when printing.
+#' @param ... further arguments passed to or from other methods.
+#'
+#' @return The object that was printed, invisibly. A table of the variables of
+#' every sub-model is printed as a side effect, with a mark for each variable
+#' that the sub-model contains.
+#'
 #' @export
 print.gvarmodel <- function(x, digits = max(3L, getOption("digits") - 3L), ...){
   

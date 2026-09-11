@@ -1,4 +1,17 @@
 
+#' Get Model Specifications
+#'
+#' Obtains the specifications of a sub-model of a global model.
+#'
+#' @param object an object of class \code{'varxsubmodel'}.
+#' @param ... further arguments passed to or from other methods.
+#'
+#' @return A one-row data frame with the specifications of the sub-model: the
+#' number of endogenous variables and their lag order, the number of weakly
+#' exogenous and of global variables and their lag orders, the number of
+#' deterministic terms, the number of observations if the object
+#' contains data, and the variable selection algorithm.
+#'
 #' @export
 #' @method get_model_specifications varxsubmodel
 get_model_specifications.varxsubmodel <- function(object, ...) {
@@ -24,6 +37,20 @@ get_model_specifications.varxsubmodel <- function(object, ...) {
 }
 
 
+#' Get Model Specifications
+#'
+#' Obtains the specifications of a sub-model of a global model.
+#'
+#' @param object an object of class \code{'vecxsubmodel'}.
+#' @param ... further arguments passed to or from other methods.
+#'
+#' @return A one-row data frame with the specifications of the sub-model: the
+#' number of endogenous variables and their lag order, the number of weakly
+#' exogenous and of global variables and their lag orders, the number of
+#' deterministic terms, restricted and unrestricted, and the rank of the
+#' cointegration matrix, the number of observations if the object
+#' contains data, and the variable selection algorithm.
+#'
 #' @export
 #' @method get_model_specifications vecxsubmodel
 get_model_specifications.vecxsubmodel <- function(object, ...) {
