@@ -3,8 +3,8 @@ test_that("create_varxsubmodel returns one model per lag combination", {
 
   models <- create_varxsubmodel(object, submodel = "US",
                                 endogen = c("y", "Dp"), p_endogen = 1:2,
-                                exogen = c("y", "Dp"), p_exogen = 0:1,
-                                global = "poil", s = 0:1,
+                                exogen = c("y", "Dp"), p_exogen = 1:2,
+                                global = "poil", s = 1:2,
                                 iterations = 10, burnin = 10)
 
   expect_s3_class(models, "modellist")
@@ -19,15 +19,15 @@ test_that("create_varxsubmodel returns one model per lag combination", {
                     numeric(3)))
   expect_false(any(duplicated(specs)))
   expect_setequal(specs[, "p_endogen"], 1:2)
-  expect_setequal(specs[, "s_global"], 0:1)
+  expect_setequal(specs[, "s_global"], 1:2)
 })
 
 test_that("the model specification reflects the requested variables", {
   object <- gvar_object()
   model <- create_varxsubmodel(object, submodel = "US",
                                endogen = c("y", "Dp"), p_endogen = 2,
-                               exogen = c("y", "Dp", "r"), p_exogen = 1,
-                               global = "poil", s = 0,
+                               exogen = c("y", "Dp", "r"), p_exogen = 2,
+                               global = "poil", s = 1,
                                deterministic = "const",
                                iterations = 10, burnin = 10)[[1]]
 
@@ -38,27 +38,29 @@ test_that("the model specification reflects the requested variables", {
   expect_equal(specs[["k_endogen"]], 2L)
   expect_equal(specs[["p_endogen"]], 2L)
   expect_equal(specs[["k_exogen"]], 3L)
-  expect_equal(specs[["p_exogen"]], 1L)
+  expect_equal(specs[["p_exogen"]], 2L)
   expect_equal(specs[["m_global"]], 1L)
-  expect_equal(specs[["s_global"]], 0L)
+  expect_equal(specs[["s_global"]], 1L)
   expect_equal(specs[["n"]], 1L)
   expect_equal(specs[["endogen"]], c("y", "Dp"))
   expect_equal(specs[["exogen"]], c("y.s", "Dp.s", "r.s"))
   expect_equal(specs[["global"]], "poil")
   expect_false(specs[["structural"]])
   expect_false(specs[["tvp"]])
-  # 'm' counts all weakly exogenous and global regressors, lag zero included.
+  # 'm' counts all weakly exogenous and global regressors. Both lag orders count
+  # blocks from the contemporaneous term onwards, as they do in a VECX model, so
+  # p_exogen = 2 means the contemporaneous variables and their first lag.
   expect_equal(specs[["m"]],
-               specs[["k_exogen"]] * (specs[["p_exogen"]] + 1) +
-                 specs[["m_global"]] * (specs[["s_global"]] + 1))
+               specs[["k_exogen"]] * specs[["p_exogen"]] +
+                 specs[["m_global"]] * specs[["s_global"]])
 })
 
 test_that("data matrices are consistent with the model specification", {
   object <- gvar_object()
   model <- create_varxsubmodel(object, submodel = "US",
                                endogen = c("y", "Dp"), p_endogen = 1,
-                               exogen = c("y", "Dp"), p_exogen = 1,
-                               global = "poil", s = 0,
+                               exogen = c("y", "Dp"), p_exogen = 2,
+                               global = "poil", s = 1,
                                deterministic = "const",
                                iterations = 10, burnin = 10)[[1]]
 
@@ -84,7 +86,7 @@ test_that("the endogenous variables are the own series of the sub-model", {
   object <- gvar_object()
   model <- create_varxsubmodel(object, submodel = "JP",
                                endogen = c("y", "Dp"), p_endogen = 1,
-                               exogen = c("y", "Dp"), p_exogen = 0,
+                               exogen = c("y", "Dp"), p_exogen = 1,
                                iterations = 10, burnin = 10)[[1]]
 
   endogen <- model[["data"]][["original"]][["endogen"]]
@@ -105,7 +107,7 @@ test_that("deterministic terms are added as requested", {
   build <- function(...) {
     create_varxsubmodel(object, submodel = "US",
                         endogen = c("y", "Dp"), p_endogen = 1,
-                        exogen = c("y", "Dp"), p_exogen = 0,
+                        exogen = c("y", "Dp"), p_exogen = 1,
                         iterations = 10, burnin = 10, ...)[[1]]
   }
 
@@ -133,7 +135,7 @@ test_that("a single endogenous variable yields an ARX model", {
   object <- gvar_object()
   model <- create_varxsubmodel(object, submodel = "US",
                                endogen = "y", p_endogen = 1,
-                               exogen = c("y", "Dp"), p_exogen = 0,
+                               exogen = c("y", "Dp"), p_exogen = 1,
                                iterations = 10, burnin = 10)[[1]]
 
   expect_equal(model[["model"]][["type"]], "ARX")
@@ -145,7 +147,7 @@ test_that("structural models are flagged and get an additional data block", {
   object <- gvar_object()
   model <- create_varxsubmodel(object, submodel = "US",
                                endogen = c("y", "Dp"), p_endogen = 1,
-                               exogen = c("y", "Dp"), p_exogen = 0,
+                               exogen = c("y", "Dp"), p_exogen = 1,
                                structural = TRUE, error = "gamma",
                                iterations = 10, burnin = 10)[[1]]
 
@@ -179,8 +181,8 @@ test_that("add_submodels builds a model list for every sub-model", {
   object <- gvar_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1:2,
-                          exogen = c("y", "Dp"), p_exogen = 0,
-                          global = "poil", s = 0,
+                          exogen = c("y", "Dp"), p_exogen = 1,
+                          global = "poil", s = 1,
                           iterations = 10, burnin = 10)
 
   expect_equal(names(object[["submodels"]]),

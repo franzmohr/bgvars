@@ -65,8 +65,8 @@ object <- add_weight_matrices(object = object,
 object <- add_submodels(object,
                         p_endogen = 1,
                         exogen = c("y", "Dp", "eq", "r", "lr"),
-                        p_exogen = 1,
-                        global = "poil", s = 1,
+                        p_exogen = 2,
+                        global = "poil", s = 2,
                         error = "wishart",
                         iterations = 20, burnin = 10)
 # Number of iterations and burn-in should be much higher.

@@ -41,14 +41,17 @@ of a sub-model's endogenous variables.}
 \item{exogen}{character vector of variables that should enter each sub-model
 as weakly exogenous variables.}
 
-\item{p_exogen}{an integer vector of the lag order (default is \code{p_exogen = 1})
-of a sub-model's weakly exogenous variables.}
+\item{p_exogen}{an integer vector of the number of lags of a sub-model's
+weakly exogenous variables, counted from the contemporaneous term onwards
+(default is \code{p_exogen = 1}). A value of 1 uses the contemporaneous
+variables alone, 2 adds their first lag, and 0 leaves them out altogether.}
 
 \item{global}{character vector of variables that should enter each sub-model
 as global variables.}
 
-\item{s}{an integer vector of the lag order of a sub-model's global variables.
-If \code{NULL} (default), models do not include global variables.}
+\item{s}{an integer vector of the number of lags of a sub-model's global
+variables, counted in the same way as \code{p_exogen}. If \code{NULL}
+(default), models do not include global variables.}
 
 \item{r}{an integer vector of the cointegration rank. See 'Details'.}
 

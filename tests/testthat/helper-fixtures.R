@@ -62,8 +62,8 @@ gvar_estimated <- function(iterations = 50, burnin = 10, p_endogen = 1) {
   object <- gvar_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = p_endogen,
-                          exogen = c("y", "Dp"), p_exogen = 0,
-                          global = "poil", s = 0,
+                          exogen = c("y", "Dp"), p_exogen = 1,
+                          global = "poil", s = 1,
                           deterministic = "const",
                           iterations = iterations, burnin = burnin)
   object <- add_priors(object,
@@ -117,8 +117,8 @@ gvar_estimated_spec <- function(..., iterations = 30, burnin = 10,
 # together with the draws of the log-likelihood the selection criteria need.
 gvar_estimated_grid <- function(iterations = 30, burnin = 10) {
   gvar_estimated_spec(endogen = c("y", "Dp"), p_endogen = 1:2,
-                      exogen = c("y", "Dp"), p_exogen = 0,
-                      global = "poil", s = 0,
+                      exogen = c("y", "Dp"), p_exogen = 1,
+                      global = "poil", s = 1,
                       deterministic = "const",
                       iterations = iterations, burnin = burnin,
                       loglik = TRUE)

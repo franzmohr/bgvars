@@ -2,8 +2,8 @@ test_that("window.gvarmodel restricts every sub-model to the given period", {
   object <- gvar_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 0,
-                          global = "poil", s = 0,
+                          exogen = c("y", "Dp"), p_exogen = 1,
+                          global = "poil", s = 1,
                           iterations = 10, burnin = 10)
 
   result <- stats::window(object, start = c(1990, 1), end = c(2000, 4))
@@ -45,8 +45,8 @@ test_that("align_model_obs equalises the sample across sub-models", {
       create_varxsubmodel(object, submodel = i,
                           endogen = c("y", "Dp"),
                           p_endogen = switch(i, "US" = 1, "JP" = 2, "CA" = 3),
-                          exogen = c("y", "Dp"), p_exogen = 0,
-                          global = "poil", s = 0,
+                          exogen = c("y", "Dp"), p_exogen = 1,
+                          global = "poil", s = 1,
                           iterations = 10, burnin = 10)
   }
 

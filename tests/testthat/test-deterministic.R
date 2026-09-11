@@ -47,11 +47,11 @@ test_that("sub-models of different lag order share one trend", {
 
   short <- create_varxsubmodel(object, submodel = "US",
                                endogen = c("y", "Dp"), p_endogen = 1,
-                               exogen = c("y", "Dp"), p_exogen = 0,
+                               exogen = c("y", "Dp"), p_exogen = 1,
                                deterministic = "both")[[1]]
   long <- create_varxsubmodel(object, submodel = "US",
                               endogen = c("y", "Dp"), p_endogen = 3,
-                              exogen = c("y", "Dp"), p_exogen = 0,
+                              exogen = c("y", "Dp"), p_exogen = 1,
                               deterministic = "both")[[1]]
 
   trend_short <- short[["data"]][["train"]][["x"]][, "trend"]
@@ -73,7 +73,7 @@ test_that("aligning the sample leaves the sub-models with the same trend", {
   object <- gvar_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1:2,
-                          exogen = c("y", "Dp"), p_exogen = 0,
+                          exogen = c("y", "Dp"), p_exogen = 1,
                           deterministic = "both",
                           iterations = 20, burnin = 10)
   object <- align_model_obs(object)
@@ -113,7 +113,7 @@ test_that("a term the global model does not provide is reported", {
 
   expect_error(create_varxsubmodel(object, submodel = "US",
                                    endogen = c("y", "Dp"), p_endogen = 1,
-                                   exogen = c("y", "Dp"), p_exogen = 0,
+                                   exogen = c("y", "Dp"), p_exogen = 1,
                                    deterministic = "both"),
                "does not provide the deterministic term")
 })

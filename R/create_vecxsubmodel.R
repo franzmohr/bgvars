@@ -11,12 +11,15 @@
 #' of a sub-model's endogenous variables.
 #' @param exogen character vector of variables that should enter each sub-model
 #' as weakly exogenous variables.
-#' @param p_exogen an integer vector of the lag order (default is \code{p_exogen = 1})
-#' of a sub-model's weakly exogenous variables.
+#' @param p_exogen an integer vector of the number of lags of a sub-model's
+#' weakly exogenous variables, counted from the contemporaneous term onwards
+#' (default is \code{p_exogen = 1}). A value of 1 uses the contemporaneous
+#' variables alone, 2 adds their first lag, and 0 leaves them out altogether.
 #' @param global character vector of variables that should enter each sub-model
 #' as global variables.
-#' @param s an integer vector of the lag order of a sub-model's global variables.
-#' If \code{NULL} (default), models do not include global variables.
+#' @param s an integer vector of the number of lags of a sub-model's global
+#' variables, counted in the same way as \code{p_exogen}. If \code{NULL}
+#' (default), models do not include global variables.
 #' @param r an integer vector of the cointegration rank. See 'Details'.
 #' @param const a character specifying whether a constant term enters the error correction
 #' term (\code{"restricted"}) or the non-cointegration term as an \code{"unrestricted"} variable.
@@ -328,7 +331,7 @@ create_vecxsubmodel <- function(object,
   if (use_global) {
     temp <- cbind(temp, stats::lag(global, -1))
     temp_name <- c(temp_name, paste("l.", vars_global, sep = ""))
-    n_ect <- n_ect <- length(vars_global)
+    n_ect <- n_ect + length(vars_global)
   }
   
   # Lags of differenced endogenous variables
@@ -349,14 +352,20 @@ create_vecxsubmodel <- function(object,
   # Lags of differenenced weakly exogenous variables
   p_exogen_max <- max(p_exogen)
   diff_exogen <- diff(exogen)
-  temp <- cbind(temp, diff_exogen)
-  if (nchar(p_exogen_max) > 2) {
-    i_temp <- rep(0, nchar(p_exogen_max))
-  } else {
-    i_temp <- rep(0, 2)
+  # A lag order of zero asks for no differences of the weakly exogenous
+  # variables at all, so the contemporaneous block must not be added either.
+  # The offsets used below count this block as n_exogen * p_exogen_max columns,
+  # and adding it unconditionally made them address the wrong columns.
+  if (p_exogen_max > 0) {
+    temp <- cbind(temp, diff_exogen)
+    if (nchar(p_exogen_max) > 2) {
+      i_temp <- rep(0, nchar(p_exogen_max))
+    } else {
+      i_temp <- rep(0, 2)
+    }
+    i_temp <- paste0(i_temp, collapse = "")
+    temp_name <- c(temp_name, paste0("d.", vars_exogen, ".", i_temp))
   }
-  i_temp <- paste0(i_temp, collapse = "")
-  temp_name <- c(temp_name, paste0("d.", vars_exogen, ".", i_temp))
   if (p_exogen_max > 1) {
     for (i in 1:(p_exogen_max - 1)) {
       temp <- cbind(temp, stats::lag(diff_exogen, -i))
@@ -372,14 +381,19 @@ create_vecxsubmodel <- function(object,
   if (use_global) {
     s_max <- max(s)
     diff_global <- diff(global)
-    temp <- cbind(temp, diff_global)
-    if (nchar(s_max) > 2) {
-      i_temp <- rep(0, nchar(s_max))
-    } else {
-      i_temp <- rep(0, 2)
+    # As for the weakly exogenous variables, s = 0 means that the global
+    # variables enter the error correction term in levels but contribute no
+    # differences to the non-cointegration term.
+    if (s_max > 0) {
+      temp <- cbind(temp, diff_global)
+      if (nchar(s_max) > 2) {
+        i_temp <- rep(0, nchar(s_max))
+      } else {
+        i_temp <- rep(0, 2)
+      }
+      i_temp <- paste0(i_temp, collapse = "")
+      temp_name <- c(temp_name, paste0("d.", vars_global, ".", i_temp))
     }
-    i_temp <- paste0(i_temp, collapse = "")
-    temp_name <- c(temp_name, paste0("d.", vars_global, ".", i_temp))
     if (s_max > 1) {
       for (i in 1:(s_max - 1)) {
         temp <- cbind(temp, stats::lag(diff_global, -i))
@@ -423,6 +437,12 @@ create_vecxsubmodel <- function(object,
   det_available <- dimnames(object[["global"]][["deterministic"]])[[2]]
   det_global <- .submodel_deterministic(object, det_available,
                                         start = tsp_temp[1], end = tsp_temp[2])
+  # They join 'ect' and 'x' as plain columns. Keeping the time series class
+  # would send cbind() to its ts method, which cannot extend a matrix that has
+  # no columns yet -- the case of a model whose only regressors are
+  # deterministic. The tsp attribute of the results is set further below.
+  det_global <- unclass(det_global)
+  attr(det_global, "tsp") <- NULL
   
   if (!is.null(const)) {
     if (const == "restricted") {
@@ -595,11 +615,11 @@ create_vecxsubmodel <- function(object,
             model_i[["p_endogen"]] <- model_i[["p"]]
           }  
           
-          pos <- c(pos, n_endogen * (p_endogen_max - 1) + 1:(n_exogen * j))
+          pos <- c(pos, n_endogen * (p_endogen_max - 1) + seq_len(n_exogen * j))
           model_i[["p_exogen"]] <- as.integer(j)
           
           if (use_global) {
-            pos <- c(pos, n_endogen * (p_endogen_max - 1) + n_exogen * p_exogen_max + 1:(n_global * k))
+            pos <- c(pos, n_endogen * (p_endogen_max - 1) + n_exogen * p_exogen_max + seq_len(n_global * k))
             model_i[["m_global"]] <- as.integer(n_global)
             model_i[["s_global"]] <- as.integer(k)
           }

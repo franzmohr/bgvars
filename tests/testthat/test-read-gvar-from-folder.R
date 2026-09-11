@@ -218,15 +218,15 @@ test_that("a restored model can be taken further", {
   # the parts a 'gvarmodel' is made of all arrived.
   restored <- add_submodels(restored,
                             endogen = c("y", "Dp"), p_endogen = 1,
-                            exogen = c("y", "Dp"), p_exogen = 0,
-                            global = "poil", s = 0,
+                            exogen = c("y", "Dp"), p_exogen = 1,
+                            global = "poil", s = 1,
                             iterations = 10, burnin = 10)
 
   expect_equal(names(restored[["submodels"]]), names(object[["weights"]]))
   expect_equal(restored[["submodels"]][["US"]][[1]][["data"]][["train"]][["y"]],
                create_varxsubmodel(object, submodel = "US",
                                    endogen = c("y", "Dp"), p_endogen = 1,
-                                   exogen = c("y", "Dp"), p_exogen = 0,
-                                   global = "poil", s = 0,
+                                   exogen = c("y", "Dp"), p_exogen = 1,
+                                   global = "poil", s = 1,
                                    iterations = 10, burnin = 10)[[1]][["data"]][["train"]][["y"]])
 })

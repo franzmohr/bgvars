@@ -75,9 +75,9 @@ below.
 object <- add_submodels(object,
                         p_endogen = 1:2,
                         exogen = c("y", "Dp", "eq", "r", "lr"),
-                        p_exogen = 0:1,
+                        p_exogen = 1:2,
                         global = "poil",
-                        s = 0:1,
+                        s = 1:2,
                         error = "wishart",
                         iterations = 2000,
                         burnin = 1000)

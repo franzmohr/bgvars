@@ -2,8 +2,8 @@ test_that("add_priors attaches priors to every sub-model", {
   object <- gvar_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 0,
-                          global = "poil", s = 0,
+                          exogen = c("y", "Dp"), p_exogen = 1,
+                          global = "poil", s = 1,
                           iterations = 10, burnin = 10)
   object <- add_priors(object,
                        coef = list(v_i = 1),
@@ -30,8 +30,8 @@ test_that("add_initial_values attaches initial values to every sub-model", {
   object <- gvar_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 0,
-                          global = "poil", s = 0,
+                          exogen = c("y", "Dp"), p_exogen = 1,
+                          global = "poil", s = 1,
                           iterations = 10, burnin = 10)
   object <- add_priors(object,
                        coef = list(v_i = 1),
@@ -76,8 +76,8 @@ test_that("posterior simulation leaves the model set-up untouched", {
   object <- gvar_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 0,
-                          global = "poil", s = 0,
+                          exogen = c("y", "Dp"), p_exogen = 1,
+                          global = "poil", s = 1,
                           iterations = 20, burnin = 10)
   before <- object[["submodels"]][["US"]][[1]]
 

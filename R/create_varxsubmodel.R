@@ -11,12 +11,15 @@
 #' of a sub-model's endogenous variables.
 #' @param exogen character vector of variables that should enter each sub-model
 #' as weakly exogenous variables.
-#' @param p_exogen an integer vector of the lag order (default is \code{p_exogen = 1})
-#' of a sub-model's weakly exogenous variables.
+#' @param p_exogen an integer vector of the number of lags of a sub-model's
+#' weakly exogenous variables, counted from the contemporaneous term onwards
+#' (default is \code{p_exogen = 2}). A value of 1 uses the contemporaneous
+#' variables alone, 2 adds their first lag, and 0 leaves them out altogether.
 #' @param global character vector of variables that should enter each sub-model
 #' as global variables.
-#' @param s an integer vector of the lag order of a sub-model's global variables.
-#' If \code{NULL} (default), models do not include global variables.
+#' @param s an integer vector of the number of lags of a sub-model's global
+#' variables, counted in the same way as \code{p_exogen}. If \code{NULL}
+#' (default), models do not include global variables.
 #' @param deterministic a character specifying which deterministic terms should
 #' be included. Available values are \code{"none"}, \code{"const"} (default) for an intercept,
 #' \code{"trend"} for a linear trend, and \code{"both"} for an intercept with a linear trend.
@@ -95,8 +98,8 @@
 #' object <- create_varxsubmodel(object,
 #'                               submodel = "AT",
 #'                               endogen = c("y","Dp", "r"), p_endogen = 1,
-#'                               exogen = c("y", "Dp"), p_exogen = 1,
-#'                               global = "poil", s = 0,
+#'                               exogen = c("y", "Dp"), p_exogen = 2,
+#'                               global = "poil", s = 1,
 #'                               deterministic = "const", seasonal = FALSE,
 #'                               structural = FALSE, tvp = FALSE,
 #'                               error = "wishart", varsel = "none",
@@ -110,7 +113,7 @@ create_varxsubmodel <- function(object,
                                 endogen = NULL,
                                 p_endogen = 1,
                                 exogen = NULL,
-                                p_exogen = 1,
+                                p_exogen = 2,
                                 global = NULL,
                                 s = NULL,
                                 deterministic = "const",
@@ -302,17 +305,23 @@ create_varxsubmodel <- function(object,
   }
   
   
+  # 'p_exogen' counts blocks from the contemporaneous term onwards, as it does
+  # in create_vecxsubmodel: 1 is the contemporaneous block alone, 2 adds its
+  # first lag, and 0 leaves the weakly exogenous variables out altogether. The
+  # block therefore spans the lags 0 to p_exogen_max - 1.
   p_exogen_max <- max(p_exogen)
-  temp <- cbind(temp, exogen)
-  if (nchar(p_exogen_max) > 2) {
-    i_temp <- rep(0, nchar(p_exogen_max))
-  } else {
-    i_temp <- rep(0, 2)
-  }
-  i_temp <- paste0(i_temp, collapse = "")
-  temp_name <- c(temp_name, paste0(vars_exogen, ".l", i_temp))
   if (p_exogen_max > 0) {
-    for (i in 1:p_exogen_max) {
+    temp <- cbind(temp, exogen)
+    if (nchar(p_exogen_max) > 2) {
+      i_temp <- rep(0, nchar(p_exogen_max))
+    } else {
+      i_temp <- rep(0, 2)
+    }
+    i_temp <- paste0(i_temp, collapse = "")
+    temp_name <- c(temp_name, paste0(vars_exogen, ".l", i_temp))
+  }
+  if (p_exogen_max > 1) {
+    for (i in 1:(p_exogen_max - 1)) {
       temp <- cbind(temp, stats::lag(exogen, -i))
       if (nchar(p_exogen_max) > 2) {
         i_temp <- paste0(c(rep(0, nchar(p_exogen_max) - nchar(i)), i), collapse = "")
@@ -324,17 +333,21 @@ create_varxsubmodel <- function(object,
   }
   
   if (use_global) {
+    # As for the weakly exogenous variables, 's' counts blocks rather than lags
+    # on top of the contemporaneous one.
     s_max <- max(s)
-    temp <- cbind(temp, global)
-    if (nchar(s_max) > 2) {
-      i_temp <- rep(0, nchar(s_max))
-    } else {
-      i_temp <- rep(0, 2)
-    }
-    i_temp <- paste0(i_temp, collapse = "")
-    temp_name <- c(temp_name, paste0(vars_global, ".l", i_temp))
     if (s_max > 0) {
-      for (i in 1:s_max) {
+      temp <- cbind(temp, global)
+      if (nchar(s_max) > 2) {
+        i_temp <- rep(0, nchar(s_max))
+      } else {
+        i_temp <- rep(0, 2)
+      }
+      i_temp <- paste0(i_temp, collapse = "")
+      temp_name <- c(temp_name, paste0(vars_global, ".l", i_temp))
+    }
+    if (s_max > 1) {
+      for (i in 1:(s_max - 1)) {
         temp <- cbind(temp, stats::lag(global, -i))
         if (nchar(s_max) > 2) {
           i_temp <- paste0(c(rep(0, nchar(s_max) - nchar(i)), i), collapse = "")
@@ -467,20 +480,20 @@ create_varxsubmodel <- function(object,
           model_i[["p_endogen"]] <- as.integer(i)
         }  
         
-        pos <- c(pos, n_endogen + n_endogen * p_endogen_max + 1:(n_exogen * (j + 1)))
+        pos <- c(pos, n_endogen + n_endogen * p_endogen_max + seq_len(n_exogen * j))
         model_i[["p_exogen"]] <- as.integer(j)
         
         if (use_global) {
-          pos <- c(pos, n_endogen + n_endogen * p_endogen_max + n_exogen * (p_exogen_max + 1) + 1:(n_global * (k + 1)))
+          pos <- c(pos, n_endogen + n_endogen * p_endogen_max + n_exogen * p_exogen_max + seq_len(n_global * k))
           model_i[["m_global"]] <- as.integer(n_global)
           model_i[["s_global"]] <- as.integer(k)
         }
         
-        model_i[["m"]] <- model_i[["k_exogen"]] * (model_i[["p_exogen"]] + 1) + model_i[["m_global"]] * (model_i[["s_global"]] + 1)
+        model_i[["m"]] <- model_i[["k_exogen"]] * model_i[["p_exogen"]] + model_i[["m_global"]] * model_i[["s_global"]]
         model_i[["s"]] <- 0L
         
         if (use_det) {
-          pos <- c(pos, n_endogen + n_endogen * p_endogen_max + n_exogen * (p_exogen_max + 1) + n_global * (s_max + 1) + 1:length(det_name))
+          pos <- c(pos, n_endogen + n_endogen * p_endogen_max + n_exogen * p_exogen_max + n_global * s_max + 1:length(det_name))
         }
         
         x <- NULL

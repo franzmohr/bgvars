@@ -61,9 +61,9 @@
 #'                         endogen = c("y", "Dp", "r"),
 #'                         p_endogen = 1,
 #'                         exogen = c("y", "Dp", "r"),
-#'                         p_exogen = 1,
+#'                         p_exogen = 2,
 #'                         global = "poil",
-#'                         s = 1,
+#'                         s = 2,
 #'                         error = "wishart",
 #'                         iterations = 10,
 #'                         burnin = 10)

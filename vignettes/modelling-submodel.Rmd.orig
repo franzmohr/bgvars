@@ -1,0 +1,199 @@
+---
+title: "Modelling Submodels"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Modelling Submodels}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "figures/modelling-submodel-"
+)
+```
+
+### Prepare GVEC data
+
+```{r data, message=FALSE, eval = TRUE}
+library(bgvars)
+data("dees2007")
+
+submodel_data <- dees2007[["submodel_data"]]
+global_data <- dees2007[["global_data"]]
+```
+
+```{r poil-into-us-model, message=FALSE, eval = TRUE}
+# Add global series to US series
+vars_us <- c(dimnames(submodel_data[["US"]][["endogen"]])[[2]], "poil")
+submodel_data[["US"]][["endogen"]] <- cbind(submodel_data[["US"]][["endogen"]], global_data)
+dimnames(submodel_data[["US"]][["endogen"]])[[2]] <- vars_us
+```
+
+```{r initialise, eval = TRUE}
+object <- create_gvecmodel(submodel_data = submodel_data)
+```
+
+Weight matrices for each country/region can be calculated with the function `add_weight_matrices`.
+
+
+```{r weights, eval = TRUE}
+# Generate weight matrices
+object <- add_weight_matrices(object = object,
+                              submodel_data = submodel_data,
+                              period = 1999:2001)
+```
+
+
+### Model specification
+
+#### Determine the number of lags
+
+```{r}
+submodel <- create_varxsubmodel(object,
+                                submodel = "EA",
+                                endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
+                                p_endogen = 2,
+                                exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+                                p_exogen = 3,
+                                deterministic = "const",
+                                iterations = 2000,
+                                burnin = 1000)
+```
+
+
+### Prior specification
+
+```{r, eval = TRUE}
+submodel <- add_priors(submodel,
+                       coef = list(v_i = 0),
+                       sigma = list(df = 3, scale = 0.0001))
+```
+
+### Initial values
+
+```{r, eval = TRUE}
+submodel <- add_initial_values(submodel)
+```
+
+### Posterior simulation
+
+```{r, eval = TRUE, message=FALSE, results='hide'}
+submodel <- add_posterior_coefficients(submodel)
+```
+
+```{r, eval = TRUE, message=FALSE, results='hide'}
+submodel <- add_posterior_loglik(submodel)
+```
+
+### Model selection
+
+
+```{r, eval = TRUE, message=FALSE, results='hide'}
+sc <- selection_criteria(submodel)
+```
+
+```{r}
+sc
+```
+
+
+```{r aic, fig.height=5, fig.width=5}
+plot(sc, criterion = "AIC")
+```
+
+
+
+#### Determine the rank
+
+```{r}
+submodel <- create_vecxsubmodel(object,
+                                submodel = "EA",
+                                endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
+                                p_endogen = 1,
+                                exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
+                                p_exogen = 1,
+                                r = NULL,
+                                const = "unrestricted",
+                                trend = "restricted",
+                                iterations = 2000,
+                                burnin = 1000)
+```
+
+
+### Prior specification
+
+```{r, eval = TRUE}
+submodel <- add_priors(submodel,
+                     coef = list(v_i = 0),
+                     coint = list(v_i = 0, p_tau_i = 1),
+                     sigma = list(df = 3, scale = 0.0001))
+```
+
+### Initial values
+
+```{r, eval = TRUE}
+submodel <- add_initial_values(submodel)
+```
+
+### Posterior simulation
+
+```{r, eval = TRUE, message=FALSE, results='hide'}
+submodel <- add_posterior_coefficients(submodel)
+```
+
+```{r, eval = TRUE, message=FALSE, results='hide'}
+submodel <- add_posterior_loglik(submodel)
+```
+
+### Model selection
+
+
+```{r, eval = TRUE, message=FALSE, results='hide'}
+sc <- selection_criteria(submodel)
+```
+
+```{r}
+sc
+```
+
+
+```{r bic, fig.width=5}
+plot(sc, criterion = "BIC")
+```
+
+
+```{r}
+result <- submodel[[4]]
+```
+
+```{r}
+summary(result)
+```
+```{r coefficients, fig.width=16, fig.height=8}
+plot(result)
+```
+
+
+
+## References
+
+Chudik, A. & Pesaran, M. H. (2016). Theory and practice of GVAR modelling. *Journal of Economic Surveys 30*(1), 165-197. <https://doi.org/10.1111/joes.12095>
+
+Dees, S., Mauro, F., Pesaran, M. H., & Smith, V. L. (2007). Exploring the international linkages of the euro area: A global VAR analysis. *Journal of Applied Econometrics 22*(1), 1-38. <https://doi.org/10.1002/jae.932>
+
+George, E. I., Sun, D., & Ni, S. (2008). Bayesian stochastic search for VAR model restrictions. *Journal of Econometrics, 142*(1), 553-580. <https://doi.org/10.1016/j.jeconom.2007.08.017>
+
+Koop, G., Pesaran, M. H., & Potter, S.M. (1996). Impulse response analysis in nonlinear multivariate models. *Journal of Econometrics 74*(1), 119-147. <https://doi.org/10.1016/0304-4076(95)01753-4>
+
+Lütkepohl, H. (2007). *New introduction to multiple time series analysis* (2nd ed.). Berlin: Springer.
+
+Mohaddes, K., & Raissi, M. (2020). Compilation, revision and updating of the global VAR (GVAR) database, 1979Q2--2019Q4 (mimeo). <https://www.mohaddes.org/gvar>.
+
+Pesaran, H. H., & Shin, Y. (1998). Generalized impulse response analys is in linear multivariate models. *Economics Letters, 58*(1), 17-29. <https://doi.org/10.1016/S0165-1765(97)00214-0>
+
+Pesaran, M., Schuermann, T., & Weiner, S. M. (2004). Modeling regional interdependencies using a global error-correcting macroeconometric model. *Journal of Business & Economic Statistics 22*(2), 129-162. <https://doi.org/10.1198/073500104000000019>
+
+[^gvar2019]: The paper and data set can be downloaded from <https://www.mohaddes.org/gvar>.

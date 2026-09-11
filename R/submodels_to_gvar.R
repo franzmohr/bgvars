@@ -55,8 +55,8 @@
 #' object <- add_submodels(object,
 #'                         p_endogen = 1,
 #'                         exogen = c("y", "Dp", "eq", "r", "lr"),
-#'                         p_exogen = 1,
-#'                         global = "poil", s = 1,
+#'                         p_exogen = 2,
+#'                         global = "poil", s = 2,
 #'                         error = "wishart",
 #'                         iterations = 20, burnin = 10)
 #' # Number of iterations and burn-in should be much higher.
@@ -122,11 +122,13 @@ submodels_to_gvar <- function(object, period = NULL) {
   # Maximum lag of exogenous variables
   p_exogen_i <- unlist(lapply(object[["submodels"]],
                               function(x){x[[1]][["model"]][["p_exogen"]]}))
-  n_exogen_i <- k_endogen_i * k_exogen_i * (p_exogen_i + 1)
+  # 'p_exogen' counts blocks from the contemporaneous term onwards, so a
+  # sub-model with p_exogen blocks reaches back to lag p_exogen - 1.
+  n_exogen_i <- k_endogen_i * k_exogen_i * p_exogen_i
   
   # Final dimensions of the global model
   k <- sum(k_endogen_i)
-  p <- max(p_endogen_i, p_exogen_i)
+  p <- max(p_endogen_i, p_exogen_i - 1, 0)
 
   # Without a lag nothing propagates between the units, so there is no dynamic
   # global model to solve.
@@ -148,12 +150,18 @@ submodels_to_gvar <- function(object, period = NULL) {
     stop("Number of global variables differs across sub-models.\n",
          "Feel free to send a feature request.")
   }
-  global <- m > 0
-  if (global) {
+  s_i <- rep(0, length(m_i))
+  if (m > 0) {
     s_i <- unlist(lapply(object[["submodels"]],
                          function(x){x[[1]][["model"]][["s_global"]]}))
-    s <- max(s_i) # Lag of global variables in the global model
-    n_global_i <- k_endogen_i * m_i * (s_i + 1)
+  }
+  # Global variables that contribute no regressor to any sub-model leave no
+  # coefficient to carry over, so the global model does not use them either.
+  global <- m > 0 & max(s_i) > 0
+  if (global) {
+    # The highest lag a sub-model reaches is one below its number of blocks.
+    s <- max(s_i) - 1
+    n_global_i <- k_endogen_i * m_i * s_i
     global_i <- unique(unlist(lapply(object[["submodels"]], function(x){x[[1]][["model"]][["global"]]})))
   } else {
     n_global_i <- k_endogen_i * 0
@@ -447,7 +455,7 @@ submodels_to_gvar <- function(object, period = NULL) {
         }
         
         # Foreign draws of lag j
-        if (j <= p_exogen_i[i]) { # If j is larger than p_exogen_i, leave the country matrix 0
+        if (j <= p_exogen_i[i] - 1) { # Beyond the blocks of sub-model i, leave the country matrix 0
           pos_exogen <-  n_endogen_i[i] + j * (k_endogen_i[i] * k_exogen_i[i]) + 1:(k_endogen_i[i] * k_exogen_i[i])
           if (tvp_i[i]) {
             stop("Implement TVP")
@@ -472,7 +480,7 @@ submodels_to_gvar <- function(object, period = NULL) {
         h_temp <- matrix(0, k, m)
         for (i in submodels) {
           if (m_i[i] > 0) {
-            if (j <= s_i[i] + 1) {
+            if (j <= s_i[i]) {
               pos_global <- n_endogen_i[i] + n_exogen_i[i] + (j - 1) * k_endogen_i[i] * m_i[i] + 1:(k_endogen_i[i] * m_i[i])
               if (tvp_i[i]) {
                 stop("Implement TVP")

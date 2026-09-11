@@ -40,9 +40,9 @@ object <- add_weight_matrices(object = object,
 
 object <- add_submodels(object,
                         p_endogen = 1,
-                        p_exogen = 1,
+                        p_exogen = 2,
                         global = "poil",
-                        s = 1,
+                        s = 2,
                         error = "wishart",
                         iterations = 10,
                         burnin = 10)

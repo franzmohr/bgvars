@@ -70,8 +70,8 @@
 #' object <- create_varxsubmodel(object,
 #'                               submodel = "AT",
 #'                               endogen = c("y","Dp", "r"), p_endogen = 1,
-#'                               exogen = c("y", "Dp"), p_exogen = 1,
-#'                               global = "poil", s = 0,
+#'                               exogen = c("y", "Dp"), p_exogen = 2,
+#'                               global = "poil", s = 1,
 #'                               deterministic = "const", seasonal = FALSE,
 #'                               structural = FALSE, tvp = FALSE,
 #'                               error = "wishart", varsel = "none",
@@ -141,7 +141,7 @@ minnesota_prior.varxsubmodel <- function(object, kappa1 = 2, kappa2 = .5, kappa3
       # Determine positions of deterministic terms for calculation of sigma
       pos_det <- NULL
       if (object[["model"]][["n"]] > 0) {
-        pos_det <- k * p_endogen + k_exogen * (p_exogen + 1) + m * (s + 1) + 1:object[["model"]][["n"]]
+        pos_det <- k * p_endogen + k_exogen * p_exogen + m * s + 1:object[["model"]][["n"]]
       }
       
       # Obtain sigmas for V_i
@@ -183,9 +183,9 @@ minnesota_prior.varxsubmodel <- function(object, kappa1 = 2, kappa2 = .5, kappa3
       }
       
       # Foreign variables
-      if (k_exogen > 0) {
+      if (k_exogen > 0 & p_exogen > 0) {
         s_exo <- sqrt(apply(matrix(x[k * p_endogen + 1:k_exogen, ], k_exogen), 1, stats::var))
-        for (r in 1:(p_exogen + 1)) {
+        for (r in 1:p_exogen) {
           for (l in 1:k) {
             for (j in 1:k_exogen) {
               # Note that in the loop r starts at 1, so that this is equivalent to l + 1
@@ -200,10 +200,10 @@ minnesota_prior.varxsubmodel <- function(object, kappa1 = 2, kappa2 = .5, kappa3
       }
       
       # Global variables
-      if (m > 0) {
-        pos_offset <- k * p_endogen + k_exogen * (p_exogen + 1)
+      if (m > 0 & s > 0) {
+        pos_offset <- k * p_endogen + k_exogen * p_exogen
         s_exo <- sqrt(apply(matrix(x[pos_offset + 1:m,], m), 1, stats::var))
-        for (r in 1:(s + 1)) {
+        for (r in 1:s) {
           for (l in 1:k) {
             for (j in 1:m) {
               # Note that in the loop r starts at 1, so that this is equivalent to l + 1

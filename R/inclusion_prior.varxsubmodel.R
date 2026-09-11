@@ -60,8 +60,8 @@
 #' object <- create_varxsubmodel(object,
 #'                               submodel = "AT",
 #'                               endogen = c("y","Dp", "r"), p_endogen = 1,
-#'                               exogen = c("y", "Dp"), p_exogen = 1,
-#'                               global = "poil", s = 0,
+#'                               exogen = c("y", "Dp"), p_exogen = 2,
+#'                               global = "poil", s = 1,
 #'                               deterministic = "const", seasonal = FALSE,
 #'                               structural = FALSE, tvp = FALSE,
 #'                               error = "wishart", varsel = "none",
@@ -133,10 +133,10 @@ inclusion_prior.varxsubmodel <- function(object,
     n_endogen <- k_endogen * p_endogen
     k_exogen <- object[["model"]][["k_exogen"]]
     p_exogen <- object[["model"]][["p_exogen"]]
-    n_exogen <- k_exogen * (p_exogen + 1)
+    n_exogen <- k_exogen * p_exogen
     m <- object[["model"]][["m_global"]]
     s <- object[["model"]][["s_global"]]
-    n_global <- m * (s + 1)
+    n_global <- m * s
     n_c <- object[["model"]][["n"]]
     
     inprior <- rep(prob, ncol(z))
@@ -157,19 +157,21 @@ inclusion_prior.varxsubmodel <- function(object,
         }
       }
       
-      if (k_exogen > 0) {
+      # The first block is the contemporaneous one, so the loops run over the
+      # remaining p_exogen - 1 and s - 1 blocks of lags.
+      if (k_exogen > 0 & p_exogen > 0) {
         incl_matrix[, n_endogen + 1:k_exogen] <- kappa3
-        if (p_exogen > 0) {
-          for (i in 1:p_exogen) {
+        if (p_exogen > 1) {
+          for (i in 1:(p_exogen - 1)) {
             incl_matrix[, n_endogen + k_exogen + (i - 1) * k_exogen + 1:k_exogen] <- kappa3 / (1 + i)
           }
         }
       }
       
-      if (m > 0) {
+      if (m > 0 & s > 0) {
         incl_matrix[, n_endogen + n_exogen + 1:m] <- kappa3
-        if (s > 0) {
-          for (i in 1:s) {
+        if (s > 1) {
+          for (i in 1:(s - 1)) {
             incl_matrix[, n_endogen + n_exogen + m + (i - 1) * m + 1:m] <- kappa3 / (1 + i)
           }
         }

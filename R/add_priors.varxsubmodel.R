@@ -162,8 +162,8 @@
 #' object <- create_varxsubmodel(object,
 #'                               submodel = "AT",
 #'                               endogen = c("y","Dp", "r"), p_endogen = 1,
-#'                               exogen = c("y", "Dp"), p_exogen = 1,
-#'                               global = "poil", s = 0,
+#'                               exogen = c("y", "Dp"), p_exogen = 2,
+#'                               global = "poil", s = 1,
 #'                               deterministic = "const", seasonal = FALSE,
 #'                               structural = FALSE, tvp = FALSE,
 #'                               error = "wishart", varsel = "none",
@@ -300,30 +300,23 @@ add_priors.varxsubmodel <- function(object,
     stop("BVS or SSVS cannot be applied to covariance matrix when there is only one endogenous variable.")
   } 
   
-  use_exo <- FALSE
+  # 'p_exogen' and 's_global' count blocks of regressors from the contemporaneous
+  # term onwards, so they already are the number of blocks and are used as they
+  # are. A value of zero means that the variables contribute no regressors.
   if (object[["model"]][["k_exogen"]] > 0) {
-    use_exo <- TRUE
     k_exogen <- object[["model"]][["k_exogen"]]
     p_exogen <- object[["model"]][["p_exogen"]]
   } else {
     k_exogen <- 0
     p_exogen <- 0
   }
-  if (use_exo) {
-    p_exogen <- p_exogen + 1
-  }
   
-  use_global <- FALSE
   if (object[["model"]][["m_global"]] > 0) {
-    use_global <- TRUE
     m <- object[["model"]][["m_global"]]
     s <- object[["model"]][["s_global"]]
   } else {
     s <- 0
     m <- 0
-  }
-  if (use_global) {
-    s <- s + 1
   }
   
   # Total # of non-deterministic coefficients

@@ -38,8 +38,8 @@ test_that("a variable of the global model carries the series it is named after",
   # The two were matched the wrong way round, which labelled the columns of the
   # global model with the wrong series whenever the orders disagreed.
   object <- gvar_estimated_spec(endogen = c("Dp", "y"), p_endogen = 1,
-                                exogen = c("y", "Dp"), p_exogen = 0,
-                                global = "poil", s = 0,
+                                exogen = c("y", "Dp"), p_exogen = 1,
+                                global = "poil", s = 1,
                                 deterministic = "const")
 
   gvar <- submodels_to_gvar(object)
@@ -62,8 +62,8 @@ test_that("sub-models may use a subset of the available variables", {
   # in the global index. Taking the weight matrices unrestricted made the two
   # disagree as soon as a sub-model left a variable out.
   object <- gvar_estimated_spec(endogen = c("r", "y"), p_endogen = 1,
-                               exogen = c("y", "r"), p_exogen = 0,
-                               global = "poil", s = 0,
+                               exogen = c("y", "r"), p_exogen = 1,
+                               global = "poil", s = 1,
                                deterministic = "const")
 
   gvar <- submodels_to_gvar(object)
@@ -79,8 +79,8 @@ test_that("a weakly exogenous variable no sub-model uses is reported", {
   # global model cannot be closed and the weight matrices cannot simply be
   # trimmed to the variables that remain.
   object <- gvar_estimated_spec(endogen = c("y", "Dp"), p_endogen = 1,
-                                exogen = c("y", "eq"), p_exogen = 0,
-                                global = "poil", s = 0,
+                                exogen = c("y", "eq"), p_exogen = 1,
+                                global = "poil", s = 1,
                                 deterministic = "const")
 
   expect_error(submodels_to_gvar(object),
@@ -163,7 +163,7 @@ test_that("generalised impulse responses of the global model are the textbook on
 
 test_that("a global model without global variables can be solved", {
   object <- gvar_estimated_spec(endogen = c("y", "Dp"), p_endogen = 1,
-                                exogen = c("y", "Dp"), p_exogen = 0,
+                                exogen = c("y", "Dp"), p_exogen = 1,
                                 deterministic = "const")
 
   gvar <- submodels_to_gvar(object)
@@ -201,7 +201,7 @@ test_that("constant weights make the period irrelevant", {
                                 period = 2014:2016)
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 0,
+                          exogen = c("y", "Dp"), p_exogen = 1,
                           deterministic = "const",
                           iterations = 20, burnin = 10)
   object <- align_model_obs(object)
@@ -223,7 +223,7 @@ test_that("submodels_to_gvar refuses sub-models in error correction form", {
 
 test_that("a global model without any lag is reported", {
   object <- gvar_estimated_spec(endogen = c("y", "Dp"), p_endogen = 0,
-                                exogen = c("y", "Dp"), p_exogen = 0,
+                                exogen = c("y", "Dp"), p_exogen = 1,
                                 deterministic = "const")
 
   expect_error(submodels_to_gvar(object), "no dynamics")
