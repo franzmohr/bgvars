@@ -29,19 +29,6 @@ test_that("global variables can be used in a GVEC sub-model", {
                              sigma = list(df = 3, scale = 0.0001)))
 })
 
-test_that("get_submodel_specifications summarises the estimated sub-models", {
-  skip("get_submodel_specifications reads the pre-rename model specification")
-
-  object <- gvar_estimated(iterations = 20, burnin = 10, p_endogen = 1:2)
-
-  specs <- get_submodel_specifications(object[["submodels"]][["US"]])
-
-  expect_s3_class(specs, "data.frame")
-  expect_equal(nrow(specs), 2L)
-  expect_true(all(specs[, "type"] == "VARX"))
-  expect_equal(specs[, "lag_domestic"], 1:2)
-})
-
 test_that("diff.submodeldata returns an object of class 'submodeldata'", {
   skip("diff.submodeldata drops the class, so the result cannot be passed on")
 

@@ -12,8 +12,30 @@ element of \code{object$submodels} after a call to
 \code{\link[bvartools]{add_posterior_coefficients}}.}
 }
 \value{
-A data frame.
+A data frame with one row per model, holding the group the sub-model
+belongs to, the type of the model, the endogenous, weakly exogenous and global
+variables with their lag orders, the cointegration rank and the variable
+selection algorithm. Columns that apply to none of the models -- the rank of a
+VARX sub-model, for instance -- are dropped.
 }
 \description{
 Obtains the model specification of the submodels of a GVAR model.
+}
+\examples{
+
+# Load data
+data("gvar2019")
+submodel_data <- select_list_elements(gvar2019[["submodel_data"]], c("AT", "US"))
+
+# Set up a global model with two candidate lag orders per sub-model
+object <- create_gvarmodel(submodel_data = submodel_data)
+object <- add_weight_matrices(object, submodel_data = submodel_data, period = 3)
+object <- add_submodels(object,
+                        endogen = c("y", "Dp"), p_endogen = 1:2,
+                        exogen = c("y", "Dp"), p_exogen = 1,
+                        iterations = 10, burnin = 10)
+# Number of iterations and burn-in should be much higher.
+
+get_submodel_specifications(object[["submodels"]][["AT"]])
+
 }
