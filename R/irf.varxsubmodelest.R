@@ -4,7 +4,7 @@
 #' \code{n_ahead} steps.
 #' 
 #' @param x an object of class 'varxsubmodelest', usually, a result of a call to
-#' \code{\link{draw_posterior.gvarsubmodels}} or \code{\link[bvartools]{bvec_to_bvar}}.
+#' \code{\link[bvartools]{add_posterior_coefficients}} or \code{\link[bvartools]{vec_to_var}}.
 #' @param impulse name of the impulse variable.
 #' @param response name of the response variable.
 #' @param n_ahead number of steps ahead.

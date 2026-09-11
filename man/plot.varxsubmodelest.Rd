@@ -7,7 +7,7 @@
 \method{plot}{varxsubmodelest}(x, ci = 0.95, type = "hist", variables = "all", ctry = NULL, ...)
 }
 \arguments{
-\item{x}{an object of class \code{"varxsubmodelest"}, usually, a result of a call to \code{\link{draw_posterior}}.}
+\item{x}{an object of class \code{"varxsubmodelest"}, usually, a result of a call to \code{\link[bvartools]{add_posterior_coefficients}}.}
 
 \item{ci}{interval used to calculate credible bands for time-varying parameters.}
 

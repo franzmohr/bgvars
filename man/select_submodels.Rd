@@ -8,7 +8,7 @@ select_submodels(object, models)
 }
 \arguments{
 \item{object}{a list containing the posterior draws of the submodels of a
-GVAR model. Usually, the result of a call to \code{\link[bvartools]{draw_posterior}}.}
+GVAR model. Usually, the result of a call to \code{\link[bvartools]{add_posterior_coefficients}}.}
 
 \item{models}{a vector of integers with the position of the submodels, which
 should be used in the global model.}

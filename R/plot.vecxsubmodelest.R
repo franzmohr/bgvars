@@ -3,7 +3,7 @@
 #' A plot function for objects of class \code{"vecxsubmodelest"} for visual inspection
 #' of posterior draws.
 #' 
-#' @param x an object of class \code{"vecxsubmodelest"}, usually, a result of a call to \code{\link{draw_posterior}}.
+#' @param x an object of class \code{"vecxsubmodelest"}, usually, a result of a call to \code{\link[bvartools]{add_posterior_coefficients}}.
 #' @param ci interval used to calculate credible bands for time-varying parameters.
 #' @param type either \code{"hist"} (default) for histograms, \code{"trace"} for a trace plot,
 #' or \code{"boxplot"} for a boxplot. Only used for parameter draws of constant coefficients.

@@ -8,7 +8,7 @@
 }
 \arguments{
 \item{x}{an object of class 'submodelselcritlist', usually, a result of a call
-to \code{\link{selection_criteria}}.}
+to \code{\link[bvartools]{selection_criteria}}.}
 
 \item{criterion}{the selection criterion that should be plotted. Available choices
 are \code{"LL"}, \code{"AIC"}, \code{"BIC"} (default), \code{"HQ"}.}

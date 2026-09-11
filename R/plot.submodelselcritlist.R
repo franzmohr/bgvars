@@ -3,7 +3,7 @@
 #' A plot function for objects of class 'submodelselcritlist'.
 #' 
 #' @param x an object of class 'submodelselcritlist', usually, a result of a call
-#' to \code{\link{selection_criteria}}.
+#' to \code{\link[bvartools]{selection_criteria}}.
 #' @param criterion the selection criterion that should be plotted. Available choices
 #' are \code{"LL"}, \code{"AIC"}, \code{"BIC"} (default), \code{"HQ"}.
 #' @param ... further graphical parameters passed on to \link[graphics]{boxplot}.

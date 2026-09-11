@@ -20,7 +20,7 @@
 }
 \arguments{
 \item{x}{an object of class 'vecxsubmodelest', usually, a result of a call to
-\code{\link{draw_posterior.gvarsubmodels}} or \code{\link[bvartools]{bvec_to_bvar}}.}
+\code{\link[bvartools]{add_posterior_coefficients}} or \code{\link[bvartools]{vec_to_var}}.}
 
 \item{impulse}{name of the impulse variable.}
 

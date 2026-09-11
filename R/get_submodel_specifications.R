@@ -3,7 +3,7 @@
 #' Obtains the model specification of the submodels of a GVAR model.
 #'
 #' @param object an object of class 'submodelestlist', usually,
-#' a result of a call to \code{\link[bvartools]{draw_posterior}}.
+#' a result of a call to \code{\link[bvartools]{add_posterior_coefficients}}.
 #'
 #' @return A data frame.
 #' 

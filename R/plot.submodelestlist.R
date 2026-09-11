@@ -3,7 +3,7 @@
 #' A plot function for objects of class 'submodelestlist'.
 #' 
 #' @param x an object of class 'submodelestlist', usually, a result of a call to
-#' \code{\link[bvartools]{draw_posterior}}.
+#' \code{\link[bvartools]{add_posterior_coefficients}}.
 #' @param ci interval used to calculate credible bands for time-varying parameters.
 #' @param type either \code{"hist"} (default) for histograms, \code{"trace"} for a trace plot,
 #' or \code{"boxplot"} for a boxplot. Only used for parameter draws of constant coefficients.

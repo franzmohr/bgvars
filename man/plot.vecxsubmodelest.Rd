@@ -7,7 +7,7 @@
 \method{plot}{vecxsubmodelest}(x, ci = 0.95, type = "hist", variables = "all", ...)
 }
 \arguments{
-\item{x}{an object of class \code{"vecxsubmodelest"}, usually, a result of a call to \code{\link{draw_posterior}}.}
+\item{x}{an object of class \code{"vecxsubmodelest"}, usually, a result of a call to \code{\link[bvartools]{add_posterior_coefficients}}.}
 
 \item{ci}{interval used to calculate credible bands for time-varying parameters.}
 

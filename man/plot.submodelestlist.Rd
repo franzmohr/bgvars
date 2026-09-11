@@ -8,7 +8,7 @@
 }
 \arguments{
 \item{x}{an object of class 'submodelestlist', usually, a result of a call to
-\code{\link[bvartools]{draw_posterior}}.}
+\code{\link[bvartools]{add_posterior_coefficients}}.}
 
 \item{ci}{interval used to calculate credible bands for time-varying parameters.}
 
