@@ -1,0 +1,325 @@
+---
+title: "Time Varying Parameters and Stochastic Volatility in GVAR Sub-Models"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Time Varying Parameters and Stochastic Volatility in GVAR Sub-Models}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "figures/tvp-sv-gvar-"
+)
+```
+
+## Introduction
+
+A GVAR sub-model is a VARX\* model: the endogenous variables of one country,
+its weakly exogenous foreign variables, and the global variables. `bgvars`
+hands that model to the samplers of `bvartools`, so the arguments that make a
+VAR time varying make a sub-model time varying in the same way. `tvp = TRUE`
+turns the coefficients into random walks, `error = "sv+covar"` turns the error
+covariance matrix into a stochastic volatility process, and `varsel = "bvs"`
+adds Bayesian variable selection after Korobilis (2013).
+
+The vignette on time varying parameters and stochastic volatility in
+`bvartools` sets out the model equations and what each prior does. This one
+covers what is specific to a global model: how the specification is applied to
+every sub-model at once, what the sub-models look like afterwards, and -- at
+the end -- where the road currently stops, because a global model cannot yet be
+solved from time varying or stochastic volatility sub-models.
+
+The reason for wanting these models on this data set is the sample. It runs to
+2023Q3 and therefore contains the global financial crisis and the pandemic, two
+episodes in which the size of the shocks that hit real GDP is nothing like the
+size of the shocks in the surrounding decades. A sub-model with a constant error
+covariance matrix has to average over that.
+
+## Data
+
+```{r data, message=FALSE}
+library(bgvars)
+
+data("gvar2023")
+
+global_data <- gvar2023[["global_data"]][, "poil", drop = FALSE]
+submodel_data <- select_list_elements(gvar2023[["submodel_data"]],
+                                      c("AT", "DE", "US"))
+```
+
+Three countries keep the example small. The specification below uses output,
+inflation and the short-term interest rate, and leaves the exchange rate out.
+That is not only for brevity: the deflated exchange rate `ep` of the US model in
+this data set is minus the US price level by construction, so its innovation is
+minus the innovation of US inflation, and a US sub-model that contains both has
+an exactly singular error covariance matrix. The GVAR literature handles this by
+giving the US model a specification of its own, which the vignette on global
+vector autoregressive models shows how to do.
+
+## Model set-up
+
+```{r initialise}
+object <- create_gvarmodel(submodel_data = submodel_data,
+                           global_data = global_data)
+
+object <- add_weight_matrices(object,
+                              submodel_data = submodel_data,
+                              period = 3)
+```
+
+`add_submodels` applies one specification to every sub-model, and the time
+varying arguments are part of it.
+
+```{r submodels}
+object <- add_submodels(object,
+                        endogen = c("y", "Dp", "r"),
+                        p_endogen = 1,
+                        exogen = c("y", "Dp", "r"),
+                        p_exogen = 0,
+                        global = "poil",
+                        s = 0,
+                        tvp = TRUE,
+                        error = "sv+covar",
+                        varsel = "bvs",
+                        iterations = 2000,
+                        burnin = 1000)
+
+object <- align_model_obs(object)
+
+object[["submodels"]][["AT"]][[1]][["model"]][["algorithm"]]
+```
+
+Every sub-model is estimated by the same sampler, and each gets its own state
+equations: its own variances of the coefficient random walks, its own
+log-volatilities, and its own inclusion parameters. Nothing about the time
+varying part is shared across countries. What ties the sub-models together are
+the weight matrices, which turn the endogenous variables of the global model
+into the weakly exogenous variables of each sub-model, and those are the same
+whether a sub-model is time varying or not.
+
+## Priors, initial values and posterior draws
+
+The prior lists are the ones of the `bvartools` vignette and are passed
+unchanged to every sub-model. One value differs, and it is the most important
+choice in this vignette.
+
+```{r priors}
+object <- add_priors(object,
+                     coef = list(v_i = 1, v_i_det = 1 / 10,
+                                 shape = 3, rate = 1e-8, rate_det = 1e-6),
+                     sigma = list(shape = 3, rate = 0.01,
+                                  mu = 0, v_i = 0.01,
+                                  state_variance = 0.05, offset = 1e-8),
+                     varsel = list(inprior = 0.5, exclude_det = TRUE))
+
+object <- add_initial_values(object)
+```
+
+`coef$rate` is the rate of the inverse gamma prior of the variances of the
+random walks of the coefficients, and it decides how far a coefficient may move
+from one quarter to the next. It is not scale free. The value of `0.0001` that
+the `bvartools` vignette uses on series measured in percent is far too loose
+here, because the variables of this data set are logarithms, whose regressors
+are of order one while the residuals are of order one percent.
+
+The consequence is worth stating plainly, because the model does not complain.
+Each of these sub-models has 24 coefficients per period against three
+observations per period, so it is saturated: given enough freedom the
+coefficient path fits every observation exactly, the residuals collapse to
+zero, and the volatility process is left with nothing to explain. At
+`coef$rate = 0.0001` that is what happens -- the fitted residuals of the output
+equation have a standard deviation of 0.0004 against 0.012 for the same
+regression estimated by least squares, and the estimated volatility is a flat
+line. At `1e-8` the coefficients still move, the fit is a little better than
+least squares rather than perfect, and the volatilities do the work they are
+there for.
+
+The check is worth running on any time varying model with many coefficients and
+a short sample: compare the residuals under the posterior mean of the
+coefficient path with the residuals of an ordinary least squares fit of the same
+regressors. If the first is very much smaller than the second, the coefficients
+have absorbed the model.
+
+```{r posterior, message=FALSE, results='hide'}
+object <- add_posterior_coefficients(object)
+```
+
+Sub-models are independent of one another given the weight matrices, so this
+step parallelises over them, and the cost of the time varying specification is
+paid once per country.
+
+## Evaluation
+
+A sub-model is an ordinary model object, so everything the `bvartools` vignette
+does with a TVP-SV-VAR applies to it.
+
+```{r}
+model_at <- object[["submodels"]][["AT"]][[1]]
+
+summary(model_at)
+```
+
+The table describes the last period of the estimation sample; argument `period`
+asks for another one. The regressors ending in `.s` are the weakly exogenous
+foreign variables that the weight matrices produced.
+
+### Volatility across countries
+
+The figure that justifies the specification is the volatility of the output
+equation, which the following extracts for each sub-model in turn.
+
+```{r volatility, fig.align='center', fig.height=5, fig.width=5.5}
+volatility <- function(object, variable) {
+  k <- object[["model"]][["k"]]
+  kk <- k * k
+  tt <- nrow(object[["data"]][["train"]][["y"]])
+  draws <- object[["posterior"]][["u_sigma_inv"]][["coeffs"]]
+  i <- which(object[["model"]][["endogen"]] == variable)
+
+  result <- rep(NA_real_, tt)
+  for (period in 1:tt) {
+    result[period] <- mean(apply(draws[, (period - 1) * kk + 1:kk], 1,
+                                 function(x, k, i) {
+                                   sqrt(solve(matrix(x, k))[i, i])
+                                 }, k = k, i = i))
+  }
+
+  stats::ts(result, start = stats::start(object[["data"]][["train"]][["y"]]),
+            frequency = stats::frequency(object[["data"]][["train"]][["y"]]))
+}
+
+paths <- sapply(object[["submodels"]], function(x) {volatility(x[[1]], "y")})
+paths <- stats::ts(paths,
+                   start = stats::start(model_at[["data"]][["train"]][["y"]]),
+                   frequency = 4)
+
+plot(paths, main = "Volatility of the output equation")
+```
+
+Each country gets its own path. This is what a constant error covariance matrix
+cannot represent: it would have to choose a single number for a sample in which
+the size of an output shock differs by a large factor between the quiet years
+and 2020.
+
+The residual check of the previous section belongs beside this figure, since the
+two are the same question asked twice. A volatility path that is a flat line is
+rarely a finding about the data; it usually means the coefficients were allowed
+to move enough to leave no residual behind.
+
+```{r}
+residual_sd <- function(object) {
+  k <- object[["model"]][["k"]]
+  m <- ncol(object[["data"]][["train"]][["z"]])
+  tt <- nrow(object[["data"]][["train"]][["y"]])
+  y <- matrix(t(object[["data"]][["train"]][["y"]]))
+  z <- object[["data"]][["train"]][["z"]]
+
+  a <- colMeans(object[["posterior"]][["a"]][["coeffs"]])
+  fitted <- rep(NA_real_, tt * k)
+  for (period in 1:tt) {
+    rows <- (period - 1) * k + 1:k
+    fitted[rows] <- z[rows, ] %*% a[(period - 1) * m + 1:m]
+  }
+
+  ols <- solve(crossprod(z)) %*% crossprod(z, y)
+
+  result <- rbind(apply(matrix(y - fitted, k), 1, stats::sd),
+                  apply(matrix(y - z %*% ols, k), 1, stats::sd))
+  dimnames(result) <- list(c("tvp", "ls"), object[["model"]][["endogen"]])
+  result
+}
+
+round(residual_sd(model_at), 5)
+```
+
+### Coefficient paths
+
+```{r paths, fig.align='center', fig.height=5, fig.width=9}
+plot(model_at)
+```
+
+A panel resting on a flat line at zero is a coefficient that variable selection
+switched off. Since one inclusion parameter is drawn per coefficient rather than
+per coefficient and period, a regressor is either in a sub-model over the whole
+sample or out of it over the whole sample, and the inclusion probabilities
+therefore differ across countries but not across periods.
+
+The coefficient paths of this specification drift slowly and by small amounts,
+and the columns of $\Sigma_t$ beside them do not. That is the other side of the
+prior discussed above and it is worth reading as a result rather than as a
+disappointment: for these series most of what changes over four decades is the
+size of the shocks, not the transmission, which is the usual finding for
+macroeconomic data and the reason the constant coefficient model with stochastic
+volatility is hard to beat.
+
+```{r}
+inclusion <- function(object) {
+  k <- object[["model"]][["k"]]
+  matrix(round(colMeans(object[["posterior"]][["a"]][["lambda"]]), 2), k,
+         dimnames = list(object[["model"]][["endogen"]],
+                         dimnames(object[["data"]][["train"]][["x"]])[[2]]))
+}
+
+lapply(object[["submodels"]], function(x) {inclusion(x[[1]])})
+```
+
+### Impulse responses of a sub-model
+
+```{r irf, fig.align='center', fig.height=4, fig.width=5.5}
+period_of <- function(object, year, quarter) {
+  which(stats::time(object[["data"]][["train"]][["y"]]) == year + (quarter - 1) / 4)
+}
+
+response <- irf(model_at, impulse = "r", response = "y", n_ahead = 12,
+                period = period_of(model_at, 2005, 1))
+
+plot(response, main = "Austria: output response to its interest rate")
+```
+
+These are the dynamics of one sub-model with its foreign variables held fixed,
+which is not the same thing as a generalised impulse response of the global
+model: the latter lets a shock travel through the weight matrices and come back.
+That is the step the next section is about.
+
+## What cannot be done yet
+
+`submodels_to_gvar` stacks the sub-models and solves the result for its reduced
+form. It does not accept time varying or stochastic volatility sub-models:
+
+```{r, error=TRUE}
+submodels_to_gvar(object)
+```
+
+The obstacle is not only bookkeeping. Stacking gives
+$G_t y_t = A_{1,t} y_{t-1} + \dots + u_t$, and the reduced form needs
+$G_t^{-1}$ for every period of every draw. The solved global model of this
+example would be one such inverse for 176 periods and 2000 draws, and the
+coefficients that come out of it are a matrix per period per draw rather than a
+vector per draw. Generalised impulse responses of a global model with time
+varying parameters are a well defined object, but they are one per period, and
+the representation the rest of the package works on does not hold them yet.
+
+Until it does, a global model is solved from sub-models with constant
+coefficients and a constant error covariance matrix, as in the vignette on
+global vector autoregressive models, and time varying sub-models are used for
+what this vignette shows: the paths of the coefficients and of the volatilities
+of each country separately.
+
+Exporting time varying sub-models with `write_to_hdf5` is subject to the same
+limit and fails on this object, so the route through BayesTS is not open for
+them either.
+
+## References
+
+Chudik, A., & Pesaran, M. H. (2016). Theory and practice of GVAR modelling. *Journal of Economic Surveys 30*(1), 165-197. <https://doi.org/10.1111/joes.12095>
+
+Korobilis, D. (2013). VAR forecasting using Bayesian variable selection. *Journal of Applied Econometrics, 28*(2), 204-230. <https://doi.org/10.1002/jae.1271>
+
+Mohaddes, K., & Raissi, M. (2024). *Compilation, revision and updating of the global VAR (GVAR) database, 1979Q2--2023Q3* (mimeo). University of Cambridge: Judge Business School. <https://www.mohaddes.org/gvar>
+
+Pesaran, M. H., Schuermann, T., & Weiner, S. M. (2004). Modeling regional interdependencies using a global error-correcting macroeconometric model. *Journal of Business & Economic Statistics 22*(2), 129-162. <https://doi.org/10.1198/073500104000000019>
+
+Primiceri, G. E. (2005). Time varying structural vector autoregressions and monetary policy. *Review of Economic Studies, 72*(3), 821-852. <https://doi.org/10.1111/j.1467-937X.2005.00353.x>
