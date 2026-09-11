@@ -83,8 +83,7 @@ submodels_to_gvar <- function(object, period = NULL) {
                            function(x) class(x[[1]])))
   if (any(classes == "vecxsubmodel")) {
     stop("Argument 'object' contains sub-models in error correction form. ",
-         "Use 'bvec_to_bvar.vecxsubmodelest' to obtain their level ",
-         "representation first.")
+         "Use 'gvec_to_gvar' to obtain their level representation first.")
   }
 
   # Number of models per sub-model
