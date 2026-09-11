@@ -36,7 +36,8 @@
 #' @param burnin an integer of MCMC draws used to initialize the sampler
 #' (defaults to 2000). These draws do not enter the computation of posterior
 #' moments, forecasts etc.
-#' 
+#' @param ... further arguments passed to or from other methods.
+#'
 #' @examples
 #' 
 #' # Load data

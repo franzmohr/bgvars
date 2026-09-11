@@ -72,6 +72,8 @@ to 10000).}
 \item{burnin}{an integer of MCMC draws used to initialize the sampler
 (defaults to 2000). These draws do not enter the computation of posterior
 moments, forecasts etc.}
+
+\item{...}{further arguments passed to or from other methods.}
 }
 \description{
 Generate and add VARX sub-models for a global vector autoregressive model.

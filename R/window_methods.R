@@ -5,7 +5,8 @@
 #' @param x an object of class 'gvarmodel'.
 #' @param start the start time of the period of interest.
 #' @param end the end time of the period of interest.
-#' 
+#' @param ... further arguments passed to or from other methods.
+#'
 #' @return An object of class 'gvarmodel'.
 #' 
 #' @export
@@ -27,7 +28,8 @@ window.gvarmodel <- function(x, start = NULL, end = NULL, ...) {
 #' @param x an object of class 'gvecmodel'.
 #' @param start the start time of the period of interest.
 #' @param end the end time of the period of interest.
-#' 
+#' @param ... further arguments passed to or from other methods.
+#'
 #' @return An object of class 'gvecmodel'.
 #' 
 #' @export

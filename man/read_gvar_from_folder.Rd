@@ -9,6 +9,11 @@ read_gvar_from_folder(folder, submodels = NULL)
 \arguments{
 \item{folder}{path to a folder holding an export, that is, a \code{model.h5}
 and a \code{submodels} directory beside it.}
+
+\item{submodels}{optional; a data frame with the columns \code{submodel} and
+\code{position}, naming the sub-models to read back and, for each, which of
+the models exported under that name to take. If \code{NULL} (default), every
+sub-model in the export is read.}
 }
 \value{
 An object of class 'gvarmodel' or 'gvecmodel'.
