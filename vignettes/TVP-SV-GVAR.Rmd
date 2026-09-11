@@ -314,7 +314,7 @@ plot(paths, main = "Volatility of the output equation")
 ```
 
 <div class="figure" style="text-align: center">
-<img src="figures/tvp-sv-gvar-volatility-1.png" alt="plot of chunk volatility"  />
+<img src="figures/TVP-SV-GVAR-volatility-1.png" alt="plot of chunk volatility"  />
 <p class="caption">plot of chunk volatility</p>
 </div>
 
@@ -366,19 +366,19 @@ plot(model_at)
 ```
 
 <div class="figure" style="text-align: center">
-<img src="figures/tvp-sv-gvar-paths-1.png" alt="plot of chunk paths"  />
+<img src="figures/TVP-SV-GVAR-paths-1.png" alt="plot of chunk paths"  />
 <p class="caption">plot of chunk paths</p>
 </div><div class="figure" style="text-align: center">
-<img src="figures/tvp-sv-gvar-paths-2.png" alt="plot of chunk paths"  />
+<img src="figures/TVP-SV-GVAR-paths-2.png" alt="plot of chunk paths"  />
 <p class="caption">plot of chunk paths</p>
 </div><div class="figure" style="text-align: center">
-<img src="figures/tvp-sv-gvar-paths-3.png" alt="plot of chunk paths"  />
+<img src="figures/TVP-SV-GVAR-paths-3.png" alt="plot of chunk paths"  />
 <p class="caption">plot of chunk paths</p>
 </div><div class="figure" style="text-align: center">
-<img src="figures/tvp-sv-gvar-paths-4.png" alt="plot of chunk paths"  />
+<img src="figures/TVP-SV-GVAR-paths-4.png" alt="plot of chunk paths"  />
 <p class="caption">plot of chunk paths</p>
 </div><div class="figure" style="text-align: center">
-<img src="figures/tvp-sv-gvar-paths-5.png" alt="plot of chunk paths"  />
+<img src="figures/TVP-SV-GVAR-paths-5.png" alt="plot of chunk paths"  />
 <p class="caption">plot of chunk paths</p>
 </div>
 
@@ -454,7 +454,7 @@ plot(response, main = "Austria: output response to its interest rate")
 ```
 
 <div class="figure" style="text-align: center">
-<img src="figures/tvp-sv-gvar-irf-1.png" alt="plot of chunk irf"  />
+<img src="figures/TVP-SV-GVAR-irf-1.png" alt="plot of chunk irf"  />
 <p class="caption">plot of chunk irf</p>
 </div>
 

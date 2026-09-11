@@ -182,7 +182,7 @@ sc <- selection_criteria(model)
 plot(sc, criterion = "BIC")
 ```
 
-![plot of chunk selection-criteria](figures/selection-criteria-1.png)
+![plot of chunk selection-criteria](figures/GVAR-selection-criteria-1.png)
 
 
 
@@ -265,7 +265,7 @@ gvar_irf <- irf(gvar,
 plot(gvar_irf)
 ```
 
-![plot of chunk girf](figures/girf-1.png)
+![plot of chunk girf](figures/GVAR-girf-1.png)
 
 ### Error variance decomposition
 
@@ -280,7 +280,7 @@ gvar_fevd <- fevd(gvar,
 plot(gvar_fevd)
 ```
 
-![plot of chunk gfevd](figures/gfevd-1.png)
+![plot of chunk gfevd](figures/GVAR-gfevd-1.png)
 
 ## References
 

@@ -11,7 +11,7 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  fig.path = "figures/tvp-sv-gvec-"
+  fig.path = "figures/TVP-SV-GVEC-"
 )
 ```
 

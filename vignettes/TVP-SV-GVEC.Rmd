@@ -394,7 +394,7 @@ abline(h = 0, lty = "dotted")
 ```
 
 <div class="figure" style="text-align: center">
-<img src="figures/tvp-sv-gvec-pi-path-1.png" alt="plot of chunk pi-path"  />
+<img src="figures/TVP-SV-GVEC-pi-path-1.png" alt="plot of chunk pi-path"  />
 <p class="caption">plot of chunk pi-path</p>
 </div>
 
@@ -435,7 +435,7 @@ plot(paths, main = "Volatility of the output equation")
 ```
 
 <div class="figure" style="text-align: center">
-<img src="figures/tvp-sv-gvec-volatility-1.png" alt="plot of chunk volatility"  />
+<img src="figures/TVP-SV-GVEC-volatility-1.png" alt="plot of chunk volatility"  />
 <p class="caption">plot of chunk volatility</p>
 </div>
 
@@ -485,22 +485,22 @@ plot(model_at)
 ```
 
 <div class="figure" style="text-align: center">
-<img src="figures/tvp-sv-gvec-paths-1.png" alt="plot of chunk paths"  />
+<img src="figures/TVP-SV-GVEC-paths-1.png" alt="plot of chunk paths"  />
 <p class="caption">plot of chunk paths</p>
 </div><div class="figure" style="text-align: center">
-<img src="figures/tvp-sv-gvec-paths-2.png" alt="plot of chunk paths"  />
+<img src="figures/TVP-SV-GVEC-paths-2.png" alt="plot of chunk paths"  />
 <p class="caption">plot of chunk paths</p>
 </div><div class="figure" style="text-align: center">
-<img src="figures/tvp-sv-gvec-paths-3.png" alt="plot of chunk paths"  />
+<img src="figures/TVP-SV-GVEC-paths-3.png" alt="plot of chunk paths"  />
 <p class="caption">plot of chunk paths</p>
 </div><div class="figure" style="text-align: center">
-<img src="figures/tvp-sv-gvec-paths-4.png" alt="plot of chunk paths"  />
+<img src="figures/TVP-SV-GVEC-paths-4.png" alt="plot of chunk paths"  />
 <p class="caption">plot of chunk paths</p>
 </div><div class="figure" style="text-align: center">
-<img src="figures/tvp-sv-gvec-paths-5.png" alt="plot of chunk paths"  />
+<img src="figures/TVP-SV-GVEC-paths-5.png" alt="plot of chunk paths"  />
 <p class="caption">plot of chunk paths</p>
 </div><div class="figure" style="text-align: center">
-<img src="figures/tvp-sv-gvec-paths-6.png" alt="plot of chunk paths"  />
+<img src="figures/TVP-SV-GVEC-paths-6.png" alt="plot of chunk paths"  />
 <p class="caption">plot of chunk paths</p>
 </div>
 

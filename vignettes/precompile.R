@@ -30,6 +30,13 @@ precompile <- function(name) {
   # step after a missing folder was an error message.
   knitr::opts_chunk$set(error = FALSE)
 
+  # Every vignette writes to figures/ under its own name, so dropping that
+  # prefix leaves no stale plots behind when chunks are renamed or removed, or
+  # when one chunk comes to produce a different number of figures than before.
+  # This is why the 'fig.path' of a vignette has to start with its own name.
+  dir.create("figures", showWarnings = FALSE)
+  unlink(list.files("figures", pattern = paste0("^", name, "-"), full.names = TRUE))
+
   message("Knitting ", input, " ...")
   started <- Sys.time()
   knitr::knit(input, paste0(name, ".Rmd"))
