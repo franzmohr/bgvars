@@ -1,10 +1,10 @@
 # Pre-compile the expensive vignettes.
 #
-# GVAR.Rmd and GVEC.Rmd are *generated* files: they contain the results of the
+# The .Rmd files listed below are *generated*: they contain the results of the
 # code rather than the code itself, so that `R CMD build` has nothing left to
-# evaluate. The real sources are GVAR.Rmd.orig and GVEC.Rmd.orig, and this
-# script turns the latter into the former. Both the generated .Rmd files and
-# the figures under vignettes/figures/ are committed.
+# evaluate. The real sources are the matching .Rmd.orig files, and this script
+# turns the latter into the former. Both the generated .Rmd files and the
+# figures under vignettes/figures/ are committed.
 #
 # Run this after changing a .orig source, or after a change to the package that
 # alters vignette output:
@@ -42,7 +42,8 @@ precompile <- function(name) {
 
 vignettes <- commandArgs(trailingOnly = TRUE)
 if (length(vignettes) == 0) {
-  vignettes <- c("GVAR", "GVEC")
+  vignettes <- c("GVAR", "GVEC", "TVP-SV-GVAR", "TVP-SV-GVEC",
+                 "modelling-submodel")
 }
 
 for (vignette in vignettes) {
