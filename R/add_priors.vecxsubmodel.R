@@ -60,16 +60,35 @@
 #'   Only used for models with time varying parameters. Default is 0.01.}
 #' }
 #' 
-#' Argument \code{coint} can contain the following elements:
+#' Argument \code{coint} depends on whether the cointegration parameters are constant or time
+#' varying, since the two are given different kinds of prior: a matric-variate prior on the
+#' cointegration space in the first case, and a state equation in the second.
 #' \describe{
-#'   \item{\code{v_i}}{numeric between 0 and 1 specifying the shrinkage of the cointegration space prior.}
+#'   \item{\code{v_i}}{numeric between 0 and 1 specifying the shrinkage of the cointegration space prior.
+#'   Required for sub-models with constant cointegration parameters and not used otherwise.}
 #'   \item{\code{p_tau_i}}{numeric of the diagonal elements of the inverse prior matrix of
-#'   the central location of the cointegration space \eqn{sp(\beta)}.}
+#'   the central location of the cointegration space \eqn{sp(\beta)}.
+#'   Required for sub-models with constant cointegration parameters and not used otherwise.}
 #'   \item{\code{rho}}{a numeric specifying the autocorrelation coefficient
 #'   of the state equation of \eqn{\beta}. It must be smaller than 1.
+#'   Required for sub-models with time varying cointegration parameters and not used otherwise.
 #'   Note that in contrast to Koop et al. (2011) \eqn{\rho} is not drawn in the Gibbs sampler of
 #'   this package yet.}
 #' }
+#' For a sub-model with time varying cointegration parameters the state equation is
+#' \eqn{\beta_t = \rho \beta_{t-1} + \eta_t} with \eqn{\eta_t \sim N(0, I)}, and
+#' the prior on the state before the sample is that equation's own stationary
+#' distribution, \eqn{N(0, I / (1 - \rho^2))}. This is what makes the prior
+#' proper, so a \eqn{\rho} close to one is intended and one further from it draws
+#' a warning. The loadings carry the compensating scale: only the product
+#' \eqn{\alpha \beta^{\prime}} is identified, so their prior variance is shrunk
+#' by \eqn{1 - \rho^2}, leaving the product on the scale \code{coef$v_i} asks
+#' for.
+#'
+#' Variable selection is available as \code{"bvs"}. The loadings are never subject to it,
+#' so the error correction term is always in the model, and one inclusion parameter is drawn
+#' per coefficient rather than per coefficient and period. SSVS is not implemented for error
+#' correction sub-models and is refused when the priors are added.
 #' 
 #' Argument \code{sigma} can contain the following elements:
 #' \describe{
@@ -250,7 +269,8 @@ add_priors.vecxsubmodel <- function(object,
   use_ssvs_error <- FALSE
   use_ssvs_semi <- FALSE
   if (object[["model"]][["varsel"]] == "ssvs") {
-    stop("implement ssvs")
+    stop("Stochastic search variable selection is not implemented for error ",
+         "correction sub-models. Consider using 'bvs' instead.")
     #.add_priors_check_ssvs(object, varsel)
     
     if (!is.null(varsel[["covar"]])) {
@@ -279,7 +299,6 @@ add_priors.vecxsubmodel <- function(object,
   use_bvs <- FALSE
   use_bvs_error <- FALSE
   if (object[["model"]][["varsel"]] == "bvs") {
-    stop("implement bvs")
     use_bvs <- TRUE
     
     .add_priors_check_bvs(object, varsel)
@@ -306,6 +325,24 @@ add_priors.vecxsubmodel <- function(object,
   }
   
   varsel_covar <- use_ssvs_error | use_bvs_error
+  
+  # A constant coefficient sampler selects over one set of coefficients or over
+  # both: it reads a single selection scheme for the whole model, so a
+  # covariance block it is given goes into the selection with the rest. Only the
+  # time varying samplers take the covariance block's scheme separately, which
+  # is why the same call is allowed there. Left to run, this combination fails
+  # inside the sampler on a prior it was never given.
+  if ((use_ssvs | use_bvs) &
+      object[["model"]][["error"]] %in% c("gamma+covar", "sv+covar") &
+      !varsel_covar & !object[["model"]][["tvp"]] &
+      object[["model"]][["k_endogen"]] > 1) {
+    stop("Variable selection cannot be restricted to the coefficients when the ",
+         "model has an error covariance block and constant coefficients: this ",
+         "sampler applies one selection scheme to both. Set 'varsel$covar' to ",
+         "TRUE to select over the covariances as well, drop the covariances with ",
+         "an 'error' of \"gamma\" or \"sv\", or use a time varying model, where ",
+         "the two blocks can differ.")
+  }
   
   # Generate priors ----
   
@@ -374,13 +411,24 @@ add_priors.vecxsubmodel <- function(object,
     n_beta <- r * n_ect / k_endogen
     
     if (object[["model"]][["tvp"]]) {
-      stop("TVP priors need to be implemented.")
-      object[["priors"]][["beta"]] <- list(type = "cointspace",
-                                                    rho = coint[["rho"]],
-                                                    mu = matrix(0, n_beta),
-                                                    v_i = Matrix::Diagonal(n_beta, 1 - coint[["rho"]]^2))
-      
-      object[["priors"]][["rho"]] <- list(coint[["rho"]])
+
+      # The cointegration vectors are a state path of their own, with
+      # beta_t = rho beta_{t-1} + eta_t and eta_t ~ N(0, I). rho is fixed rather
+      # than drawn, so it belongs with the prior; the sampler reads it from here.
+      #
+      # The prior on the state before the sample is that path's own stationary
+      # distribution, N(0, I / (1 - rho^2)), whose precision is (1 - rho^2) I.
+      # That is what makes it proper: at rho = 1 the state equation is a random
+      # walk whose variance grows without bound, and beta, being identified only
+      # up to scale, has nothing to pull it back.
+      #
+      # The shrinkage and central location of the constant model's cointegration
+      # space, coint$v_i and coint$p_tau_i, have no counterpart here: the space
+      # is not drawn from a matric-variate prior but followed period by period.
+      object[["priors"]][["beta"]] <- list("type" = "cointspace",
+                                           "rho" = coint[["rho"]],
+                                           "mu" = matrix(0, n_beta),
+                                           "v_inv" = diag(1 - coint[["rho"]]^2, n_beta))
     } else {
       object[["priors"]][["beta"]] <- list("type" = "cointspace",
                                            "v_inv" = coint[["v_i"]],
@@ -445,8 +493,11 @@ add_priors.vecxsubmodel <- function(object,
     }
     
     # SSVS prior ----
+    # Unreachable while the specification above refuses SSVS, and left in place
+    # so that the branch is ready when it is implemented.
     if (use_ssvs) {
-      stop("implement ssvs")
+      stop("Stochastic search variable selection is not implemented for error ",
+           "correction sub-models. Consider using 'bvs' instead.")
       if (object[["model"]][["tvp"]]) {
         stop("SSVS is not supported for TVP models.")
       }
@@ -471,14 +522,21 @@ add_priors.vecxsubmodel <- function(object,
     if (!minnesota & !use_ssvs) {
       
       if (object[["model"]][["tvp"]]) {
-        stop("implement tvp")
-        v_i <- Matrix::Diagonal(tot_par, 1)
+
+        # For a TVP model this is the prior precision of the state before the
+        # sample rather than of a constant coefficient.
+        v_i <- diag(coef[["v_i"]], tot_par)
+
+        # The loadings carry the compensating scale of the cointegration space.
+        # beta_t has stationary variance 1 / (1 - rho^2), which for a rho just
+        # below one is large, and only the product alpha beta' is identified --
+        # so alpha's prior variance is shrunk by the same factor, leaving the
+        # product on the scale coef$v_i asks for.
         if (r > 0) {
-          v_i[1:n_alpha, 1:n_alpha] <- Matrix::Diagonal(n_alpha, 1 / (1 - coint[["rho"]] * coint[["rho"]]))
+          diag(v_i)[1:n_alpha] <- 1 / (1 - coint[["rho"]] * coint[["rho"]])
         }
         if (n_det > 0 & !is.null(coef[["v_i_det"]])) {
-          pos_unres <- tot_par - n_struct - n_det + 1:n_det
-          v_i[pos_unres, pos_unres] <- Matrix::Diagonal(n_det, coef[["v_i_det"]])
+          diag(v_i)[tot_par - n_struct - n_det + 1:n_det] <- coef[["v_i_det"]]
         }
         object[["priors"]][["a"]][["shape"]] <- matrix(coef[["shape"]], tot_par)
         object[["priors"]][["a"]][["rate"]] <- matrix(coef[["rate"]], tot_par)
@@ -496,9 +554,13 @@ add_priors.vecxsubmodel <- function(object,
     }
     
     if (use_bvs) {
-      stop("implement bvs")
-      temp <- inclusion_prior(object, prob = varsel[["inprior"]], exclude_deterministics = varsel[["exclude_det"]],
-                              minnesota_like = !is.null(varsel[["minnesota"]]), kappa = varsel[["minnesota"]])
+      temp <- inclusion_prior(object, prob = varsel[["inprior"]],
+                              exclude_deterministics = varsel[["exclude_det"]],
+                              minnesota_like = !is.null(varsel[["minnesota"]]),
+                              kappa1 = varsel[["minnesota"]][1],
+                              kappa2 = varsel[["minnesota"]][2],
+                              kappa3 = varsel[["minnesota"]][3],
+                              kappa4 = varsel[["minnesota"]][4])
       
       object[["priors"]][["a"]][["inprior"]] <- temp[["prior"]]
       object[["priors"]][["a"]][["include"]] <- temp[["include"]]
@@ -524,7 +586,8 @@ add_priors.vecxsubmodel <- function(object,
     
     # SSVS priors
     if (use_ssvs_error) {
-      stop("implement ssvs")
+      stop("Stochastic search variable selection is not implemented for error ",
+           "correction sub-models. Consider using 'bvs' instead.")
       object[["priors"]][["psi"]][["varsel"]] <- "ssvs"
       object[["priors"]][["psi"]][["inprior"]] <- matrix(varsel[["inprior"]], n_covar)
       object[["priors"]][["psi"]][["include"]] <- matrix(1:n_covar)
@@ -534,7 +597,6 @@ add_priors.vecxsubmodel <- function(object,
     
     # BVS priors
     if (use_bvs_error) {
-      stop("implement bvs")
       object[["priors"]][["psi"]][["varsel"]] <- "bvs"
       object[["priors"]][["psi"]][["inprior"]] <- matrix(varsel[["inprior"]], n_covar)
       object[["priors"]][["psi"]][["include"]] <- matrix(1:n_covar)

@@ -77,16 +77,35 @@ Argument \code{coef} contains the following elements
   Only used for models with time varying parameters. Default is 0.01.}
 }
 
-Argument \code{coint} can contain the following elements:
+Argument \code{coint} depends on whether the cointegration parameters are constant or time
+varying, since the two are given different kinds of prior: a matric-variate prior on the
+cointegration space in the first case, and a state equation in the second.
 \describe{
-  \item{\code{v_i}}{numeric between 0 and 1 specifying the shrinkage of the cointegration space prior.}
+  \item{\code{v_i}}{numeric between 0 and 1 specifying the shrinkage of the cointegration space prior.
+  Required for sub-models with constant cointegration parameters and not used otherwise.}
   \item{\code{p_tau_i}}{numeric of the diagonal elements of the inverse prior matrix of
-  the central location of the cointegration space \eqn{sp(\beta)}.}
+  the central location of the cointegration space \eqn{sp(\beta)}.
+  Required for sub-models with constant cointegration parameters and not used otherwise.}
   \item{\code{rho}}{a numeric specifying the autocorrelation coefficient
   of the state equation of \eqn{\beta}. It must be smaller than 1.
+  Required for sub-models with time varying cointegration parameters and not used otherwise.
   Note that in contrast to Koop et al. (2011) \eqn{\rho} is not drawn in the Gibbs sampler of
   this package yet.}
 }
+For a sub-model with time varying cointegration parameters the state equation is
+\eqn{\beta_t = \rho \beta_{t-1} + \eta_t} with \eqn{\eta_t \sim N(0, I)}, and
+the prior on the state before the sample is that equation's own stationary
+distribution, \eqn{N(0, I / (1 - \rho^2))}. This is what makes the prior
+proper, so a \eqn{\rho} close to one is intended and one further from it draws
+a warning. The loadings carry the compensating scale: only the product
+\eqn{\alpha \beta^{\prime}} is identified, so their prior variance is shrunk
+by \eqn{1 - \rho^2}, leaving the product on the scale \code{coef$v_i} asks
+for.
+
+Variable selection is available as \code{"bvs"}. The loadings are never subject to it,
+so the error correction term is always in the model, and one inclusion parameter is drawn
+per coefficient rather than per coefficient and period. SSVS is not implemented for error
+correction sub-models and is refused when the priors are added.
 
 Argument \code{sigma} can contain the following elements:
 \describe{
