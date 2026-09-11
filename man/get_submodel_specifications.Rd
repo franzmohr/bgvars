@@ -7,8 +7,9 @@
 get_submodel_specifications(object)
 }
 \arguments{
-\item{object}{an object of class 'submodelestlist', usually,
-a result of a call to \code{\link[bvartools]{add_posterior_coefficients}}.}
+\item{object}{a list of the estimated models of one sub-model, usually one
+element of \code{object$submodels} after a call to
+\code{\link[bvartools]{add_posterior_coefficients}}.}
 }
 \value{
 A data frame.

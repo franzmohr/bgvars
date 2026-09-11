@@ -4,9 +4,9 @@
 #' model.
 #'
 #' @param object an object of class 'gvarmodel' containing exactly one
-#' estimated model per sub-model. Use \code{\link{select_submodels}} or the
-#' \code{submodels} argument of \code{\link{read_gvar_from_folder}} to
-#' reduce an object with multiple candidate models per sub-model to one.
+#' estimated model per sub-model. Use the \code{submodels} argument of
+#' \code{\link{read_gvar_from_folder}} to reduce an object with multiple
+#' candidate models per sub-model to one.
 #' @param period integer of the period, whose weight matrices should be used to
 #' solve the model. Defaults to the last period of the estimation sample. Only
 #' relevant for time varying weights.

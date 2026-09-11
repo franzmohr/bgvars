@@ -2,8 +2,9 @@
 #'
 #' Obtains the model specification of the submodels of a GVAR model.
 #'
-#' @param object an object of class 'submodelestlist', usually,
-#' a result of a call to \code{\link[bvartools]{add_posterior_coefficients}}.
+#' @param object a list of the estimated models of one sub-model, usually one
+#' element of \code{object$submodels} after a call to
+#' \code{\link[bvartools]{add_posterior_coefficients}}.
 #'
 #' @return A data frame.
 #' 
