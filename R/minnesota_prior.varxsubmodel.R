@@ -21,6 +21,7 @@
 #' variables \eqn{\sigma^2} are calculated based on a univariate AR regression or a least squares estimate of
 #' the VAR form, respectively. In both cases all deterministic variables are used in the regressions,
 #' if they appear in the model.
+#' @param ... further arguments passed to or from other methods.
 #' 
 #' @details The function calculates the Minnesota prior of a VAR model. For the endogenous variable
 #' \eqn{i} the prior variance of the \eqn{l}th lag of regressor \eqn{j} is obtained as
@@ -85,7 +86,8 @@
 #' @export
 #' @method minnesota_prior varxsubmodel
 minnesota_prior.varxsubmodel <- function(object, kappa1 = 2, kappa2 = .5, kappa3 = NULL, kappa4 = 5,
-                                         max_var = NULL, coint_var = FALSE, sigma = "AR") {
+                                         max_var = NULL, coint_var = FALSE, sigma = "AR",
+                                         ...) {
   
   if (kappa1 <= 0) {
     stop("Argument 'kappa1' must be positive.")

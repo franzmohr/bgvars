@@ -2,10 +2,11 @@
 #' 
 #' Produces the first difference of variables in an object of class 'submodeldata'.
 #' 
-#' @param data an object of class 'submodeldata'.
+#' @param x an object of class 'submodeldata'.
 #' @param variables a character vector of variables that should be differenced, if
 #' they appear in a time-series object. If \code{NULL} (default), all variables are differenced.
 #' @param multi optional. Numeric by which the differenced series should be multiplicated.
+#' @param ... further arguments passed to or from other methods.
 #' 
 #' @return A differenced time-series object or a list of differenced time-series objects.
 #' 
@@ -19,10 +20,10 @@
 #' submodel_data <- diff(submodel_data, variables = c("y", "Dp"), multi = 100)
 #' 
 #' @export
-diff.submodeldata <- function(data, variables = NULL, multi = NULL){
+diff.submodeldata <- function(x, variables = NULL, multi = NULL, ...){
   
   # Endogenous variables
-  vars_endogen <- unique(unlist(lapply(data, function(x) {dimnames(x[["endogen"]])[[2]]})))
+  vars_endogen <- unique(unlist(lapply(x, function(i) {dimnames(i[["endogen"]])[[2]]})))
   if (!is.null(variables)) {
     if (length(which(variables %in% vars_endogen)) == 0) {
       stop("Non of the variables specified in 'variables' is contained in the data.")
@@ -30,9 +31,9 @@ diff.submodeldata <- function(data, variables = NULL, multi = NULL){
     variables <- variables[which(variables %in% vars_endogen)]
   }
   
-  data <- lapply(data, .diff_func, variables, multi)
+  x <- lapply(x, .diff_func, variables, multi)
   
-  return(data)
+  return(x)
 }
 
 .diff_func <- function(x, variables, multi){
