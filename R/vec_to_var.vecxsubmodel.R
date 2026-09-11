@@ -7,21 +7,38 @@
 #' @param ... further arguments passed to or from other methods.
 #'
 #' @details
-#' The transformation itself is
-#' \code{\link[bvartools]{vec_to_var}}, which a 'vecxsubmodel' inherits through
-#' its 'bvecmodel' class. What this method adds is the part of the
-#' specification that describes a sub-model of a global model rather than a
-#' Bayesian VAR --- how many of its regressors are its own variables, how many
-#' are the weakly exogenous variables of the other units, and with how many lags
-#' each of them enters. \code{\link{submodels_to_gvar}} reads exactly those
-#' entries when it stacks the sub-models, so without them a converted sub-model
-#' could not be combined into a global model.
+#' The transformation is carried out here rather than delegated to
+#' \code{\link[bvartools]{vec_to_var}}, because a sub-model of a global model
+#' can carry a block of global variables on top of its weakly exogenous ones,
+#' and the two blocks may enter with different lag orders. A 'bvecmodel'
+#' describes a single block of unmodelled variables with a single lag order, so
+#' it cannot express that.
+#'
+#' Write the sub-model as
+#' \deqn{\Delta y_t = \Pi^{+} w_{t-1} + \sum_{l=1}^{p-1} \Gamma_l \Delta y_{t-l}
+#' + \sum_{l=0}^{q-1} \Upsilon_l \Delta x_{t-l} + C^{ur} d^{ur}_t + u_t,}
+#' where \eqn{w_{t-1}} collects the first lags of the endogenous variables, of
+#' the weakly exogenous variables, of the global variables and the restricted
+#' deterministic terms, and \eqn{\Pi^{+} = \alpha \beta^{+\prime}} splits into
+#' \eqn{(\Pi^{d}, \Pi^{*}, \Pi^{g}, \Pi^{R})} along those blocks. Undoing the
+#' differences gives the coefficients of the level representation,
+#' \deqn{A_1 = I + \Pi^{d} + \Gamma_1, \quad
+#' A_l = \Gamma_l - \Gamma_{l-1}, \quad A_p = -\Gamma_{p-1}}
+#' for the endogenous variables, and, for each block of unmodelled variables
+#' with \eqn{q} blocks of differences and level coefficient \eqn{\Pi^{x}},
+#' \deqn{B_0 = \Upsilon_0, \quad B_1 = \Upsilon_1 - \Upsilon_0 + \Pi^{x}, \quad
+#' B_l = \Upsilon_l - \Upsilon_{l-1}, \quad B_q = -\Upsilon_{q-1}.}
+#' A block of \eqn{q} differences therefore spans the lags \eqn{0} to \eqn{q} in
+#' levels, which is why \code{p_exogen} and \code{s_global} of the result are
+#' one larger than those of the sub-model it is given.
 #'
 #' The coefficients of the result are ordered the way an estimated VARX
 #' sub-model orders them: the lags of the endogenous variables, then the weakly
-#' exogenous variables from lag zero, then the deterministic terms. A trend that
-#' entered the error correction term restricted becomes an ordinary
-#' deterministic term of the level representation.
+#' exogenous variables from lag zero, then the global variables from lag zero,
+#' then the deterministic terms. \code{\link{submodels_to_gvar}} reads exactly
+#' those positions when it stacks the sub-models. A trend that entered the error
+#' correction term restricted becomes an ordinary deterministic term of the
+#' level representation.
 #'
 #' @return An object of class 'varxsubmodel'.
 #'
@@ -69,51 +86,298 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
 
   specification <- object[["model"]]
 
-  # Weakly exogenous variables of a GVEC sub-model that also uses global
-  # variables are not built by create_vecxsubmodel in the first place. Rather
-  # than let the position arithmetic below quietly assume they are not there,
-  # say so.
-  if (isTRUE(specification[["m_global"]] > 0)) {
-    stop("Global variables in a GVEC sub-model are not supported yet.\n",
+  if (isTRUE(specification[["structural"]])) {
+    stop("Structural GVEC sub-models cannot be rewritten in levels yet.\n",
          "Feel free to send a feature request.")
   }
 
-  # A 'bvecmodel' counts its weakly exogenous variables in 'm' and their lagged
-  # differences in 's'. A GVEC sub-model does not: create_vecxsubmodel records
-  # the whole differenced block in 'm' and leaves 's' at one. The two agree
-  # whenever the weakly exogenous variables enter with a single lag, and part
-  # company as soon as they do not, so the specification is translated here
-  # rather than left to coincide.
-  object[["model"]][["m"]] <- specification[["k_exogen"]]
-  object[["model"]][["s"]] <- specification[["p_exogen"]]
+  k <- specification[["k_endogen"]]
+  p <- specification[["p_endogen"]]
+  m_exogen <- specification[["k_exogen"]]
+  q_exogen <- specification[["p_exogen"]]
+  m_global <- specification[["m_global"]]
+  q_global <- specification[["s_global"]]
+  if (is.null(m_global)) {m_global <- 0L}
+  if (is.null(q_global)) {q_global <- 0L}
+  n_det_ur <- specification[["n"]]
+  n_det_r <- specification[["n_restricted"]]
+  if (is.null(n_det_ur)) {n_det_ur <- 0L}
+  if (is.null(n_det_r)) {n_det_r <- 0L}
+  rank <- specification[["rank"]]
+  if (is.null(rank)) {rank <- 0L}
 
-  result <- NextMethod()
+  # The rank enters only through Pi. Without a cointegration term the levels in
+  # the error correction term carry no coefficient at all.
+  if (rank == 0) {n_det_r <- 0L}
 
-  # Everything the level representation says about itself is taken from the
-  # transformation, which is what actually built the regressors. Only the
-  # sub-model specification is added on top of it.
-  model <- result[["model"]]
+  y_diff <- object[["data"]][["train"]][["y"]]
+  w <- object[["data"]][["train"]][["w"]]
+  x_diff <- object[["data"]][["train"]][["x"]]
 
-  model[["type"]] <- if (model[["k"]] == 1) "ARX" else "VARX"
-  model[["k_endogen"]] <- model[["k"]]
-  model[["p_endogen"]] <- model[["p"]]
-  model[["k_exogen"]] <- length(model[["exogen"]])
-  model[["p_exogen"]] <- model[["s"]]
-  model[["m_global"]] <- 0L
-  model[["s_global"]] <- 0L
+  if (is.null(y_diff) || is.null(w)) {
+    stop("Argument 'object' must contain the data of the VEC model in ",
+         "elements 'y' and 'w'.")
+  }
+  if (!is.null(attr(w, "scale"))) {
+    stop("The series in the error correction term are still on the scale of ",
+         "'scale_error_correction'. Use 'rescale_error_correction' to put them ",
+         "back on the scale of the input data before the model is transformed.")
+  }
 
-  for (entry in c("global", "varsel", "iterations", "burnin", "algorithm")) {
-    if (!is.null(specification[[entry]])) {
-      model[[entry]] <- specification[[entry]]
+  ts_info <- stats::tsp(y_diff)
+  y_diff <- as.matrix(y_diff)
+  w <- as.matrix(w)
+  if (is.null(x_diff)) {
+    x_diff <- matrix(NA_real_, nrow(y_diff), 0)
+  } else {
+    x_diff <- as.matrix(x_diff)
+  }
+
+  n_gamma <- max(p - 1, 0)
+  if (NCOL(w) != k + m_exogen + m_global + specification[["n_restricted"]]) {
+    stop("The error correction term does not have the number of columns ",
+         "implied by the model specification.")
+  }
+  if (NCOL(x_diff) != k * n_gamma + m_exogen * q_exogen +
+                      m_global * q_global + n_det_ur) {
+    stop("The non-cointegration regressors do not have the number of columns ",
+         "implied by the model specification.")
+  }
+
+  # Data of the level representation ----
+  #
+  # The levels of the endogenous variables, recovered from the differences and
+  # the levels in the error correction term, and then their lags by undoing one
+  # difference at a time.
+  lags_endogen <- vector("list", p)
+  lags_endogen[[1]] <- w[, 1:k, drop = FALSE]
+  if (p > 1) {
+    for (i in 2:p) {
+      lags_endogen[[i]] <- lags_endogen[[i - 1]] -
+        x_diff[, (i - 2) * k + 1:k, drop = FALSE]
     }
   }
+
+  # The same for a block of unmodelled variables. Its first lag sits in the
+  # error correction term, the current value is that lag plus the current
+  # difference, and each further lag undoes one more difference. A block of
+  # 'n_blocks' differences therefore spans the lags 0 to 'n_blocks'.
+  unmodelled_levels <- function(level_lag_1, diffs, n_vars, n_blocks) {
+    if (n_vars == 0) {return(list())}
+    if (n_blocks == 0) {
+      # No differences at all: the variables enter at their first lag only, so
+      # the current value is not identified and its coefficient is zero.
+      return(list(matrix(0, nrow(level_lag_1), n_vars), level_lag_1))
+    }
+    result <- vector("list", n_blocks + 1)
+    result[[2]] <- level_lag_1
+    result[[1]] <- result[[2]] + diffs[, 1:n_vars, drop = FALSE]
+    if (n_blocks > 1) {
+      for (j in 2:n_blocks) {
+        result[[j + 1]] <- result[[j]] -
+          diffs[, (j - 1) * n_vars + 1:n_vars, drop = FALSE]
+      }
+    }
+    result
+  }
+
+  pos <- k * n_gamma
+  lags_exogen <- unmodelled_levels(
+    w[, k + seq_len(m_exogen), drop = FALSE],
+    x_diff[, pos + seq_len(m_exogen * q_exogen), drop = FALSE],
+    m_exogen, q_exogen)
+
+  pos <- pos + m_exogen * q_exogen
+  lags_global <- unmodelled_levels(
+    w[, k + m_exogen + seq_len(m_global), drop = FALSE],
+    x_diff[, pos + seq_len(m_global * q_global), drop = FALSE],
+    m_global, q_global)
+
+  pos <- pos + m_global * q_global
+  det_data <- NULL
+  det_names <- NULL
+  if (n_det_ur > 0) {
+    det_data <- x_diff[, pos + 1:n_det_ur, drop = FALSE]
+    det_names <- specification[["deterministic"]]
+  }
+  if (n_det_r > 0) {
+    det_data <- cbind(det_data,
+                      w[, k + m_exogen + m_global + 1:n_det_r, drop = FALSE])
+    det_names <- c(det_names, specification[["deterministic_restricted"]])
+  }
+  if (!is.null(det_data)) {dimnames(det_data) <- list(NULL, det_names)}
+
+  # Names follow the convention of an estimated VARX sub-model.
+  lag_label <- function(lags, max_lag) {
+    width <- max(2, nchar(max(max_lag, 1)))
+    formatC(lags, width = width, flag = "0")
+  }
+
+  x <- do.call(cbind, c(lags_endogen, lags_exogen, lags_global))
+  x_names <- c(paste0(rep(specification[["endogen"]], times = p), ".",
+                      rep(lag_label(1:p, p), each = k)))
+  if (m_exogen > 0) {
+    x_names <- c(x_names,
+                 paste0(rep(specification[["exogen"]], times = q_exogen + 1),
+                        ".l", rep(lag_label(0:q_exogen, q_exogen + 1),
+                                  each = m_exogen)))
+  }
+  if (m_global > 0) {
+    x_names <- c(x_names,
+                 paste0(rep(specification[["global"]], times = q_global + 1),
+                        ".l", rep(lag_label(0:q_global, q_global + 1),
+                                  each = m_global)))
+  }
+  if (!is.null(det_data)) {
+    x <- cbind(x, det_data)
+    x_names <- c(x_names, det_names)
+  }
+  dimnames(x) <- list(NULL, x_names)
+
+  y <- y_diff + w[, 1:k, drop = FALSE]
+  dimnames(y) <- list(NULL, specification[["endogen"]])
+
+  y <- stats::ts(y, start = ts_info[1], frequency = ts_info[3],
+                 class = c("mts", "ts", "matrix"))
+  x <- stats::ts(x, start = ts_info[1], frequency = ts_info[3],
+                 class = c("mts", "ts", "matrix"))
+
+  # Coefficients of the level representation ----
+  posterior <- object[["posterior"]]
+  if (!is.null(posterior)) {
+
+    if (isTRUE(specification[["tvp"]])) {
+      stop("Posterior draws of models with time varying parameters cannot be ",
+           "transformed.")
+    }
+
+    coeffs <- posterior[["a"]][["coeffs"]]
+    mcpar <- attr(posterior[["u_sigma_inv"]][["coeffs"]], "mcpar")
+    draws <- nrow(coeffs)
+    k_ect <- NCOL(w)
+    n_x <- NCOL(x_diff)
+
+    if (NCOL(coeffs) != k * (rank + n_x)) {
+      stop("The posterior draws do not have the number of columns implied by ",
+           "the model specification.")
+    }
+
+    # Blocks of the level representation, in the order an estimated VARX
+    # sub-model stores them.
+    n_out <- k * p + m_exogen * (q_exogen + 1) + m_global * (q_global + 1) +
+      n_det_ur + n_det_r
+    result_coeffs <- matrix(NA_real_, draws, k * n_out)
+
+    beta <- posterior[["beta"]][["coeffs"]]
+
+    # One block of unmodelled variables: turns the coefficients of its
+    # differences and the columns of Pi that belong to it into the coefficients
+    # of its levels at the lags 0 to 'n_blocks'.
+    unmodelled_coefficients <- function(upsilon, pi_x, n_vars, n_blocks) {
+      if (n_vars == 0) {return(NULL)}
+      out <- matrix(0, k, n_vars * (n_blocks + 1))
+      if (n_blocks == 0) {
+        out[, 1:n_vars] <- 0
+        return(cbind(matrix(0, k, n_vars), pi_x))
+      }
+      block <- function(j) {upsilon[, (j - 1) * n_vars + 1:n_vars, drop = FALSE]}
+      out[, 1:n_vars] <- block(1)
+      for (j in 1:n_blocks) {
+        current <- if (j < n_blocks) block(j + 1) else matrix(0, k, n_vars)
+        value <- current - block(j)
+        if (j == 1) {value <- value + pi_x}
+        out[, j * n_vars + 1:n_vars] <- value
+      }
+      out
+    }
+
+    for (draw in seq_len(draws)) {
+
+      a <- matrix(coeffs[draw, ], k)
+      pi_plus <- matrix(0, k, k_ect)
+      if (rank > 0) {
+        alpha <- a[, 1:rank, drop = FALSE]
+        b <- matrix(beta[draw, ], k_ect, rank)
+        pi_plus <- alpha %*% t(b)
+      }
+      a <- a[, rank + seq_len(n_x), drop = FALSE]
+
+      # Endogenous variables
+      out_endogen <- matrix(0, k, k * p)
+      gamma <- function(j) {a[, (j - 1) * k + 1:k, drop = FALSE]}
+      out_endogen[, 1:k] <- diag(1, k) + pi_plus[, 1:k, drop = FALSE] +
+        (if (n_gamma > 0) gamma(1) else 0)
+      if (p > 1) {
+        for (j in 2:p) {
+          current <- if (j <= n_gamma) gamma(j) else matrix(0, k, k)
+          out_endogen[, (j - 1) * k + 1:k] <- current - gamma(j - 1)
+        }
+      }
+
+      offset <- k * n_gamma
+      out_exogen <- unmodelled_coefficients(
+        a[, offset + seq_len(m_exogen * q_exogen), drop = FALSE],
+        pi_plus[, k + seq_len(m_exogen), drop = FALSE], m_exogen, q_exogen)
+
+      offset <- offset + m_exogen * q_exogen
+      out_global <- unmodelled_coefficients(
+        a[, offset + seq_len(m_global * q_global), drop = FALSE],
+        pi_plus[, k + m_exogen + seq_len(m_global), drop = FALSE],
+        m_global, q_global)
+
+      offset <- offset + m_global * q_global
+      out_det <- NULL
+      if (n_det_ur > 0) {
+        out_det <- a[, offset + 1:n_det_ur, drop = FALSE]
+      }
+      if (n_det_r > 0) {
+        out_det <- cbind(out_det,
+                         pi_plus[, k + m_exogen + m_global + 1:n_det_r,
+                                 drop = FALSE])
+      }
+
+      result_coeffs[draw, ] <- cbind(out_endogen, out_exogen, out_global,
+                                     out_det)
+    }
+
+    dimnames(result_coeffs) <- list(NULL, NULL)
+    coeffs <- coda::mcmc(result_coeffs)
+    if (!is.null(mcpar)) {
+      attr(coeffs, "mcpar") <- mcpar
+    }
+    posterior[["a"]] <- list("coeffs" = coeffs)
+    posterior[["beta"]] <- NULL
+  }
+
+  # Specification of the level representation ----
+  model <- specification
+  model[["type"]] <- if (k == 1) "ARX" else "VARX"
+  model[["k"]] <- k
+  model[["k_endogen"]] <- k
+  model[["p"]] <- p
+  model[["p_endogen"]] <- p
+  model[["k_exogen"]] <- m_exogen
+  model[["p_exogen"]] <- if (m_exogen > 0) q_exogen + 1L else 0L
+  model[["m_global"]] <- m_global
+  model[["s_global"]] <- if (m_global > 0) q_global + 1L else 0L
+  model[["m"]] <- model[["k_exogen"]] * model[["p_exogen"]] +
+    model[["m_global"]] * model[["s_global"]]
+  model[["s"]] <- model[["p_exogen"]]
+  model[["n"]] <- n_det_ur + n_det_r
+  model[["deterministic"]] <- det_names
+  model[["n_restricted"]] <- 0L
+  model[["deterministic_restricted"]] <- NULL
+  model[["k_beta"]] <- NULL
 
   # The rank is a property of the error correction form and says nothing about
   # the model in levels, but it is what a sub-model of a GVEC model is chosen
   # by, so it is kept for reference.
   model[["rank"]] <- specification[["rank"]]
 
+  result <- object
   result[["model"]] <- model
+  result[["data"]][["train"]] <- list("y" = y, "x" = x)
+  result[["posterior"]] <- posterior
 
   class(result) <- c("varxsubmodel", "bvarmodel", "list")
 

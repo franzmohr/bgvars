@@ -19,21 +19,38 @@ Rewrites an estimated sub-model in error correction form as a sub-model in
 levels.
 }
 \details{
-The transformation itself is
-\code{\link[bvartools]{vec_to_var}}, which a 'vecxsubmodel' inherits through
-its 'bvecmodel' class. What this method adds is the part of the
-specification that describes a sub-model of a global model rather than a
-Bayesian VAR --- how many of its regressors are its own variables, how many
-are the weakly exogenous variables of the other units, and with how many lags
-each of them enters. \code{\link{submodels_to_gvar}} reads exactly those
-entries when it stacks the sub-models, so without them a converted sub-model
-could not be combined into a global model.
+The transformation is carried out here rather than delegated to
+\code{\link[bvartools]{vec_to_var}}, because a sub-model of a global model
+can carry a block of global variables on top of its weakly exogenous ones,
+and the two blocks may enter with different lag orders. A 'bvecmodel'
+describes a single block of unmodelled variables with a single lag order, so
+it cannot express that.
+
+Write the sub-model as
+\deqn{\Delta y_t = \Pi^{+} w_{t-1} + \sum_{l=1}^{p-1} \Gamma_l \Delta y_{t-l}
++ \sum_{l=0}^{q-1} \Upsilon_l \Delta x_{t-l} + C^{ur} d^{ur}_t + u_t,}
+where \eqn{w_{t-1}} collects the first lags of the endogenous variables, of
+the weakly exogenous variables, of the global variables and the restricted
+deterministic terms, and \eqn{\Pi^{+} = \alpha \beta^{+\prime}} splits into
+\eqn{(\Pi^{d}, \Pi^{*}, \Pi^{g}, \Pi^{R})} along those blocks. Undoing the
+differences gives the coefficients of the level representation,
+\deqn{A_1 = I + \Pi^{d} + \Gamma_1, \quad
+A_l = \Gamma_l - \Gamma_{l-1}, \quad A_p = -\Gamma_{p-1}}
+for the endogenous variables, and, for each block of unmodelled variables
+with \eqn{q} blocks of differences and level coefficient \eqn{\Pi^{x}},
+\deqn{B_0 = \Upsilon_0, \quad B_1 = \Upsilon_1 - \Upsilon_0 + \Pi^{x}, \quad
+B_l = \Upsilon_l - \Upsilon_{l-1}, \quad B_q = -\Upsilon_{q-1}.}
+A block of \eqn{q} differences therefore spans the lags \eqn{0} to \eqn{q} in
+levels, which is why \code{p_exogen} and \code{s_global} of the result are
+one larger than those of the sub-model it is given.
 
 The coefficients of the result are ordered the way an estimated VARX
 sub-model orders them: the lags of the endogenous variables, then the weakly
-exogenous variables from lag zero, then the deterministic terms. A trend that
-entered the error correction term restricted becomes an ordinary
-deterministic term of the level representation.
+exogenous variables from lag zero, then the global variables from lag zero,
+then the deterministic terms. \code{\link{submodels_to_gvar}} reads exactly
+those positions when it stacks the sub-models. A trend that entered the error
+correction term restricted becomes an ordinary deterministic term of the
+level representation.
 }
 \examples{
 
