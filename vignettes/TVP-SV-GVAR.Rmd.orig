@@ -78,9 +78,9 @@ object <- add_submodels(object,
                         endogen = c("y", "Dp", "r"),
                         p_endogen = 1,
                         exogen = c("y", "Dp", "r"),
-                        p_exogen = 0,
+                        p_exogen = 1,
                         global = "poil",
-                        s = 0,
+                        s = 1,
                         tvp = TRUE,
                         error = "sv+covar",
                         varsel = "bvs",
@@ -237,15 +237,18 @@ round(residual_sd(model_at), 5)
 
 ### Coefficient paths
 
-```{r paths, fig.align='center', fig.height=5, fig.width=9}
+```{r paths, fig.align='center', fig.height=4.5, fig.width=7}
 plot(model_at)
 ```
 
-A panel resting on a flat line at zero is a coefficient that variable selection
-switched off. Since one inclusion parameter is drawn per coefficient rather than
-per coefficient and period, a regressor is either in a sub-model over the whole
-sample or out of it over the whole sample, and the inclusion probabilities
-therefore differ across countries but not across periods.
+`plot` draws one figure per block of coefficients rather than one figure for the
+whole model, which for a sub-model of this size is the difference between panels
+that can be read and panels that cannot. A panel resting on a flat line at zero
+is a coefficient that variable selection switched off. Since one inclusion
+parameter is drawn per coefficient rather than per coefficient and period, a
+regressor is either in a sub-model over the whole sample or out of it over the
+whole sample, and the inclusion probabilities therefore differ across countries
+but not across periods.
 
 The coefficient paths of this specification drift slowly and by small amounts,
 and the columns of $\Sigma_t$ beside them do not. That is the other side of the
