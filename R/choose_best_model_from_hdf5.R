@@ -130,7 +130,14 @@ choose_best_model_from_hdf5 <- function(folder, criterion) {
     handles <- c(handles, dataset)
     object[["data"]][["train"]][["x"]] <- matrix(NA_real_, 1L, dataset$dims[2])
   }
-  
+  # The width of the error correction term, which is what the free parameters
+  # of a cointegration matrix of a given rank are counted from.
+  if (h5$exists("data/train/w")) {
+    dataset <- h5[["data/train/w"]]
+    handles <- c(handles, dataset)
+    object[["data"]][["train"]][["w"]] <- matrix(NA_real_, 1L, dataset$dims[2])
+  }
+
   # Posterior ----
   if (h5$exists("posterior/loglik")) {
     dataset <- h5[["posterior/loglik"]]
