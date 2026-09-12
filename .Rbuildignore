@@ -12,3 +12,4 @@ Rplots\.pdf$
 ^LICENSE\.md$
 ^CITATION\.cff$
 ^\.zenodo\.json$
+^\.claude$
