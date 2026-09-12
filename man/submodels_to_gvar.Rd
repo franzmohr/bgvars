@@ -18,7 +18,11 @@ relevant for time varying weights.}
 }
 \value{
 An object of class 'bvarmodel', which can be analysed with the
-functionality of \pkg{bvartools}.
+functionality of \pkg{bvartools} -- impulse responses, forecast error
+variance decompositions and forecasts. A forecast needs the future path of
+the global variables, which \code{\link[bvartools]{add_forecast_input}}
+takes as its \code{exogen} argument; \code{data$original$exogen} of the
+returned object holds the series to continue.
 }
 \description{
 Combines the estimated sub-models of a global model into the solved global
@@ -45,6 +49,12 @@ instead.
 The error covariance matrix of the structural form is block diagonal, one
 block per sub-model. The reduced form errors \eqn{G^{-1} u_t} are
 correlated across sub-models accordingly.
+
+The reduced form has constant coefficients, a full error precision and no
+structural form whatever the sub-models had, so the returned object names
+\code{VarNormalWishart} as the algorithm its draws came from. That is what
+the methods of \pkg{bvartools} that work on draws dispatch on, forecasting
+included.
 }
 \examples{
 
@@ -80,5 +90,16 @@ object <- add_posterior_coefficients(object)
 
 # Solve the global model
 gvar <- submodels_to_gvar(object)
+
+# Forecast it, holding the global variable at its last observed value
+poil <- gvar[["data"]][["original"]][["exogen"]]
+tsp_poil <- stats::tsp(poil)
+future <- stats::ts(matrix(rep(poil[nrow(poil), ], each = 5), 5, ncol(poil)),
+                    start = tsp_poil[2], frequency = tsp_poil[3])
+dimnames(future)[[2]] <- dimnames(poil)[[2]]
+
+gvar <- add_forecast_input(gvar, n_ahead = 4, exogen = future)
+gvar <- add_posterior_forecasts(gvar)
+fcst <- predict(gvar, n_ahead = 4)
 
 }

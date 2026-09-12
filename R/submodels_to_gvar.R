@@ -33,8 +33,18 @@
 #' block per sub-model. The reduced form errors \eqn{G^{-1} u_t} are
 #' correlated across sub-models accordingly.
 #'
+#' The reduced form has constant coefficients, a full error precision and no
+#' structural form whatever the sub-models had, so the returned object names
+#' \code{VarNormalWishart} as the algorithm its draws came from. That is what
+#' the methods of \pkg{bvartools} that work on draws dispatch on, forecasting
+#' included.
+#'
 #' @return An object of class 'bvarmodel', which can be analysed with the
-#' functionality of \pkg{bvartools}.
+#' functionality of \pkg{bvartools} -- impulse responses, forecast error
+#' variance decompositions and forecasts. A forecast needs the future path of
+#' the global variables, which \code{\link[bvartools]{add_forecast_input}}
+#' takes as its \code{exogen} argument; \code{data$original$exogen} of the
+#' returned object holds the series to continue.
 #'
 #' @examples
 #'
@@ -70,6 +80,17 @@
 #'
 #' # Solve the global model
 #' gvar <- submodels_to_gvar(object)
+#'
+#' # Forecast it, holding the global variable at its last observed value
+#' poil <- gvar[["data"]][["original"]][["exogen"]]
+#' tsp_poil <- stats::tsp(poil)
+#' future <- stats::ts(matrix(rep(poil[nrow(poil), ], each = 5), 5, ncol(poil)),
+#'                     start = tsp_poil[2], frequency = tsp_poil[3])
+#' dimnames(future)[[2]] <- dimnames(poil)[[2]]
+#'
+#' gvar <- add_forecast_input(gvar, n_ahead = 4, exogen = future)
+#' gvar <- add_posterior_forecasts(gvar)
+#' fcst <- predict(gvar, n_ahead = 4)
 #'
 #' @export
 submodels_to_gvar <- function(object, period = NULL) {
@@ -240,6 +261,20 @@ submodels_to_gvar <- function(object, period = NULL) {
   model[["structural"]] <- FALSE
   model[["iterations"]] <- as.integer(draws)
   model[["burnin"]] <- 0L
+  # The name every 'bvartools' method that works on draws dispatches on. It
+  # describes the three lines above rather than how any sub-model was
+  # estimated: the solved global model has constant coefficients, a full error
+  # precision and no structural form, whatever the sub-models had, and that
+  # combination is what 'bvartools' calls VarNormalWishart. The sub-models are
+  # free to differ -- a sub-model drawn with stochastic volatility still leaves
+  # one precision matrix per draw once its block is stacked -- and the
+  # time-varying and stochastic volatility cases stop further up rather than
+  # reaching here with coefficients this name would misdescribe.
+  #
+  # Without it add_posterior_forecasts() has nothing to dispatch on and fails
+  # with an argument of length zero, which is why a solved global model could
+  # not be forecast at all.
+  model[["algorithm"]] <- "VarNormalWishart"
   
   # Data
   endogen_data <- object[["global"]][["endogen"]][, unlist(pos_i)]
@@ -257,6 +292,19 @@ submodels_to_gvar <- function(object, period = NULL) {
   
   if (global) {
     tsp_global <- stats::tsp(object[["global"]][["exogen"]])
+    # The series themselves, before the lags are laid out beside them. This is
+    # what 'bvartools' means by data$original$exogen -- one column per variable
+    # rather than one per regressor, the way data$original$endogen above is the
+    # series and not the lag blocks built from them. prepare_forecast_input()
+    # lags whatever it is given, so handing it the embedded matrix would lag it
+    # a second time; and it is the only description of the global variables the
+    # returned object carries, so a caller assembling their future path has
+    # nothing else to read.
+    global_original <- stats::ts(
+      matrix(object[["global"]][["exogen"]][, global_i], ncol = length(global_i)),
+      end = tsp_global[2], frequency = tsp_global[3])
+    dimnames(global_original)[[2]] <- global_i
+
     global_data <- stats::embed(object[["global"]][["exogen"]][, global_i], s + 1)
     global_data <- stats::ts(global_data, end = tsp_global[2], frequency = tsp_global[3])
     x <- stats::na.omit(cbind(x, global_data))
@@ -265,6 +313,7 @@ submodels_to_gvar <- function(object, period = NULL) {
     }
   } else {
     global_data <- NULL
+    global_original <- NULL
   }
 
   # The global model has to describe the sample the sub-models were estimated
@@ -307,7 +356,7 @@ submodels_to_gvar <- function(object, period = NULL) {
   dimnames(x)[[2]] <- x_names
   
   data <- list("original" = list("endogen" = endogen_data,
-                                 "exogen" = global_data,
+                                 "exogen" = global_original,
                                  "deterministic" = det_data),
                "train" = list("y" = y,
                               "x" = x))

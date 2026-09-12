@@ -228,3 +228,92 @@ test_that("a global model without any lag is reported", {
 
   expect_error(submodels_to_gvar(object), "no dynamics")
 })
+
+# Forecasting the solved global model.
+#
+# The global model is returned as a 'bvarmodel' so that the methods of
+# bvartools work on it, and forecasting is the one that needs more than the
+# draws: it dispatches on model$algorithm, which the solved model did not carry
+# at all. Without it add_posterior_forecasts() failed on an argument of length
+# zero -- the sort of failure that reads as a broken object rather than as a
+# missing field.
+
+# The future path of the global variables a forecast needs. Held at the last
+# observed value, which is enough to have one and says nothing about the model.
+gvar_future_exogen <- function(gvar, n_ahead) {
+  exogen <- gvar[["data"]][["original"]][["exogen"]]
+  tsp_exogen <- stats::tsp(exogen)
+  future <- stats::ts(matrix(rep(as.numeric(exogen[nrow(exogen), ]), each = n_ahead + 1),
+                             n_ahead + 1, ncol(exogen)),
+                      start = tsp_exogen[2], frequency = tsp_exogen[3])
+  dimnames(future)[[2]] <- dimnames(exogen)[[2]]
+  future
+}
+
+test_that("the solved global model names the algorithm its draws came from", {
+  gvar <- submodels_to_gvar(gvar_estimated(iterations = 20, burnin = 10))
+
+  # The reduced form of the stacked sub-models: constant coefficients, a full
+  # error precision, no structural form. Whatever the sub-models were.
+  expect_equal(gvar[["model"]][["algorithm"]], "VarNormalWishart")
+  expect_false(gvar[["model"]][["tvp"]])
+  expect_false(gvar[["model"]][["structural"]])
+  expect_equal(gvar[["model"]][["error"]], "wishart")
+})
+
+test_that("data$original$exogen holds the global series, not their lags", {
+  # What prepare_forecast_input() lags to build the forecast regressors, so the
+  # embedded matrix that goes into data$train$x would be lagged twice over.
+  object <- gvar_estimated(iterations = 20, burnin = 10)
+  gvar <- submodels_to_gvar(object)
+
+  exogen <- gvar[["data"]][["original"]][["exogen"]]
+  expect_equal(ncol(exogen), gvar[["model"]][["m"]])
+  expect_equal(dimnames(exogen)[[2]], gvar[["model"]][["exogen"]])
+})
+
+test_that("the solved global model forecasts", {
+  gvar <- submodels_to_gvar(gvar_estimated(iterations = 20, burnin = 10))
+  k <- gvar[["model"]][["k"]]
+  n_ahead <- 4
+
+  gvar <- add_forecast_input(gvar, n_ahead = n_ahead,
+                             exogen = gvar_future_exogen(gvar, n_ahead))
+
+  # The compact layout: one row per period, one column per regressor.
+  expect_equal(nrow(gvar[["data"]][["forecast"]][["x"]]), n_ahead)
+  expect_equal(ncol(gvar[["data"]][["forecast"]][["x"]]),
+               k * gvar[["model"]][["p"]] +
+                 gvar[["model"]][["m"]] * (gvar[["model"]][["s"]] + 1) +
+                 gvar[["model"]][["n"]])
+
+  gvar <- add_posterior_forecasts(gvar)
+  forecast <- stats::predict(gvar, n_ahead = n_ahead)
+
+  expect_s3_class(forecast, "bvarprd")
+  expect_equal(dim(forecast[["fcst"]]), c(n_ahead, k, 20L))
+  expect_true(all(is.finite(forecast[["fcst"]])))
+  expect_equal(dimnames(forecast[["fcst"]])[[2]], gvar[["model"]][["endogen"]])
+})
+
+test_that("the coefficients of the global model line up with its regressors", {
+  # A forecast built on a misread coefficient vector still runs and is still
+  # finite -- it is simply a different model. The in-sample residual is what
+  # separates the two: against the right layout it is the model's error, and
+  # against the same numbers read the other way it is the size of the series.
+  gvar <- submodels_to_gvar(gvar_estimated(iterations = 20, burnin = 10))
+
+  k <- gvar[["model"]][["k"]]
+  y <- gvar[["data"]][["train"]][["y"]]
+  x <- gvar[["data"]][["train"]][["x"]]
+  a <- as.matrix(gvar[["posterior"]][["a"]][["coeffs"]])
+
+  expect_equal(ncol(a), k * ncol(x))
+
+  scale <- sqrt(mean(as.matrix(y)^2))
+  residual <- function(coefficients) sqrt(mean((t(y) - coefficients %*% t(x))^2))
+
+  # matrix(a[1, ], nrow = k) is the reshape the forecast does.
+  expect_lt(residual(matrix(a[1, ], nrow = k)), scale)
+  expect_gt(residual(t(matrix(a[1, ], ncol = k))), scale)
+})
