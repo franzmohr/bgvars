@@ -9,3 +9,6 @@
 ^vignettes/.*\.orig$
 ^vignettes/precompile\.R$
 Rplots\.pdf$
+^LICENSE\.md$
+^CITATION\.cff$
+^\.zenodo\.json$

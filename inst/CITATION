@@ -4,14 +4,14 @@ year <- sub("-.*", "", meta$Date)
 note <- sprintf("R package version %s", meta$Version)
 
 bibentry(bibtype = "Manual",
-         title = "{bgvars}: Bayesian Inference of Global Vector Autoregressive and Gloal Vector Error Correction Models",
+         title = "{bgvars}: Bayesian Inference of Global Vector Autoregressive and Global Vector Error Correction Models",
          author = "{Franz X.} Mohr",
          year = year,
          note = note,
          url = "https://CRAN.R-project.org/package=bgvars",
          textVersion = paste0("Franz X. Mohr (",
                 year,
-                "). bgvars: Bayesian Inference of Global Vector Autoregressive and Gloal Vector Error Correction Models. ",
+                "). bgvars: Bayesian Inference of Global Vector Autoregressive and Global Vector Error Correction Models. ",
                 note, "."))
 
 bibentry(header = "To cite the 'gvar2016' dataset in publications use:",

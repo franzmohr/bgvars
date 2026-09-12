@@ -14,6 +14,11 @@ downloads](https://cranlogs.r-pkg.org/badges/grand-total/bgvars)](https://cran.r
 [![R-CMD-check](https://github.com/franzmohr/bgvars/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/franzmohr/bgvars/actions/workflows/R-CMD-check.yaml)
 [![License: GPL (\>=
 3)](https://img.shields.io/badge/license-GPL%20%28%3E%3D%203%29-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+<!-- After the first Zenodo release, replace ZENODO_CONCEPT_DOI_ID below with the
+     concept DOI of the record (the one that always points at the latest version)
+     and uncomment the badge:
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.ZENODO_CONCEPT_DOI_ID.svg)](https://doi.org/10.5281/zenodo.ZENODO_CONCEPT_DOI_ID)
+-->
 <!-- badges: end -->
 
 ## Overview

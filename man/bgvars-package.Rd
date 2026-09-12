@@ -4,7 +4,7 @@
 \name{bgvars-package}
 \alias{bgvars}
 \alias{bgvars-package}
-\title{bgvars: Bayesian Inference of Global Vector Autoregressive and Gloal Vector Error Correction Models}
+\title{bgvars: Bayesian Inference of Global Vector Autoregressive and Global Vector Error Correction Models}
 \description{
 Assists in the set-up and inference of Bayesian global vector autoregressive (BGVAR) and error correction (BGVEC) models.
 }

@@ -1,0 +1,31 @@
+{
+  "upload_type": "software",
+  "title": "bgvars: Bayesian Inference of Global Vector Autoregressive and Global Vector Error Correction Models",
+  "description": "<p>An R package that assists in the set-up and inference of Bayesian global vector autoregressive (BGVAR) and global vector error correction (BGVEC) models. It covers the preparation of country-specific data and weight matrices, the specification and estimation of country sub-models, their combination into a solved global model, and the evaluation of the result by means of forecasts, generalised impulse responses and forecast error variance decompositions.</p>",
+  "creators": [
+    {
+      "name": "Mohr, Franz X.",
+      "orcid": "0009-0003-8890-7781"
+    }
+  ],
+  "license": "gpl-3.0-or-later",
+  "access_right": "open",
+  "language": "eng",
+  "keywords": [
+    "R",
+    "Bayesian inference",
+    "econometrics",
+    "time series",
+    "global vector autoregression",
+    "GVAR",
+    "vector error correction",
+    "macroeconomics"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/franzmohr/bgvars",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ]
+}
