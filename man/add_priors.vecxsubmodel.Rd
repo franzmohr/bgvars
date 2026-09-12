@@ -89,8 +89,15 @@ cointegration space in the first case, and a state equation in the second.
   \item{\code{rho}}{a numeric specifying the autocorrelation coefficient
   of the state equation of \eqn{\beta}. It must be smaller than 1.
   Required for sub-models with time varying cointegration parameters and not used otherwise.
-  Note that in contrast to Koop et al. (2011) \eqn{\rho} is not drawn in the Gibbs sampler of
-  this package yet.}
+  If \code{rho_min} and \code{rho_max} are given as well, this is the value the
+  chain starts \eqn{\rho} at rather than the value it keeps, and it must lie
+  between them.}
+  \item{\code{rho_min}, \code{rho_max}}{numerics specifying the support of a
+  uniform prior on \eqn{\rho}, which makes it a drawn parameter rather than a
+  fixed hyperparameter. Optional, and either both or neither; they must
+  satisfy \eqn{0 < }\code{rho_min}\eqn{ < }\code{rho_max}\eqn{ \le 1}.
+  Koop et al. (2011) use \eqn{(0.999, 1)}.
+  Only used for sub-models with time varying cointegration parameters.}
 }
 For a sub-model with time varying cointegration parameters the state equation is
 \eqn{\beta_t = \rho \beta_{t-1} + \eta_t} with \eqn{\eta_t \sim N(0, I)}, and
