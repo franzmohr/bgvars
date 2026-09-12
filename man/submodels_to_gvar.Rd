@@ -46,6 +46,15 @@ structural form of a 'bvarmodel', which stores the free elements of a unit
 lower triangular matrix. Its draws are returned as element \code{g}
 instead.
 
+The sub-models may use different deterministic terms. The global model uses
+every term that any of them uses, in the order of the deterministic series of
+the global model, and a sub-model has coefficients of zero on the terms it
+does not use. This typically arises in a GVEC model, when a sub-model with a
+restricted trend is estimated at cointegration rank zero: without an error
+correction term the trend drops out of its level representation (see
+\code{\link{vec_to_var.vecxsubmodel}}), while the sub-models of higher rank
+keep it.
+
 The error covariance matrix of the structural form is block diagonal, one
 block per sub-model. The reduced form errors \eqn{G^{-1} u_t} are
 correlated across sub-models accordingly.

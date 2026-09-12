@@ -227,3 +227,73 @@ test_that("the level representation fits what the error correction form fits", {
     }
   }
 })
+
+test_that("sub-models with different deterministic terms can be solved together", {
+  # A restricted trend drops out of the level representation of a sub-model at
+  # rank zero, so it has one deterministic term fewer than the sub-models of
+  # rank one. The global model uses both terms and gives that sub-model a trend
+  # coefficient of zero.
+  object <- gvec_object()
+  object <- add_submodels(object,
+                          endogen = c("y", "Dp"), p_endogen = 1,
+                          exogen = c("y", "Dp"), p_exogen = 1,
+                          const = "unrestricted", trend = "restricted", r = 0:1,
+                          iterations = 20, burnin = 10)
+  object <- add_priors(object,
+                       coef = list(v_i = 0),
+                       coint = list(v_i = 0, p_tau_i = 1),
+                       sigma = list(df = 3, scale = 0.0001))
+  object <- add_initial_values(object)
+  object <- add_posterior_coefficients(object)
+
+  # US at rank zero, JP and CA at rank one.
+  rank_wanted <- c("US" = 0, "JP" = 1, "CA" = 1)
+  for (submodel in names(object[["submodels"]])) {
+    models <- object[["submodels"]][[submodel]]
+    ranks <- vapply(models, function(x) as.numeric(x[["model"]][["rank"]]), numeric(1))
+    result <- models[ranks == rank_wanted[[submodel]]]
+    class(result) <- class(models)
+    object[["submodels"]][[submodel]] <- result
+  }
+  object <- gvec_to_gvar(object)
+
+  expect_equal(object[["submodels"]][["US"]][[1]][["model"]][["deterministic"]], "const")
+  expect_equal(object[["submodels"]][["JP"]][[1]][["model"]][["deterministic"]],
+               c("const", "trend"))
+
+  gvec <- submodels_to_gvar(object)
+
+  expect_equal(gvec[["model"]][["n"]], 2L)
+  expect_equal(gvec[["model"]][["deterministic"]], c("const", "trend"))
+  expect_equal(utils::tail(dimnames(gvec[["data"]][["train"]][["x"]])[[2]], 2),
+               c("const", "trend"))
+
+  k <- gvec[["model"]][["k"]]
+  n <- gvec[["model"]][["n"]]
+  coeffs <- gvec[["posterior"]][["a"]][["coeffs"]]
+  pos_c <- ncol(coeffs) - k * n + 1:(k * n)
+  endogen <- gvec[["model"]][["endogen"]]
+
+  for (draw in seq_len(nrow(coeffs))) {
+    # Back to the structural form, where each block is one sub-model.
+    g <- matrix(gvec[["g"]][draw, ], k)
+    c_structural <- g %*% matrix(coeffs[draw, pos_c], k)
+
+    for (submodel in names(object[["submodels"]])) {
+      model <- object[["submodels"]][[submodel]][[1]]
+      k_i <- model[["model"]][["k_endogen"]]
+      n_i <- model[["model"]][["n"]]
+      a_i <- model[["posterior"]][["a"]][["coeffs"]]
+      c_i <- matrix(a_i[draw, ncol(a_i) - k_i * n_i + 1:(k_i * n_i)], k_i)
+      dimnames(c_i) <- list(NULL, model[["model"]][["deterministic"]])
+
+      rows <- startsWith(endogen, paste0(submodel, "_"))
+      expect_equal(c_structural[rows, 1], c_i[, "const"], info = submodel)
+      if (submodel == "US") {
+        expect_equal(c_structural[rows, 2], rep(0, k_i), info = submodel)
+      } else {
+        expect_equal(c_structural[rows, 2], c_i[, "trend"], info = submodel)
+      }
+    }
+  }
+})
