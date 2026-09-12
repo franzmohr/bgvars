@@ -50,7 +50,10 @@ exogenous variables from lag zero, then the global variables from lag zero,
 then the deterministic terms. \code{\link{submodels_to_gvar}} reads exactly
 those positions when it stacks the sub-models. A trend that entered the error
 correction term restricted becomes an ordinary deterministic term of the
-level representation.
+level representation. At cointegration rank zero there is no error correction
+term, so restricted terms have no effect on the model and are dropped, as
+\code{\link[bvartools]{vec_to_var}} does. \code{\link{submodels_to_gvar}}
+gives such a sub-model coefficients of zero on the terms it lacks.
 }
 \examples{
 

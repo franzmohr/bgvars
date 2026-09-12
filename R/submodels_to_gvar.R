@@ -29,6 +29,15 @@
 #' lower triangular matrix. Its draws are returned as element \code{g}
 #' instead.
 #'
+#' The sub-models may use different deterministic terms. The global model uses
+#' every term that any of them uses, in the order of the deterministic series of
+#' the global model, and a sub-model has coefficients of zero on the terms it
+#' does not use. This typically arises in a GVEC model, when a sub-model with a
+#' restricted trend is estimated at cointegration rank zero: without an error
+#' correction term the trend drops out of its level representation (see
+#' \code{\link{vec_to_var.vecxsubmodel}}), while the sub-models of higher rank
+#' keep it.
+#'
 #' The error covariance matrix of the structural form is block diagonal, one
 #' block per sub-model. The reduced form errors \eqn{G^{-1} u_t} are
 #' correlated across sub-models accordingly.
@@ -191,17 +200,32 @@ submodels_to_gvar <- function(object, period = NULL) {
   }
   
   # Deterministic variables
-  n_i <- unlist(lapply(object[["submodels"]],
-                       function(x){x[[1]][["model"]][["n"]]}))
-  n <- unique(n_i)
-  if (length(n) > 1) {
-    stop("Number of deterministic terms differs across sub-models.\n",
-         "Feel free to send a feature request.")
+  #
+  # The sub-models need not carry the same terms. A VECX sub-model at rank zero
+  # has no error correction term, so a trend restricted to it drops out of its
+  # level representation, while the sub-models of higher rank keep it. The
+  # global model uses every term that any sub-model uses, and a sub-model gets
+  # zero coefficients on the terms it lacks.
+  n_i <- vapply(object[["submodels"]], function(x) {
+    n_x <- x[[1]][["model"]][["n"]]
+    if (is.null(n_x)) 0 else as.numeric(n_x)
+  }, numeric(1))
+  det_names_i <- lapply(object[["submodels"]], function(x){x[[1]][["model"]][["deterministic"]]})
+  for (i in submodels) {
+    if (length(det_names_i[[i]]) != n_i[i]) {
+      stop("Sub-model ", i, " uses ", n_i[i], " deterministic term(s), but ",
+           "names ", length(det_names_i[[i]]), " of them.")
+    }
   }
-  if (n > 0) {
-    det_names_i <- lapply(object[["submodels"]], function(x){x[[1]][["model"]][["deterministic"]]})
-    det_names <- unique(unlist(det_names_i))
-  } else {
+  det_names <- unique(unlist(det_names_i))
+  names(det_names) <- NULL
+  # In the order of the global model's deterministic series, so the result does
+  # not depend on which sub-model happens to come first. Terms it does not
+  # provide are reported further down, when the data are taken from it.
+  det_global <- dimnames(object[["global"]][["deterministic"]])[[2]]
+  det_names <- c(intersect(det_global, det_names), setdiff(det_names, det_global))
+  n <- length(det_names)
+  if (n == 0) {
     det_names <- NULL
   }
   
@@ -330,12 +354,6 @@ submodels_to_gvar <- function(object, period = NULL) {
   x <- stats::window(x, start = sub_tsp[1], end = sub_tsp[2])
 
   if (n > 0) {
-
-    if (length(det_names) != n) {
-      stop("The sub-models use ", n, " deterministic term(s) each, but ",
-           length(det_names), " different ones between them: ",
-           paste0(det_names, collapse = ", "), ".")
-    }
 
     # From the global model, which is where the sub-models took them from as
     # well, so the global model uses the same series they were estimated with.
@@ -549,15 +567,18 @@ submodels_to_gvar <- function(object, period = NULL) {
     
     #### Put together D ####
     if (n > 0) {
+      # Terms a sub-model does not use keep their coefficients of zero.
       d_temp <- matrix(0, k, n)
       for (i in submodels) {
-        pos_det <- n_endogen_i[i] + n_exogen_i[i] + n_global_i[i] + 1:(k_endogen_i[i] * n_i[i])
         if (n_i[i] > 0) {
+          pos_det <- n_endogen_i[i] + n_exogen_i[i] + n_global_i[i] + 1:(k_endogen_i[i] * n_i[i])
+          # Matched by name, since a sub-model may order its terms differently.
+          col_det <- match(det_names_i[[i]], det_names)
           if (tvp_i[i]) {
             stop("Implement TVP")
-            #d_temp[k_pos[i] + 1:k_endogen_i[i],] <- object[[i]][["posterior"]][["a"]][["coeffs"]][[period]][draw, pos_det]
+            #d_temp[k_pos[i] + 1:k_endogen_i[i], col_det] <- object[[i]][["posterior"]][["a"]][["coeffs"]][[period]][draw, pos_det]
           } else {
-            d_temp[k_pos[i] + 1:k_endogen_i[i],] <- object[["submodels"]][[i]][[1]][["posterior"]][["a"]][["coeffs"]][draw, pos_det] 
+            d_temp[k_pos[i] + 1:k_endogen_i[i], col_det] <- object[["submodels"]][[i]][[1]][["posterior"]][["a"]][["coeffs"]][draw, pos_det]
           }
         }
       }
