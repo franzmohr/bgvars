@@ -11,23 +11,6 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// draw_forecast
-arma::mat draw_forecast(int& k, int& p, arma::mat& a0_i, bool& use_a, arma::mat& a, arma::mat& sigma, arma::mat pred);
-RcppExport SEXP _bgvars_draw_forecast(SEXP kSEXP, SEXP pSEXP, SEXP a0_iSEXP, SEXP use_aSEXP, SEXP aSEXP, SEXP sigmaSEXP, SEXP predSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int& >::type k(kSEXP);
-    Rcpp::traits::input_parameter< int& >::type p(pSEXP);
-    Rcpp::traits::input_parameter< arma::mat& >::type a0_i(a0_iSEXP);
-    Rcpp::traits::input_parameter< bool& >::type use_a(use_aSEXP);
-    Rcpp::traits::input_parameter< arma::mat& >::type a(aSEXP);
-    Rcpp::traits::input_parameter< arma::mat& >::type sigma(sigmaSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type pred(predSEXP);
-    rcpp_result_gen = Rcpp::wrap(draw_forecast(k, p, a0_i, use_a, a, sigma, pred));
-    return rcpp_result_gen;
-END_RCPP
-}
 // gir
 arma::mat gir(Rcpp::List A, int h, int impulse, int response);
 RcppExport SEXP _bgvars_gir(SEXP ASEXP, SEXP hSEXP, SEXP impulseSEXP, SEXP responseSEXP) {
@@ -72,7 +55,6 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_bgvars_draw_forecast", (DL_FUNC) &_bgvars_draw_forecast, 7},
     {"_bgvars_gir", (DL_FUNC) &_bgvars_gir, 4},
     {"_bgvars_ir", (DL_FUNC) &_bgvars_ir, 5},
     {"_bgvars_vardecomp", (DL_FUNC) &_bgvars_vardecomp, 3},
