@@ -42,7 +42,10 @@ with \eqn{q} blocks of differences and level coefficient \eqn{\Pi^{x}},
 B_l = \Upsilon_l - \Upsilon_{l-1}, \quad B_q = -\Upsilon_{q-1}.}
 A block of \eqn{q} differences therefore spans the lags \eqn{0} to \eqn{q} in
 levels, which is why \code{p_exogen} and \code{s_global} of the result are
-one larger than those of the sub-model it is given.
+one larger than those of the sub-model it is given. A block without
+differences, \eqn{q = 0}, still enters through the error correction term at
+lag one, so in levels it spans the lags \eqn{0} and \eqn{1}, with
+\eqn{B_0 = 0} and \eqn{B_1 = \Pi^{x}}, and the result counts two blocks.
 
 The coefficients of the result are ordered the way an estimated VARX
 sub-model orders them: the lags of the endogenous variables, then the weakly
