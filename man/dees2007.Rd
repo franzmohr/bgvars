@@ -7,27 +7,32 @@
 \format{
 A named list containing the following elements:
 \describe{
-  \item{\strong{submodel_data}}{A named list of 26 elements, consisting of
-  submodel-specific data. Each element of those sub-elements includes an
-  element \strong{endogen}, which is a time-series object with 99 quarterly
-  observations from 1979Q2 to 2003Q7 of the following variables:
-  
+  \item{\strong{submodel_data}}{A named list of class 'submodeldata' with 26
+  elements, one per economy: AR, AU, BR, CA, CN, CL, IN, ID, JP, KR, MY, MX,
+  NO, NZ, PE, PH, ZA, SA, SG, SE, CH, TH, TR, GB, US and EA. Each element
+  holds an element \strong{endogen}, a time-series object with 99 quarterly
+  observations from 1979Q2 to 2003Q4 of the following variables:
+
   \itemize{
   \item \strong{y:} log real GDP
-  \item \strong{p:} rate of inflation
+  \item \strong{Dp:} rate of inflation
   \item \strong{rs:} short-term interest rate
   \item \strong{rl:} long-term interest rate
   \item \strong{q:} log real equity prices
   \item \strong{ep:} log real exchange rate
   }
-  
-  The second sub-element contains a time-series object containing annual data on
-   trade flows from 1980 to 2016 for the respective country.
+
+  Not every economy has every variable. Long-term interest rates are
+  available for eleven economies and the euro area, equity prices for 18
+  economies and the euro area. The US has no real exchange rate, and Saudi
+  Arabia has neither interest rates nor equity prices.
+
+  The second element, \strong{weights}, is a time-series object with annual
+  trade flows of the economy with each of the 26 economies from 1980 to 2003.
   }
-  
+
   \item{\strong{global_data}}{A time-series object containing 99 quarterly observations
-  from 1979Q2 to 2003Q4 of log of oil prices.} 
-  \item{\strong{weight_data}}{A named \eqn{26 \times 26} weight matrix.}
+  from 1979Q2 to 2003Q4 of the log of oil prices, \strong{poil}.}
 }
 
 See the supplementary material to Dees et al. (2007) for further details on the
@@ -38,7 +43,8 @@ data("dees2007")
 }
 \description{
 The data set of Dees et al. (2007) contains economic time series for
-26 economies and oil prices from 1979Q2 to 2003Q4.
+26 economies and oil prices from 1979Q2 to 2003Q4. The euro area enters as a
+single economy, the aggregate of eight of its members.
 }
 \references{
 Dees, S., di Mauro, F., Pesaran, M. H., & Smith, V. (2007). Exploring the
