@@ -7,9 +7,9 @@
 submodels_to_gvar(object, period = NULL)
 }
 \arguments{
-\item{object}{an object of class 'gvarmodel' containing exactly one
-estimated model per sub-model. Use the \code{submodels} argument of
-\code{\link{read_gvar_from_folder}} to reduce an object with multiple
+\item{object}{an object of class 'gvarmodel' or 'gvecmodel' containing
+exactly one estimated model per sub-model. Use the \code{submodels} argument
+of \code{\link{read_gvar_from_folder}} to reduce an object with multiple
 candidate models per sub-model to one.}
 
 \item{period}{integer of the period, whose weight matrices should be used to
@@ -38,6 +38,14 @@ become \eqn{(A_{0i}, -A^{*}_{0i}) W_i y_t}, and stacking these blocks over
 all sub-models gives the global matrix \eqn{G}. The lagged terms are
 stacked the same way, which turns the sub-models into a single VAR in
 \eqn{y_t}.
+
+The sub-models are stacked in levels. A sub-model in error correction form
+is therefore rewritten as the level VARX model it implies first, with
+\code{\link{vec_to_var.vecxsubmodel}}, so a GVEC model is solved in the same
+single step as a GVAR model. The same holds for a model whose sub-models
+were chosen from VARX and VECX candidates alike and so come in both forms.
+The cointegration rank of a sub-model describes its error correction form
+only and plays no further role.
 
 The model is returned in its reduced form, that is, premultiplied by
 \eqn{G^{-1}}, which is the form the methods of \pkg{bvartools} work on.
@@ -110,5 +118,32 @@ dimnames(future)[[2]] <- dimnames(poil)[[2]]
 gvar <- add_forecast_input(gvar, n_ahead = 4, exogen = future)
 gvar <- add_posterior_forecasts(gvar)
 fcst <- predict(gvar, n_ahead = 4)
+
+# A GVEC model is solved the same way
+data("dees2007")
+submodel_data <- select_list_elements(dees2007[["submodel_data"]],
+                                      c("US", "JP", "CA"))
+
+object <- create_gvecmodel(submodel_data = submodel_data,
+                           global_data = dees2007[["global_data"]])
+object <- add_weight_matrices(object = object,
+                              submodel_data = submodel_data,
+                              period = 1999:2001)
+object <- add_submodels(object,
+                        endogen = c("y", "Dp"), p_endogen = 1,
+                        exogen = c("y", "Dp"), p_exogen = 1,
+                        const = "unrestricted", trend = "restricted", r = 1,
+                        iterations = 20, burnin = 10)
+# Number of iterations and burn-in should be much higher.
+
+object <- align_model_obs(object)
+object <- add_priors(object,
+                     coef = list(v_i = 0),
+                     coint = list(v_i = 0, p_tau_i = 1),
+                     sigma = list(df = 3, scale = 0.0001))
+object <- add_initial_values(object)
+object <- add_posterior_coefficients(object)
+
+gvec <- submodels_to_gvar(object)
 
 }

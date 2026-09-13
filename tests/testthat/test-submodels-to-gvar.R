@@ -214,11 +214,18 @@ test_that("constant weights make the period irrelevant", {
                submodels_to_gvar(object, period = 20)[["g"]])
 })
 
-test_that("submodels_to_gvar refuses sub-models in error correction form", {
-  object <- gvec_estimated(iterations = 20, burnin = 10)
+test_that("candidates in error correction form are refused before they are rewritten", {
+  # Only a single model per sub-model is rewritten in levels and stacked, so a
+  # GVEC model that still holds several candidates is reported as such rather
+  # than converted first.
+  object <- gvec_object()
+  object <- add_submodels(object,
+                          endogen = c("y", "Dp"), p_endogen = 1,
+                          exogen = c("y", "Dp"), p_exogen = 1,
+                          const = "unrestricted", r = 0:1,
+                          iterations = 20, burnin = 10)
 
-  expect_error(submodels_to_gvar(object),
-               "error correction form")
+  expect_error(submodels_to_gvar(object), "only contain one model per sub-model")
 })
 
 test_that("a global model without any lag is reported", {

@@ -3,9 +3,9 @@
 #' Combines the estimated sub-models of a global model into the solved global
 #' model.
 #'
-#' @param object an object of class 'gvarmodel' containing exactly one
-#' estimated model per sub-model. Use the \code{submodels} argument of
-#' \code{\link{read_gvar_from_folder}} to reduce an object with multiple
+#' @param object an object of class 'gvarmodel' or 'gvecmodel' containing
+#' exactly one estimated model per sub-model. Use the \code{submodels} argument
+#' of \code{\link{read_gvar_from_folder}} to reduce an object with multiple
 #' candidate models per sub-model to one.
 #' @param period integer of the period, whose weight matrices should be used to
 #' solve the model. Defaults to the last period of the estimation sample. Only
@@ -21,6 +21,14 @@
 #' all sub-models gives the global matrix \eqn{G}. The lagged terms are
 #' stacked the same way, which turns the sub-models into a single VAR in
 #' \eqn{y_t}.
+#'
+#' The sub-models are stacked in levels. A sub-model in error correction form
+#' is therefore rewritten as the level VARX model it implies first, with
+#' \code{\link{vec_to_var.vecxsubmodel}}, so a GVEC model is solved in the same
+#' single step as a GVAR model. The same holds for a model whose sub-models
+#' were chosen from VARX and VECX candidates alike and so come in both forms.
+#' The cointegration rank of a sub-model describes its error correction form
+#' only and plays no further role.
 #'
 #' The model is returned in its reduced form, that is, premultiplied by
 #' \eqn{G^{-1}}, which is the form the methods of \pkg{bvartools} work on.
@@ -101,20 +109,42 @@
 #' gvar <- add_posterior_forecasts(gvar)
 #' fcst <- predict(gvar, n_ahead = 4)
 #'
+#' # A GVEC model is solved the same way
+#' data("dees2007")
+#' submodel_data <- select_list_elements(dees2007[["submodel_data"]],
+#'                                       c("US", "JP", "CA"))
+#'
+#' object <- create_gvecmodel(submodel_data = submodel_data,
+#'                            global_data = dees2007[["global_data"]])
+#' object <- add_weight_matrices(object = object,
+#'                               submodel_data = submodel_data,
+#'                               period = 1999:2001)
+#' object <- add_submodels(object,
+#'                         endogen = c("y", "Dp"), p_endogen = 1,
+#'                         exogen = c("y", "Dp"), p_exogen = 1,
+#'                         const = "unrestricted", trend = "restricted", r = 1,
+#'                         iterations = 20, burnin = 10)
+#' # Number of iterations and burn-in should be much higher.
+#'
+#' object <- align_model_obs(object)
+#' object <- add_priors(object,
+#'                      coef = list(v_i = 0),
+#'                      coint = list(v_i = 0, p_tau_i = 1),
+#'                      sigma = list(df = 3, scale = 0.0001))
+#' object <- add_initial_values(object)
+#' object <- add_posterior_coefficients(object)
+#'
+#' gvec <- submodels_to_gvar(object)
+#'
 #' @export
 submodels_to_gvar <- function(object, period = NULL) {
-  
+
+  if (is.null(object[["submodels"]])) {
+    stop("Argument 'object' does not contain sub-models.")
+  }
+
   index <- object[["global"]][["index"]]
   submodels <- unique(index[, "submodel"])
-
-  # The sub-models are stacked as they are, so they have to be VARX models
-  # already. A VECX sub-model has to be rewritten in levels first.
-  classes <- unlist(lapply(object[["submodels"]],
-                           function(x) class(x[[1]])))
-  if (any(classes == "vecxsubmodel")) {
-    stop("Argument 'object' contains sub-models in error correction form. ",
-         "Use 'gvec_to_gvar' to obtain their level representation first.")
-  }
 
   # Number of models per sub-model
   n_models_i <- unlist(lapply(object[["submodels"]], function(x){length(x)}))
@@ -123,6 +153,26 @@ submodels_to_gvar <- function(object, period = NULL) {
     msg_names <- paste0(names(n_models_i)[pos], collapse = ", ")
     stop("Argument 'object' may only contain one model per sub-model.\n",
          "Affected sub-models: ", msg_names, ".")
+  }
+
+  # Sub-models are stacked in levels, so one in error correction form is
+  # rewritten as the level VARX model it implies first. Done here rather than
+  # in a step of its own, so that a GVEC model is solved like a GVAR model and
+  # a model whose sub-models were chosen from VARX and VECX candidates, and so
+  # come in both forms, is solved at all. The global data, the index and the
+  # weight matrices describe the units and their weights, which neither form
+  # changes.
+  for (i in names(object[["submodels"]])) {
+    model_i <- object[["submodels"]][[i]][[1]]
+
+    if (is.null(model_i[["posterior"]])) {
+      stop("Sub-model ", i, " has not been estimated yet, so the global model ",
+           "cannot be solved.")
+    }
+
+    if (inherits(model_i, "vecxsubmodel")) {
+      object[["submodels"]][[i]][[1]] <- vec_to_var(model_i)
+    }
   }
   
   # Endogenous variables

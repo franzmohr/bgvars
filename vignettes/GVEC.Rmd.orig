@@ -526,17 +526,11 @@ object <- add_posterior_loglik(object)
 
 ### Solve the model
 
-The sub-models are in error correction form, which `submodels_to_gvar` cannot
-stack: it combines sub-models in levels. `gvec_to_gvar` rewrites every one of
-them, turning the object into a `gvarmodel`.
-
-```{r, eval = TRUE}
-object <- gvec_to_gvar(object)
-```
-
-The cointegration rank of a sub-model is a property of its error correction
-form, so it is kept alongside the level representation for reference, but plays
-no further role.
+The sub-models are in error correction form, while the global model combines
+them in levels. `submodels_to_gvar` therefore rewrites every sub-model in levels
+with `vec_to_var` before it stacks them, so a GVEC model is solved in the same
+step as a GVAR model. The cointegration rank of a sub-model is a property of its
+error correction form and plays no further role.
 
 From here on the model is treated exactly as in the vignette on global vector
 autoregressive models.

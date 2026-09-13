@@ -577,13 +577,13 @@ one that variable selection switched off.
 
 ## What cannot be done yet
 
-A GVEC model is solved by rewriting every sub-model in levels with
-`gvec_to_gvar` and stacking the result with `submodels_to_gvar`. The first step
-refuses a time varying sub-model:
+`submodels_to_gvar` solves a GVEC model by rewriting every sub-model in levels
+with `vec_to_var` and stacking the result. The first step refuses a time varying
+sub-model:
 
 
 ``` r
-gvec_to_gvar(object)
+submodels_to_gvar(object)
 #> Error in `vec_to_var.vecxsubmodel()`:
 #> ! Posterior draws of models with time varying parameters cannot be transformed.
 ```
@@ -591,7 +591,7 @@ gvec_to_gvar(object)
 The transformation writes the coefficients of one draw as the coefficients of the
 corresponding level VARX, and a time varying model has one such VARX per period
 and per draw, so what would come back is not the object the rest of the package
-works on. `submodels_to_gvar` refuses time varying and stochastic volatility
+works on. The stacking step refuses time varying and stochastic volatility
 sub-models for the same reason, so the road ends in the same place as in the
 GVAR vignette: the paths and the period-wise summaries above are what a time
 varying specification gives, and a solved global model is built from sub-models
