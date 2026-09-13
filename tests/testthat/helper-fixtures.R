@@ -75,7 +75,7 @@ gvar_estimated <- function(iterations = 50, burnin = 10, p_endogen = 1) {
 
 # A fully estimated 'gvecmodel' object.
 #
-# Note that no global variables are used. See test-known-issues.R.
+# Note that no global variables are used.
 gvec_estimated <- function(iterations = 50, burnin = 10, r = 1) {
   object <- gvec_object()
   object <- add_submodels(object,

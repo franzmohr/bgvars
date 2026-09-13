@@ -89,3 +89,11 @@ test_that("add_posterior_loglik adds one log-likelihood per draw and period", {
     expect_equal(ncol(loglik), nrow(model[["data"]][["train"]][["y"]]))
   }
 })
+
+test_that("plot draws the cointegration relations of a VECX sub-model", {
+  object <- gvec_estimated(iterations = 20, burnin = 10)
+
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off())
+  expect_no_error(plot(object[["submodels"]][["US"]][[1]]))
+})
