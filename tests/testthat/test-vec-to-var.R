@@ -1,8 +1,8 @@
-# Rewriting a GVEC model in levels, so that it can be solved.
+# Solving a GVEC model.
 #
-# The sub-models of a GVEC model are in error correction form, which
-# submodels_to_gvar() cannot stack. vec_to_var() rewrites one of them in levels
-# and gvec_to_gvar() does it for a whole model.
+# The sub-models of a GVEC model are in error correction form. vec_to_var()
+# rewrites one of them in levels, and submodels_to_gvar() does so for every
+# sub-model in that form before it stacks them.
 
 test_that("vec_to_var rewrites a VECX sub-model as a VARX sub-model", {
   object <- gvec_estimated(iterations = 30, burnin = 10)
@@ -21,11 +21,11 @@ test_that("the converted sub-model describes its own coefficients", {
   # these entries, so they have to add up to the number of coefficients that is
   # actually there. Getting one of them wrong would not be an error, it would
   # silently read the wrong block.
-  object <- gvec_to_gvar(gvec_estimated(iterations = 30, burnin = 10))
+  object <- gvec_estimated(iterations = 30, burnin = 10)
 
   for (submodel in names(object[["submodels"]])) {
 
-    model <- object[["submodels"]][[submodel]][[1]]
+    model <- vec_to_var(object[["submodels"]][[submodel]][[1]])
     specification <- model[["model"]]
 
     # Counted exactly as submodels_to_gvar() counts, with no correction: a
@@ -42,25 +42,8 @@ test_that("the converted sub-model describes its own coefficients", {
   }
 })
 
-test_that("gvec_to_gvar returns a 'gvarmodel' and keeps the model around it", {
-  object <- gvec_estimated(iterations = 30, burnin = 10)
-
-  result <- gvec_to_gvar(object)
-
-  expect_s3_class(result, "gvarmodel")
-  expect_equal(names(result[["submodels"]]), names(object[["submodels"]]))
-  expect_s3_class(result[["submodels"]][["US"]], "modellist")
-
-  # The units, their variables and their weights are not what the
-  # transformation is about, and have to come through untouched.
-  expect_equal(result[["global"]], object[["global"]])
-  expect_equal(result[["weights"]], object[["weights"]])
-})
-
-test_that("a converted GVEC model can be solved", {
-  object <- gvec_to_gvar(gvec_estimated(iterations = 30, burnin = 10))
-
-  gvec <- submodels_to_gvar(object)
+test_that("a GVEC model is solved directly", {
+  gvec <- submodels_to_gvar(gvec_estimated(iterations = 30, burnin = 10))
 
   expect_s3_class(gvec, "bvarmodel")
   expect_equal(gvec[["model"]][["k"]], 6L)
@@ -70,10 +53,30 @@ test_that("a converted GVEC model can be solved", {
   expect_false(any(is.na(gvec[["posterior"]][["a"]][["coeffs"]])))
 })
 
+test_that("solving a GVEC model is solving its level representation", {
+  object <- gvec_estimated(iterations = 30, burnin = 10)
+
+  levels <- object
+  levels[["submodels"]] <- lapply(object[["submodels"]], function(x) {
+    x[[1]] <- vec_to_var(x[[1]])
+    x
+  })
+  class(levels) <- c("gvarmodel", "list")
+
+  direct <- submodels_to_gvar(object)
+  expect_equal(direct, submodels_to_gvar(levels))
+
+  # A model whose sub-models come in both forms, as a selection among VARX and
+  # VECX candidates leaves it, is solved as well, and to the same model.
+  mixed <- object
+  mixed[["submodels"]][["JP"]] <- levels[["submodels"]][["JP"]]
+  expect_equal(submodels_to_gvar(mixed), direct)
+})
+
 test_that("a restricted trend becomes a deterministic term of the global model", {
   # gvec_estimated() uses const = "unrestricted" and trend = "restricted", so
   # the level representation carries both.
-  object <- gvec_to_gvar(gvec_estimated(iterations = 30, burnin = 10))
+  object <- gvec_estimated(iterations = 30, burnin = 10)
 
   gvec <- submodels_to_gvar(object)
 
@@ -97,8 +100,7 @@ test_that("a restricted trend becomes a deterministic term of the global model",
 })
 
 test_that("generalised impulse responses of a solved GVEC model are the textbook ones", {
-  object <- gvec_to_gvar(gvec_estimated(iterations = 30, burnin = 10))
-  gvec <- submodels_to_gvar(object)
+  gvec <- submodels_to_gvar(gvec_estimated(iterations = 30, burnin = 10))
 
   n_ahead <- 5L
   result <- irf(gvec, impulse = "US_y", response = "JP_y",
@@ -112,12 +114,8 @@ test_that("generalised impulse responses of a solved GVEC model are the textbook
   expect_equal(as.matrix(result), reference, ignore_attr = TRUE)
 })
 
-test_that("gvec_to_gvar validates its argument", {
-  expect_error(gvec_to_gvar(gvar_object()),
-               "must be of class 'gvecmodel'")
-
-  expect_error(gvec_to_gvar(gvec_object()),
-               "does not contain sub-models")
+test_that("submodels_to_gvar reports what it cannot solve", {
+  expect_error(submodels_to_gvar(gvec_object()), "does not contain sub-models")
 
   object <- gvec_object()
   object <- add_submodels(object,
@@ -125,7 +123,7 @@ test_that("gvec_to_gvar validates its argument", {
                           exogen = c("y", "Dp"), p_exogen = 1,
                           const = "unrestricted", trend = "restricted", r = 1,
                           iterations = 20, burnin = 10)
-  expect_error(gvec_to_gvar(object), "has not been estimated yet")
+  expect_error(submodels_to_gvar(object), "has not been estimated yet")
 })
 
 test_that("the global model spans the sample the sub-models were estimated on", {
@@ -180,6 +178,10 @@ test_that("a sub-model with global variables is rewritten in levels", {
                  specification[["k_exogen"]] * specification[["p_exogen"]] +
                  specification[["m_global"]] * specification[["s_global"]] +
                  specification[["n"]])
+
+  # And a GVEC model with a global block is solved.
+  gvec <- submodels_to_gvar(object)
+  expect_equal(gvec[["model"]][["exogen"]], "poil")
 })
 
 test_that("the level representation fits what the error correction form fits", {
@@ -255,11 +257,12 @@ test_that("sub-models with different deterministic terms can be solved together"
     class(result) <- class(models)
     object[["submodels"]][[submodel]] <- result
   }
-  object <- gvec_to_gvar(object)
 
-  expect_equal(object[["submodels"]][["US"]][[1]][["model"]][["deterministic"]], "const")
-  expect_equal(object[["submodels"]][["JP"]][[1]][["model"]][["deterministic"]],
-               c("const", "trend"))
+  # The level representations the global model is stacked from.
+  levels <- lapply(object[["submodels"]], function(x) vec_to_var(x[[1]]))
+
+  expect_equal(levels[["US"]][["model"]][["deterministic"]], "const")
+  expect_equal(levels[["JP"]][["model"]][["deterministic"]], c("const", "trend"))
 
   gvec <- submodels_to_gvar(object)
 
@@ -279,8 +282,8 @@ test_that("sub-models with different deterministic terms can be solved together"
     g <- matrix(gvec[["g"]][draw, ], k)
     c_structural <- g %*% matrix(coeffs[draw, pos_c], k)
 
-    for (submodel in names(object[["submodels"]])) {
-      model <- object[["submodels"]][[submodel]][[1]]
+    for (submodel in names(levels)) {
+      model <- levels[[submodel]]
       k_i <- model[["model"]][["k_endogen"]]
       n_i <- model[["model"]][["n"]]
       a_i <- model[["posterior"]][["a"]][["coeffs"]]

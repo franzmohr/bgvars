@@ -152,7 +152,7 @@ test_that("a scaled simulation comes back on the scale of the data and solves", 
                  info = submodel)
   }
 
-  gvar <- submodels_to_gvar(gvec_to_gvar(result))
+  gvar <- submodels_to_gvar(result)
   expect_s3_class(gvar, "bvarmodel")
   expect_false(any(is.na(gvar[["posterior"]][["a"]][["coeffs"]])))
 })
