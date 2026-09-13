@@ -392,8 +392,13 @@ add_priors.vecxsubmodel <- function(object,
       
       if (!is.null(coef[["const"]]))  {
         
-        pos <- which(dimnames(object[["data"]][["x"]])[[2]] == "const") + r
-        
+        # The column of the constant among the regressors of the
+        # non-cointegration term. The columns of 'mu' start with the r of the
+        # loadings, so the constant is column r + pos. 'data$x' does not exist,
+        # and looking the constant up there left every specification of
+        # coef$const without effect.
+        pos <- which(dimnames(object[["data"]][["train"]][["x"]])[[2]] == "const")
+
         if (length(pos) == 1) {
           if ("character" %in% class(coef[["const"]])) {
             if (coef[["const"]] == "first") {
@@ -403,10 +408,12 @@ add_priors.vecxsubmodel <- function(object,
               mu[, r + pos] <- colMeans(object[["data"]][["train"]][["y"]])
             }
           }
-          if (length(coef[["const"]]) == 1 | length(coef[["const"]]) == k_endogen) {
-            mu[, r + pos] <- coef[["const"]]
-          } else {
-            stop("When a numeric is provided in argument 'coef$const', it must be either a single number or a vector of the same length as the number of endogenous varibles in the model.")
+          if ("numeric" %in% class(coef[["const"]])) {
+            if (length(coef[["const"]]) == 1 | length(coef[["const"]]) == k_endogen) {
+              mu[, r + pos] <- coef[["const"]]
+            } else {
+              stop("When a numeric is provided in argument 'coef$const', it must be either a single number or a vector of the same length as the number of endogenous varibles in the model.")
+            }
           }
         }
       }
@@ -567,15 +574,17 @@ add_priors.vecxsubmodel <- function(object,
       object[["priors"]][[pos]][["rate"]] = matrix(sigma[["rate"]], k_endogen)
     }
     
-    if (minnesota & !is.null(object[["data"]][["x"]])) {
+    if (minnesota & !is.null(object[["data"]][["train"]][["x"]])) {
       # Store LS estimate of variance coviariance matrix for analytical solution
       object[["priors"]][[pos]][["u_sigma_inv"]] = minn[["sigma_inv"]]
     }
     
     if ("character" %in% class(help_df)) {
       if (grepl("k", help_df)) {
-        # Transform character specification to expression and evaluate
-        help_df <- eval(parse(text = help_df))
+        # Transform character specification to expression and evaluate. The
+        # number of endogenous variables is called k_endogen here, so 'k' is
+        # supplied rather than looked up, where it does not exist.
+        help_df <- eval(parse(text = help_df), envir = list(k = k_endogen))
       } else {
         stop("Use no other letter than 'k' in 'sigma$df' to indicate the number of endogenous variables.")
       }
