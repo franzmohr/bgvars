@@ -126,10 +126,9 @@ sample from fitting its own residuals away. It is smaller still here. An error
 correction sub-model carries the loadings on top of the coefficients of the
 differenced regressors, and the series in the error correction term are levels,
 so a given amount of drift in a loading moves the fitted value by much more than
-the same drift in a coefficient on a differenced regressor. At `1e-8` the
-residual standard deviation of the output equation is 0.006 against 0.009 at
-`1e-12`, where the estimates stop changing; the diagnostic below is what that
-comparison looks like.
+the same drift in a coefficient on a differenced regressor. Whether the rate is
+small enough shows in the residuals, and the diagnostic after the posterior
+draws below is the comparison to make.
 
 `coint` is what an error correction model adds. For a time varying sub-model it
 takes `rho`, the autocorrelation of the state equation of $\beta$, and not the
@@ -152,21 +151,65 @@ coefficients of the differenced regressors as the only ones being selected over.
 ## Posterior draws
 
 ```{r posterior, message=FALSE, results='hide'}
-object <- scale_error_correction(object)
+set.seed(20260913)
 object <- add_posterior_coefficients(object)
-object <- rescale_error_correction(object)
 ```
 
-The series in an error correction term are on very different scales -- a log
-level, an inflation rate and an oil price in the same term -- while the prior on
-the cointegration space treats them alike. `scale_error_correction` therefore
-divides them by the standard deviation of their differences before simulating,
-and `rescale_error_correction` puts the series and the draws back afterwards.
-The transformation is exact: with $D$ the diagonal matrix of factors,
-$\alpha (D \beta)^{\prime} (D^{-1} w)$ is the same term. Scaling changes what the
-prior on the cointegration space says, so it is a deliberate step:
-`add_posterior_coefficients` never scales on its own, and leaving out both calls
-simulates on the scale of the data.
+The draws are made on the scale of the data. `scale_error_correction` and
+`rescale_error_correction` could divide the series in the error correction term
+by the standard deviation of their differences before simulating and put them
+back afterwards, and for a sub-model with constant coefficients that is a
+reasonable, deliberate step. With time varying coefficients it is a risky one. On
+a scaled error correction term the coefficient paths can absorb the residuals of
+an equation almost entirely, which leaves its volatility far below that of a
+least squares fit and nearly flat over the sample. Whether a chain ends up there
+can depend on nothing but the seed, and a tighter `rho` makes it rarer without
+preventing it. `?add_priors.vecxsubmodel` says the same, after the bvartools
+vignette on TVP-SV-VEC models, where it was found. Unscaled series and a small
+`coef$rate` are the safer combination.
+
+Whatever the choice, the residuals are the check. The posterior standard
+deviation of the errors of each equation, averaged over the sample, should be of
+the order of that of a least squares fit of the same regressors, not a fraction
+of it:
+
+```{r residual-check}
+residual_sd <- function(object) {
+  y <- object[["data"]][["train"]][["y"]]
+  d <- cbind(object[["data"]][["train"]][["w"]], object[["data"]][["train"]][["x"]])
+  ls <- y - d %*% solve(crossprod(d), crossprod(d, y))
+
+  k <- object[["model"]][["k"]]
+  kk <- k * k
+  tt <- nrow(y)
+  draws <- object[["posterior"]][["u_sigma_inv"]][["coeffs"]]
+  draws <- draws[seq(1, nrow(draws), by = 10), , drop = FALSE]
+
+  # Posterior mean of the error variance of each equation, period by period.
+  variance <- matrix(NA_real_, tt, k)
+  for (period in 1:tt) {
+    variance[period, ] <- rowMeans(apply(draws[, (period - 1) * kk + 1:kk, drop = FALSE], 1,
+                                         function(x) {diag(solve(matrix(x, k)))}))
+  }
+
+  round(rbind("least squares" = apply(ls, 2, stats::sd),
+              "posterior" = sqrt(colMeans(variance))), 4)
+}
+
+lapply(object[["submodels"]], function(x) {residual_sd(x[[1]])})
+```
+
+The output and interest rate equations are where they should be. The inflation
+equations of Austria and Germany are not. Across several chains with different
+seeds, the posterior standard deviation of German inflation was about half the
+least squares one in every chain, and that of Austrian inflation anywhere between
+a third and three quarters of it, depending on the seed. The same held with a
+scaled error correction term, so here it is not the scaling. It is the kind of result the
+check exists to raise, and it is left in on purpose: before the inflation
+equations of these sub-models are read, a smaller `coef$rate` or a different
+error specification is worth trying. A single chain that passes the check does
+not rule out another seed that fails it, so for a model that is to be used
+rather than illustrated, the comparison is worth repeating across chains.
 
 ## Evaluation
 

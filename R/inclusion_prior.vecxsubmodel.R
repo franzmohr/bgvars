@@ -38,7 +38,9 @@
 #' the vector of included positions, because the cointegration term is drawn in a step of
 #' its own and the sampler rejects an \code{include} that reaches into it. The elements of
 #' the cointegration matrix \eqn{\Pi = \alpha \beta^{\prime}} are therefore always in the
-#' model, whatever \code{prob} is.
+#' model, whatever \code{prob} is. Their prior inclusion probability is set to 1, which
+#' says just that; the sampler never reads it, but refuses a probability that is not a
+#' number.
 #'
 #' @return A list containing a matrix of prior inclusion probabilities and an integer vector
 #' specifying the positions of variables, which should be included in the variable selection algorithm.
@@ -160,9 +162,11 @@ inclusion_prior.vecxsubmodel <- function(object,
     include <- 1:ncol(z)
 
     # Loadings ----
-    # Never selected, see 'Details'.
+    # Never selected, see 'Details'. The probability is 1 rather than NA: the
+    # sampler refuses a probability that is not a number, whether or not
+    # 'include' reaches it.
     if (r > 0) {
-      inprior[1:n_alpha] <- NA
+      inprior[1:n_alpha] <- 1
       exclude <- append(exclude, 1:n_alpha)
     }
 

@@ -127,10 +127,9 @@ sample from fitting its own residuals away. It is smaller still here. An error
 correction sub-model carries the loadings on top of the coefficients of the
 differenced regressors, and the series in the error correction term are levels,
 so a given amount of drift in a loading moves the fitted value by much more than
-the same drift in a coefficient on a differenced regressor. At `1e-8` the
-residual standard deviation of the output equation is 0.006 against 0.009 at
-`1e-12`, where the estimates stop changing; the diagnostic below is what that
-comparison looks like.
+the same drift in a coefficient on a differenced regressor. Whether the rate is
+small enough shows in the residuals, and the diagnostic after the posterior
+draws below is the comparison to make.
 
 `coint` is what an error correction model adds. For a time varying sub-model it
 takes `rho`, the autocorrelation of the state equation of $\beta$, and not the
@@ -154,21 +153,80 @@ coefficients of the differenced regressors as the only ones being selected over.
 
 
 ``` r
-object <- scale_error_correction(object)
+set.seed(20260913)
 object <- add_posterior_coefficients(object)
-object <- rescale_error_correction(object)
 ```
 
-The series in an error correction term are on very different scales -- a log
-level, an inflation rate and an oil price in the same term -- while the prior on
-the cointegration space treats them alike. `scale_error_correction` therefore
-divides them by the standard deviation of their differences before simulating,
-and `rescale_error_correction` puts the series and the draws back afterwards.
-The transformation is exact: with $D$ the diagonal matrix of factors,
-$\alpha (D \beta)^{\prime} (D^{-1} w)$ is the same term. Scaling changes what the
-prior on the cointegration space says, so it is a deliberate step:
-`add_posterior_coefficients` never scales on its own, and leaving out both calls
-simulates on the scale of the data.
+The draws are made on the scale of the data. `scale_error_correction` and
+`rescale_error_correction` could divide the series in the error correction term
+by the standard deviation of their differences before simulating and put them
+back afterwards, and for a sub-model with constant coefficients that is a
+reasonable, deliberate step. With time varying coefficients it is a risky one. On
+a scaled error correction term the coefficient paths can absorb the residuals of
+an equation almost entirely, which leaves its volatility far below that of a
+least squares fit and nearly flat over the sample. Whether a chain ends up there
+can depend on nothing but the seed, and a tighter `rho` makes it rarer without
+preventing it. `?add_priors.vecxsubmodel` says the same, after the bvartools
+vignette on TVP-SV-VEC models, where it was found. Unscaled series and a small
+`coef$rate` are the safer combination.
+
+Whatever the choice, the residuals are the check. The posterior standard
+deviation of the errors of each equation, averaged over the sample, should be of
+the order of that of a least squares fit of the same regressors, not a fraction
+of it:
+
+
+``` r
+residual_sd <- function(object) {
+  y <- object[["data"]][["train"]][["y"]]
+  d <- cbind(object[["data"]][["train"]][["w"]], object[["data"]][["train"]][["x"]])
+  ls <- y - d %*% solve(crossprod(d), crossprod(d, y))
+
+  k <- object[["model"]][["k"]]
+  kk <- k * k
+  tt <- nrow(y)
+  draws <- object[["posterior"]][["u_sigma_inv"]][["coeffs"]]
+  draws <- draws[seq(1, nrow(draws), by = 10), , drop = FALSE]
+
+  # Posterior mean of the error variance of each equation, period by period.
+  variance <- matrix(NA_real_, tt, k)
+  for (period in 1:tt) {
+    variance[period, ] <- rowMeans(apply(draws[, (period - 1) * kk + 1:kk, drop = FALSE], 1,
+                                         function(x) {diag(solve(matrix(x, k)))}))
+  }
+
+  round(rbind("least squares" = apply(ls, 2, stats::sd),
+              "posterior" = sqrt(colMeans(variance))), 4)
+}
+
+lapply(object[["submodels"]], function(x) {residual_sd(x[[1]])})
+#> $AT
+#>                  d.y   d.Dp   d.r
+#> least squares 0.0087 0.0027 7e-04
+#> posterior     0.0092 0.0013 8e-04
+#> 
+#> $DE
+#>                  d.y   d.Dp   d.r
+#> least squares 0.0079 0.0030 8e-04
+#> posterior     0.0080 0.0015 8e-04
+#> 
+#> $US
+#>                  d.y   d.Dp    d.r
+#> least squares 0.0070 0.0035 0.0014
+#> posterior     0.0072 0.0030 0.0017
+```
+
+The output and interest rate equations are where they should be. The inflation
+equations of Austria and Germany are not. Across several chains with different
+seeds, the posterior standard deviation of German inflation was about half the
+least squares one in every chain, and that of Austrian inflation anywhere between
+a third and three quarters of it, depending on the seed. The same held with a
+scaled error correction term, so here it is not the scaling. It is the kind of result the
+check exists to raise, and it is left in on purpose: before the inflation
+equations of these sub-models are read, a smaller `coef$rate` or a different
+error specification is worth trying. A single chain that passes the check does
+not rule out another seed that fails it, so for a model that is to be used
+rather than illustrated, the comparison is worth repeating across chains.
 
 ## Evaluation
 
@@ -190,125 +248,125 @@ summary(model_at)
 #> 
 #> Variable: y 
 #> 
-#>                   Mean           SD     Naive SD Time-series SD         2.5%
-#> l.y        0.075650104 2.182822e+00 4.880939e-02   1.128900e+00  -3.53239662
-#> l.Dp       5.553515530 6.221302e+00 1.391125e-01   1.192583e+00  -7.07392761
-#> l.r        4.001988223 2.230588e+01 4.987746e-01   6.661791e+00 -40.22495036
-#> l.y.s     -0.117604952 2.190728e+00 4.898617e-02   1.119546e+00  -4.61101799
-#> l.Dp.s     1.677143062 5.980734e+00 1.337333e-01   1.269764e+00  -9.46443924
-#> l.r.s     -8.874056494 2.942510e+01 6.579652e-01   1.083524e+01 -67.41537219
-#> l.poil     0.030547670 1.651583e-01 3.693051e-03   2.527176e-02  -0.26262520
-#> d.y.01    -0.231762558 2.984998e-05 6.674657e-07   1.866048e-05  -0.23181876
-#> d.Dp.01    0.656945141 1.345935e-05 3.009602e-07   4.893191e-06   0.65692066
-#> d.r.01     0.027331754 1.938028e-03 4.333563e-05   6.019654e-05   0.02744294
-#> d.y.s.00   0.888373307 1.213743e-05 2.714012e-07   3.516058e-06   0.88835221
-#> d.Dp.s.00  0.441967844 1.820549e-05 4.070871e-07   7.167066e-06   0.44193493
-#> d.r.s.00  -1.129251023 3.573686e-02 7.991005e-04   1.103673e-03  -1.13041660
-#> d.poil.00  0.002365005 1.064982e-03 2.381371e-05   4.740414e-05   0.00000000
-#> const      0.023274914 1.040172e-04 2.325896e-06   1.194906e-05   0.02308487
-#>                    50%        97.5% Incl. prob.  
-#> l.y       -0.272413316  4.453652983      1.0000  
-#> l.Dp       5.647314357 17.569950290      1.0000  
-#> l.r        4.727264582 46.469944482      1.0000  
-#> l.y.s      0.224630234  3.475408308      1.0000  
-#> l.Dp.s     1.616037577 13.196047489      1.0000  
-#> l.r.s     -8.059407068 44.731823786      1.0000  
-#> l.poil     0.022023238  0.400371481      1.0000  
-#> d.y.01    -0.231759479 -0.231708799      1.0000 *
-#> d.Dp.01    0.656943939  0.656971291      1.0000 *
-#> d.r.01     0.027468422  0.027497229      0.9950 *
-#> d.y.s.00   0.888372159  0.888400071      1.0000 *
-#> d.Dp.s.00  0.441970295  0.442000767      1.0000 *
-#> d.r.s.00  -1.130379354 -1.130353009      0.9990 *
-#> d.poil.00  0.002840647  0.002870988      0.8315  
-#> const      0.023272882  0.023486537      1.0000 *
+#>                    Mean           SD     Naive SD Time-series SD        2.5%
+#> l.y        0.0005479078 2.105200e-02 4.707371e-04   8.094060e-03 -0.03942078
+#> l.Dp      -0.0450308439 4.388503e-02 9.812991e-04   2.530377e-02 -0.12323112
+#> l.r        0.0045744497 2.732301e-02 6.109611e-04   6.068801e-03 -0.04875682
+#> l.y.s     -0.0067350679 2.099408e-02 4.694419e-04   7.051065e-03 -0.04646678
+#> l.Dp.s     0.0241307392 2.825463e-02 6.317928e-04   6.958731e-03 -0.02921323
+#> l.r.s     -0.0048257105 5.153979e-02 1.152465e-03   3.297350e-02 -0.10423946
+#> l.poil     0.0002732334 1.002332e-02 2.241281e-04   2.277105e-04 -0.01929247
+#> d.y.01    -0.2317742468 2.568100e-05 5.742447e-07   2.144717e-05 -0.23182057
+#> d.Dp.01    0.6563354467 2.077073e-02 4.644477e-04   4.644477e-04  0.65696319
+#> d.r.01     0.0135277717 1.377696e-02 3.080623e-04   3.080623e-04  0.00000000
+#> d.y.s.00   0.8883690452 2.475612e-05 5.535636e-07   1.565209e-05  0.88833100
+#> d.Dp.s.00  0.4306560635 6.968164e-02 1.558129e-03   2.016358e-03  0.00000000
+#> d.r.s.00  -1.0517743122 2.875182e-01 6.429103e-03   7.697866e-03 -1.13035619
+#> d.poil.00  0.0012950719 1.426472e-03 3.189689e-05   3.325156e-05  0.00000000
+#> const      0.0237850014 1.792436e-04 4.008010e-06   6.190048e-05  0.02343434
+#>                     50%        97.5% Incl. prob.  
+#> l.y        0.0003420757  0.040958697      1.0000  
+#> l.Dp      -0.0507386620  0.033191289      1.0000  
+#> l.r        0.0041241227  0.060727479      1.0000  
+#> l.y.s     -0.0071108668  0.033548440      1.0000  
+#> l.Dp.s     0.0239642739  0.078697386      1.0000  
+#> l.r.s      0.0030391211  0.075925222      1.0000  
+#> l.poil     0.0002551876  0.019381933      1.0000  
+#> d.y.01    -0.2317701989 -0.231732835      1.0000 *
+#> d.Dp.01    0.6569919063  0.657025697      0.9990 *
+#> d.r.01     0.0000000000  0.027591942      0.4910  
+#> d.y.s.00   0.8883656113  0.888413778      1.0000 *
+#> d.Dp.s.00  0.4419230527  0.441953991      0.9745  
+#> d.r.s.00  -1.1303314687  0.000000000      0.9305  
+#> d.poil.00  0.0000000000  0.002913335      0.4520  
+#> const      0.0237815346  0.024156599      1.0000 *
 #> 
 #> Variable: Dp 
 #> 
-#>                    Mean           SD     Naive SD Time-series SD          2.5%
-#> l.y        0.0627815795 2.358451e+00 5.273657e-02   1.212194e+00 -3.863811e+00
-#> l.Dp       6.0218627454 6.751342e+00 1.509646e-01   1.286037e+00 -7.672327e+00
-#> l.r        4.3976763026 2.426724e+01 5.426320e-01   7.303534e+00 -4.349866e+01
-#> l.y.s     -0.1083181638 2.366596e+00 5.291870e-02   1.202060e+00 -4.859495e+00
-#> l.Dp.s     1.8222889004 6.491065e+00 1.451446e-01   1.386198e+00 -1.038872e+01
-#> l.r.s     -9.8131769079 3.196172e+01 7.146858e-01   1.184622e+01 -7.368344e+01
-#> l.poil     0.0336348942 1.794938e-01 4.013604e-03   2.759362e-02 -2.832922e-01
-#> d.y.01     0.0003534098 5.337763e-05 1.193560e-06   2.040949e-06  3.193995e-04
-#> d.Dp.01   -0.1878328463 5.944272e-03 1.329180e-04   1.839769e-04 -1.880478e-01
-#> d.r.01    -0.1045250240 6.665658e-02 1.490486e-03   4.456699e-03 -1.470740e-01
-#> d.y.s.00   0.0458151711 5.050480e-03 1.129322e-04   4.804074e-04  4.633285e-02
-#> d.Dp.s.00  0.4514701653 1.441436e-05 3.223149e-07   3.646189e-06  4.514468e-01
-#> d.r.s.00   0.3089771451 5.148260e-02 1.151186e-03   4.043334e-03  0.000000e+00
-#> d.poil.00  0.0008872968 1.028140e-03 2.298991e-05   1.629954e-04  0.000000e+00
-#> const      0.0235898047 2.021940e-04 4.521195e-06   9.562301e-05  2.313889e-02
+#>                    Mean           SD     Naive SD Time-series SD        2.5%
+#> l.y        0.0005219235 2.231084e-02 4.988856e-04   8.687007e-03 -0.04210950
+#> l.Dp      -0.0472466008 4.631694e-02 1.035678e-03   2.678149e-02 -0.13047738
+#> l.r        0.0049499365 2.882318e-02 6.445060e-04   6.421026e-03 -0.05110303
+#> l.y.s     -0.0070409946 2.223310e-02 4.971473e-04   7.547469e-03 -0.04909577
+#> l.Dp.s     0.0256054814 2.989615e-02 6.684983e-04   7.471293e-03 -0.03038346
+#> l.r.s     -0.0051058684 5.459613e-02 1.220806e-03   3.511032e-02 -0.11065312
+#> l.poil     0.0002818769 1.056532e-02 2.362478e-04   2.397093e-04 -0.02030249
+#> d.y.01     0.0001830582 1.864656e-04 4.169497e-06   4.169497e-06  0.00000000
+#> d.Dp.01   -0.1880605683 1.221736e-05 2.731886e-07   1.619982e-06 -0.18808507
+#> d.r.01    -0.0653645917 7.301593e-02 1.632686e-03   4.431351e-03 -0.14690952
+#> d.y.s.00   0.0423965915 1.280021e-02 2.862214e-04   5.803237e-03  0.00000000
+#> d.Dp.s.00  0.4515141077 2.191612e-05 4.900593e-07   9.722410e-06  0.45145627
+#> d.r.s.00   0.2410654606 1.358724e-01 3.038199e-03   2.519387e-02  0.00000000
+#> d.poil.00  0.0015273171 9.338530e-04 2.088159e-05   1.040726e-04  0.00000000
+#> const      0.0237716884 2.041538e-04 4.565018e-06   1.214310e-04  0.02337299
 #>                     50%         97.5% Incl. prob.  
-#> l.y       -0.2983166661  4.7805783057      1.0000  
-#> l.Dp       6.1064375133 19.2515923583      1.0000  
-#> l.r        5.1561505482 50.6007055213      1.0000  
-#> l.y.s      0.2442714985  3.8185527582      1.0000  
-#> l.Dp.s     1.7445499304 14.3598486789      1.0000  
-#> l.r.s     -8.7554050700 48.5898293812      1.0000  
-#> l.poil     0.0237612528  0.4399191164      1.0000  
-#> d.y.01     0.0003606266  0.0003893673      0.9795 *
-#> d.Dp.01   -0.1880216973 -0.1879935391      0.9990 *
-#> d.r.01    -0.1470025609  0.0000000000      0.7110  
-#> d.y.s.00   0.0463725183  0.0464009415      0.9880 *
-#> d.Dp.s.00  0.4514683114  0.4515021184      1.0000 *
-#> d.r.s.00   0.3175513978  0.3175739264      0.9730  
-#> d.poil.00  0.0000000000  0.0020959805      0.4270  
-#> const      0.0236167882  0.0239648874      1.0000 *
+#> l.y        0.0003571674  0.0423180671      1.0000  
+#> l.Dp      -0.0531242439  0.0352779833      1.0000  
+#> l.r        0.0043936377  0.0643287523      1.0000  
+#> l.y.s     -0.0074730356  0.0358489601      1.0000  
+#> l.Dp.s     0.0254541900  0.0834157062      1.0000  
+#> l.r.s      0.0032197432  0.0805401528      1.0000  
+#> l.poil     0.0002730265  0.0204194924      1.0000  
+#> d.y.01     0.0000000000  0.0003925237      0.4915  
+#> d.Dp.01   -0.1880605073 -0.1880352195      1.0000 *
+#> d.r.01     0.0000000000  0.0000000000      0.4450  
+#> d.y.s.00   0.0462529829  0.0462995228      0.9165  
+#> d.Dp.s.00  0.4515196538  0.4515446903      1.0000 *
+#> d.r.s.00   0.3176040705  0.3176330390      0.7590  
+#> d.poil.00  0.0020921955  0.0021170391      0.7280  
+#> const      0.0237619811  0.0241511184      1.0000 *
 #> 
 #> Variable: r 
 #> 
 #>                    Mean           SD     Naive SD Time-series SD          2.5%
-#> l.y        5.741424e-03 1.008493e-01 2.255059e-03   5.069486e-02 -0.1935234357
-#> l.Dp      -2.519992e-01 2.884485e-01 6.449904e-03   4.791992e-02 -0.7986246285
-#> l.r       -1.884883e-01 1.104569e+00 2.469892e-02   3.572758e-01 -2.4024689706
-#> l.y.s     -3.549886e-03 1.007416e-01 2.252651e-03   5.026223e-02 -0.1833369749
-#> l.Dp.s    -6.893007e-02 2.820262e-01 6.306298e-03   6.091964e-02 -0.6041556616
-#> l.r.s      4.377334e-01 1.375679e+00 3.076112e-02   5.216247e-01 -2.1717329827
-#> l.poil    -1.870711e-03 8.430568e-03 1.885132e-04   1.598383e-03 -0.0238310754
-#> d.y.01     1.285016e-05 2.567485e-04 5.741072e-06   7.546270e-06  0.0000000000
-#> d.Dp.01   -7.655184e-04 7.867146e-05 1.759147e-06   3.310526e-06 -0.0008006151
-#> d.r.01     5.580849e-02 2.102495e-05 4.701322e-07   1.006205e-05  0.0557704146
-#> d.y.s.00  -3.798113e-03 5.567293e-04 1.244885e-05   3.304740e-05 -0.0039172487
-#> d.Dp.s.00 -2.739887e-02 1.532886e-05 3.427638e-07   5.302721e-06 -0.0274288958
-#> d.r.s.00   8.477161e-01 1.288581e-05 2.881354e-07   4.885512e-06  0.8476926565
-#> d.poil.00  1.006008e-03 4.480835e-05 1.001945e-06   3.267831e-05  0.0009156417
-#> const     -9.860593e-04 1.710855e-04 3.825588e-06   5.509448e-05 -0.0013628329
-#>                     50%         97.5% Incl. prob.  
-#> l.y        0.0120434416  0.1899051058      1.0000  
-#> l.Dp      -0.2544101134  0.3502866911      1.0000  
-#> l.r       -0.2182181663  2.1606382306      1.0000  
-#> l.y.s     -0.0113479558  0.1963992148      1.0000  
-#> l.Dp.s    -0.0701851736  0.4866362435      1.0000  
-#> l.r.s      0.3703139905  3.2838601431      1.0000  
-#> l.poil    -0.0009779838  0.0121543701      1.0000  
-#> d.y.01     0.0000000000  0.0000000000      0.0025  
-#> d.Dp.01   -0.0007749831 -0.0007378768      0.9900 *
-#> d.r.01     0.0558057529  0.0558500262      1.0000 *
-#> d.y.s.00  -0.0038787341 -0.0038239942      0.9790 *
-#> d.Dp.s.00 -0.0273985628 -0.0273699216      1.0000 *
-#> d.r.s.00   0.8477149692  0.8477406999      1.0000 *
-#> d.poil.00  0.0010186975  0.0010642597      1.0000 *
-#> const     -0.0009782000 -0.0006630373      1.0000 *
+#> l.y       -1.694118e-04 4.834181e-04 1.080956e-05   1.552161e-04 -0.0014469082
+#> l.Dp       1.272675e-03 1.626223e-03 3.636345e-05   1.005264e-03 -0.0002361764
+#> l.r       -2.171911e-04 8.409915e-04 1.880514e-05   2.612288e-04 -0.0029979037
+#> l.y.s      2.858981e-04 5.352627e-04 1.196884e-05   2.280383e-04 -0.0003276068
+#> l.Dp.s    -5.820772e-04 1.009656e-03 2.257660e-05   3.887942e-04 -0.0037694611
+#> l.r.s      6.636065e-04 1.481975e-03 3.313798e-05   9.795793e-04 -0.0008420539
+#> l.poil    -7.196253e-06 2.344856e-04 5.243256e-06   7.909047e-06 -0.0004995795
+#> d.y.01     1.538318e-05 2.805059e-04 6.272302e-06   1.116814e-05  0.0000000000
+#> d.Dp.01   -3.640260e-04 3.911709e-04 8.746847e-06   8.746847e-06 -0.0008139989
+#> d.r.01     5.583194e-02 2.164726e-03 4.840475e-05   4.840475e-05  0.0558719381
+#> d.y.s.00  -1.628023e-04 7.682316e-04 1.717818e-05   1.644356e-04 -0.0037837971
+#> d.Dp.s.00 -1.535376e-03 6.305439e-03 1.409939e-04   2.101705e-03 -0.0274175631
+#> d.r.s.00   8.476654e-01 1.780757e-05 3.981894e-07   8.215438e-06  0.8476319786
+#> d.poil.00  5.728148e-05 2.341452e-04 5.235645e-06   7.867413e-05  0.0000000000
+#> const     -3.811681e-04 3.366192e-04 7.527033e-06   1.853728e-04 -0.0012702463
+#>                     50%        97.5% Incl. prob.  
+#> l.y       -1.047621e-05 4.336050e-04      1.0000  
+#> l.Dp       7.845769e-04 5.896041e-03      1.0000  
+#> l.r       -2.762989e-05 8.350033e-04      1.0000  
+#> l.y.s      7.741412e-05 1.753252e-03      1.0000  
+#> l.Dp.s    -2.157812e-04 4.503534e-04      1.0000  
+#> l.r.s      3.323831e-06 4.552110e-03      1.0000  
+#> l.poil    -6.491361e-07 4.986178e-04      1.0000  
+#> d.y.01     0.000000e+00 0.000000e+00      0.0030  
+#> d.Dp.01    0.000000e+00 0.000000e+00      0.4645  
+#> d.r.01     5.590694e-02 5.597114e-02      0.9985 *
+#> d.y.s.00   0.000000e+00 0.000000e+00      0.0430  
+#> d.Dp.s.00  0.000000e+00 0.000000e+00      0.0560  
+#> d.r.s.00   8.476683e-01 8.476953e-01      1.0000 *
+#> d.poil.00  0.000000e+00 1.015007e-03      0.0565  
+#> const     -2.855225e-04 4.478232e-05      1.0000  
 #> 
 #> Variance-covariance matrix:
 #> 
 #>                Mean           SD     Naive SD Time-series SD          2.5%
-#> y_y    1.409275e-04 4.361428e-05 9.752450e-07   2.373525e-06  7.819133e-05
-#> y_Dp  -5.820047e-06 1.801629e-06 4.028565e-08   9.814026e-08 -1.030551e-05
-#> y_r    6.318011e-07 1.954613e-07 4.370648e-09   1.063260e-08  3.498675e-07
-#> Dp_Dp  3.312103e-06 2.585661e-06 5.781713e-08   5.682011e-07  5.293462e-07
-#> Dp_r   5.667994e-09 2.838680e-08 6.347481e-10   5.264664e-09 -3.288842e-08
-#> r_r    5.700189e-08 2.892946e-08 6.468824e-10   1.452075e-09  2.203174e-08
+#> y_y    1.421822e-04 4.251828e-05 9.507376e-07   1.678650e-06  7.976178e-05
+#> y_Dp  -5.881768e-06 1.758985e-06 3.933211e-08   6.945341e-08 -1.001764e-05
+#> y_r    6.404401e-07 1.915157e-07 4.282420e-09   7.565041e-09  3.589882e-07
+#> Dp_Dp  1.769441e-06 1.389293e-06 3.106554e-08   3.521544e-07  4.083433e-07
+#> Dp_r  -1.091036e-08 1.627114e-08 3.638337e-10   0.000000e+00 -3.606036e-08
+#> r_r    4.788130e-08 2.797768e-08 6.255999e-10   1.693949e-09  1.698930e-08
 #>                 50%         97.5%  
-#> y_y    1.329453e-04  2.495852e-04 *
-#> y_Dp  -5.490204e-06 -3.231220e-06 *
-#> y_r    5.960088e-07  1.124337e-06 *
-#> Dp_Dp  2.685015e-06  1.010408e-05 *
-#> Dp_r  -3.316544e-11  7.577486e-08  
-#> r_r    5.033462e-08  1.307312e-07 *
+#> y_y    1.353667e-04  2.420161e-04 *
+#> y_Dp  -5.598525e-06 -3.302596e-06 *
+#> y_r    6.095882e-07  1.092103e-06 *
+#> Dp_Dp  1.394939e-06  5.404950e-06 *
+#> Dp_r  -1.339688e-08  2.832074e-08  
+#> r_r    4.122881e-08  1.200566e-07 *
 ```
 
 The first block of columns is the cointegration matrix $\Pi_t$ rather than
@@ -338,21 +396,21 @@ inclusion <- function(object) {
 lapply(object[["submodels"]], function(x) {inclusion(x[[1]])})
 #> $AT
 #>    d.y.01 d.Dp.01 d.r.01 d.y.s.00 d.Dp.s.00 d.r.s.00 d.poil.00 const
-#> y    1.00    1.00   1.00     1.00         1     1.00      0.83     1
-#> Dp   0.98    1.00   0.71     0.99         1     0.97      0.43     1
-#> r    0.00    0.99   1.00     0.98         1     1.00      1.00     1
+#> y    1.00    1.00   0.49     1.00      0.97     0.93      0.45     1
+#> Dp   0.49    1.00   0.44     0.92      1.00     0.76      0.73     1
+#> r    0.00    0.46   1.00     0.04      0.06     1.00      0.06     1
 #> 
 #> $DE
 #>    d.y.01 d.Dp.01 d.r.01 d.y.s.00 d.Dp.s.00 d.r.s.00 d.poil.00 const
-#> y    0.95    1.00   1.00     1.00      0.97     1.00      0.96     1
-#> Dp   0.86    0.67   0.92     0.90      1.00     0.68      0.81     1
-#> r    0.92    1.00   1.00     0.78      0.99     1.00      0.97     1
+#> y    0.58    0.56   0.91     1.00      0.49     0.76      0.54     1
+#> Dp   1.00    0.66   1.00     0.75      1.00     0.40      0.91     1
+#> r    0.59    1.00   1.00     0.42      0.63     1.00      0.56     1
 #> 
 #> $US
 #>    d.y.01 d.Dp.01 d.r.01 d.y.s.00 d.Dp.s.00 d.r.s.00 d.poil.00 const
-#> y    0.99    0.66   0.96     1.00      0.78     1.00         1     1
-#> Dp   0.94    0.96   1.00     0.83      0.99     0.79         1     1
-#> r    0.69    0.00   1.00     0.80      0.92     0.75         1     1
+#> y    0.72    0.37   0.65     1.00      0.54     0.81      0.76     1
+#> Dp   0.87    0.92   0.98     0.76      0.90     0.51      1.00     1
+#> r    0.59    0.00   1.00     0.87      0.37     0.61      0.47     1
 ```
 
 One inclusion parameter is drawn per coefficient rather than per coefficient and

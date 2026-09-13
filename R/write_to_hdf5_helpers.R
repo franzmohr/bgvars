@@ -49,12 +49,35 @@
   invisible(NULL)
 }
 
+# Attaches 'value' to 'object' as the attribute 'name', and closes it again.
+#
+# hdf5r's h5attr<- creates the attribute and leaves its handle open for the
+# garbage collector. HDF5 keeps a file open for as long as anything in it is,
+# and on Windows the file is then locked against every other process, BayesTS
+# among them. The export ends in close_all(), which releases such handles, so
+# this is not what keeps a file open today; closing each attribute as it is
+# written means that stays true if the file comes to be closed another way.
+# bvartools writes its attributes the same way. An attribute that is already
+# there is replaced.
+.write_attr <- function(object, name, value) {
+  if (object$attr_exists(name)) {
+    object$attr_delete(name)
+  }
+
+  attribute <- object$create_attr(name, robj = value)
+  attribute$close()
+
+  invisible(NULL)
+}
+
 # Writes a time-series object together with the two attributes that make it one
 # again on the way back: its variable names and its tsp.
 .write_series <- function(group, name, x) {
   group[[name]] <- x
-  hdf5r::h5attr(group[[name]], "variables") <- dimnames(x)[[2]]
-  hdf5r::h5attr(group[[name]], "tsp") <- stats::tsp(x)
+  dataset <- group[[name]]
+  on.exit(dataset$close(), add = TRUE)
+  .write_attr(dataset, "variables", dimnames(x)[[2]])
+  .write_attr(dataset, "tsp", stats::tsp(x))
 
   invisible(NULL)
 }
@@ -195,7 +218,7 @@
   # paths that do not reach that point.
   on.exit(if (model_file$is_valid) model_file$close_all(), add = TRUE)
 
-  hdf5r::h5attr(model_file, "rclass") <- class(object)
+  .write_attr(model_file, "rclass", class(object))
 
   group_global <- model_file$create_group("global")
   for (i in c("endogen", "exogen", "deterministic")) {
