@@ -205,3 +205,32 @@ test_that(".hdf5_chunk_dims spans the full width of a matrix", {
   expect_lt(chunk_wide[1], 5000)
   expect_lte(prod(chunk_wide) * 8, 8e6)
 })
+
+test_that("an export leaves nothing open in the files it wrote", {
+  skip_if_not_installed("hdf5r")
+
+  # HDF5 keeps a file open for as long as anything in it is, even once the
+  # handle of the file is closed, and on Windows the file is then locked
+  # against every other process -- BayesTS among them. Counting straight after
+  # the export, through a second handle that is not counted itself, makes this
+  # independent of when the garbage collector would release what was left. It
+  # guards the export as a whole: today its close_all() would release a handle
+  # left open, and this fails if the files come to be closed some other way.
+  open_in_h5_file <- function(path) {
+    h5 <- hdf5r::H5File$new(path, mode = "r")
+    on.exit(h5$close(), add = TRUE)
+    h5$get_obj_count() - 1
+  }
+
+  object <- gvar_estimated(iterations = 20, burnin = 10)
+
+  folder <- export_folder("bgvars-open-handles")
+  on.exit(unlink(folder, recursive = TRUE), add = TRUE)
+  write_to_hdf5(object, folder = folder)
+
+  expect_equal(open_in_h5_file(file.path(folder, "model.h5")), 0)
+  for (i in names(object[["submodels"]])) {
+    path <- file.path(folder, "submodels", i, "001.h5")
+    expect_equal(open_in_h5_file(path), 0, info = i)
+  }
+})
