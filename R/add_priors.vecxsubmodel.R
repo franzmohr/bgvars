@@ -60,37 +60,14 @@
 #'   Only used for models with time varying parameters. Default is 0.01.}
 #' }
 #' 
-#' Argument \code{coint} depends on whether the cointegration parameters are constant or time
-#' varying, since the two are given different kinds of prior: a matric-variate prior on the
-#' cointegration space in the first case, and a state equation in the second.
-#' \describe{
-#'   \item{\code{v_i}}{numeric between 0 and 1 specifying the shrinkage of the cointegration space prior.
-#'   Required for sub-models with constant cointegration parameters and not used otherwise.}
-#'   \item{\code{p_tau_i}}{numeric of the diagonal elements of the inverse prior matrix of
-#'   the central location of the cointegration space \eqn{sp(\beta)}.
-#'   Required for sub-models with constant cointegration parameters and not used otherwise.}
-#'   \item{\code{rho}}{a numeric specifying the autocorrelation coefficient
-#'   of the state equation of \eqn{\beta}. It must be smaller than 1.
-#'   Required for sub-models with time varying cointegration parameters and not used otherwise.
-#'   If \code{rho_min} and \code{rho_max} are given as well, this is the value the
-#'   chain starts \eqn{\rho} at rather than the value it keeps, and it must lie
-#'   between them.}
-#'   \item{\code{rho_min}, \code{rho_max}}{numerics specifying the support of a
-#'   uniform prior on \eqn{\rho}, which makes it a drawn parameter rather than a
-#'   fixed hyperparameter. Optional, and either both or neither; they must
-#'   satisfy \eqn{0 < }\code{rho_min}\eqn{ < }\code{rho_max}\eqn{ \le 1}.
-#'   Koop et al. (2011) use \eqn{(0.999, 1)}.
-#'   Only used for sub-models with time varying cointegration parameters.}
-#' }
-#' For a sub-model with time varying cointegration parameters the state equation is
-#' \eqn{\beta_t = \rho \beta_{t-1} + \eta_t} with \eqn{\eta_t \sim N(0, I)}, and
-#' the prior on the state before the sample is that equation's own stationary
-#' distribution, \eqn{N(0, I / (1 - \rho^2))}. This is what makes the prior
-#' proper, so a \eqn{\rho} close to one is intended and one further from it draws
-#' a warning. The loadings carry the compensating scale: only the product
-#' \eqn{\alpha \beta^{\prime}} is identified, so their prior variance is shrunk
-#' by \eqn{1 - \rho^2}, leaving the product on the scale \code{coef$v_i} asks
-#' for.
+#' Argument \code{coint} specifies the prior on the cointegration space. It is
+#' checked and built by \code{\link[bvartools]{cointspace_prior}}, the function
+#' \pkg{bvartools} uses for its own VEC models, and its section 'Prior on the
+#' cointegration space' is shown below. The error correction term
+#' \code{data$train$w} of a sub-model holds its endogenous, weakly exogenous and
+#' global variables and its restricted deterministic terms, and the prior has
+#' one row and column for each of them. Unrecognised elements of \code{coint}
+#' raise an error.
 #'
 #' Variable selection is available as \code{"bvs"}. The loadings are never subject to it,
 #' so the error correction term is always in the model, and one inclusion parameter is drawn
@@ -161,6 +138,8 @@
 #' \eqn{\kappa_4} as the first, second, third and forth element in
 #' \code{varsel$minnesota}, respectively.
 #' 
+#' @inheritSection bvartools::cointspace_prior Prior on the cointegration space
+#'
 #' @return An object of class 'vecxsubmodel'.
 #' 
 #' @references
@@ -171,7 +150,10 @@
 #' George, E. I., Sun, D., & Ni, S. (2008). Bayesian stochastic search for VAR model
 #' restrictions. \emph{Journal of Econometrics, 142}(1), 553--580.
 #' \doi{10.1016/j.jeconom.2007.08.017}
-#' 
+#'
+#' Johansen, S. (1995). \emph{Likelihood-based inference in cointegrated vector
+#' autoregressive models}. Oxford: Oxford University Press.
+#'
 #' Koop, G., León-González, R., & Strachan R. W. (2010). Efficient posterior
 #' simulation for cointegrated models with priors on the cointegration space.
 #' \emph{Econometric Reviews, 29}(2), 224--242.
@@ -239,45 +221,11 @@ add_priors.vecxsubmodel <- function(object,
   }
   
   ## cointegration ----
-  if (object[["model"]][["tvp"]]) {
-    if (!"rho" %in% names(coint)) {
-      stop("Argument 'coint$rho' must be specified for VEC models with time varying cointegration parameters.")
-    }
-    if (coint[["rho"]] >= 1) {
-      stop("Argument 'coint$rho' must be smaller than 1.")
-    }
-    if (coint[["rho"]] < .8) {
-      warning("Value of argument 'coint$rho' appears rather small.")
-    }
-
-    # rho is drawn only if the support of its prior is given, and then both ends
-    # of it are needed: one alone would leave the sampler to invent the other,
-    # and which end is missing changes the model rather than a detail of it.
-    has_rho_min <- "rho_min" %in% names(coint)
-    has_rho_max <- "rho_max" %in% names(coint)
-    if (xor(has_rho_min, has_rho_max)) {
-      stop("Arguments 'coint$rho_min' and 'coint$rho_max' must be specified together. ",
-           "Leave both out to hold rho fixed at 'coint$rho'.")
-    }
-    if (has_rho_min) {
-      if (coint[["rho_min"]] <= 0 | coint[["rho_max"]] > 1 |
-          coint[["rho_min"]] >= coint[["rho_max"]]) {
-        stop("Arguments 'coint$rho_min' and 'coint$rho_max' must satisfy ",
-             "0 < rho_min < rho_max <= 1.")
-      }
-      if (coint[["rho"]] < coint[["rho_min"]] | coint[["rho"]] > coint[["rho_max"]]) {
-        stop("Argument 'coint$rho' must lie between 'coint$rho_min' and 'coint$rho_max': ",
-             "when rho is drawn it is the value the chain starts at.")
-      }
-    }
-  } else {
-    if (!"v_i" %in% names(coint)) {
-      stop("Argument 'coint$v_i' must be specified for VEC models with constant cointegration parameters.")
-    }
-    if (!"p_tau_i" %in% names(coint)) {
-      stop("Argument 'coint$p_tau_i' must be specified for VEC models with constant cointegration parameters.")
-    }
-  }
+  # Checked and built by bvartools, whose VEC models get the same prior. Its
+  # dimensions come from the error correction term data$train$w, which for a
+  # sub-model also holds the weakly exogenous and global variables. It is stored
+  # further down, with the others.
+  beta_prior <- bvartools::cointspace_prior(object, coint)
   
   ## sigma ----
   error_prior <- .add_priors_check_sigma(object, sigma)
@@ -429,54 +377,7 @@ add_priors.vecxsubmodel <- function(object,
   
   #### Cointegration ----
   if (r > 0) {
-    
-    n_ect <- k_endogen * (k_endogen + k_exogen + m_global)
-    if (object[["model"]][["n_restricted"]] > 0) {
-      n_ect <- n_ect + object[["model"]][["n_restricted"]] * k_endogen
-    }
-    
-    n_alpha <- r * k_endogen
-    n_beta <- r * n_ect / k_endogen
-    
-    if (object[["model"]][["tvp"]]) {
-
-      # The cointegration vectors are a state path of their own, with
-      # beta_t = rho beta_{t-1} + eta_t and eta_t ~ N(0, I). rho belongs with the
-      # prior either way: fixed, it is the value the sampler keeps, and drawn, it
-      # is the value the chain starts at.
-      #
-      # The prior on the state before the sample is that path's own stationary
-      # distribution, N(0, I / (1 - rho^2)), whose precision is (1 - rho^2) I.
-      # That is what makes it proper: at rho = 1 the state equation is a random
-      # walk whose variance grows without bound, and beta, being identified only
-      # up to scale, has nothing to pull it back.
-      #
-      # The shrinkage and central location of the constant model's cointegration
-      # space, coint$v_i and coint$p_tau_i, have no counterpart here: the space
-      # is not drawn from a matric-variate prior but followed period by period.
-      object[["priors"]][["beta"]] <- list("type" = "cointspace",
-                                           "rho" = coint[["rho"]],
-                                           "mu" = matrix(0, n_beta),
-                                           "v_inv" = diag(1 - coint[["rho"]]^2, n_beta))
-
-      # The support of the uniform prior on rho, which is what turns it from a
-      # fixed hyperparameter into a drawn one. The samplers of bvartools read it
-      # from here.
-      #
-      # What stays fixed when rho is drawn: v_inv just above, and the shrinkage
-      # of the loadings further down, are both computed from coint$rho once and
-      # do not follow the draw, as in bvartools. They are an ordinary normal
-      # prior pinned at the value rho starts from, which keeps them proper
-      # however close to one the draws get.
-      if (has_rho_min) {
-        object[["priors"]][["beta"]][["rho_min"]] <- coint[["rho_min"]]
-        object[["priors"]][["beta"]][["rho_max"]] <- coint[["rho_max"]]
-      }
-    } else {
-      object[["priors"]][["beta"]] <- list("type" = "cointspace",
-                                           "v_inv" = coint[["v_i"]],
-                                           "p_tau_inv" = diag(coint[["p_tau_i"]], n_ect / k_endogen)) 
-    }
+    object[["priors"]][["beta"]] <- beta_prior
   }
   
   # Non-cointegration ----
