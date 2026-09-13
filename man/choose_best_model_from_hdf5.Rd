@@ -22,10 +22,23 @@ Obtains model selection criteria for each model and gives
 a table of the best performing model for each sub-model.
 }
 \details{
-Only the parts of a model file that enter a selection criterion are read,
-that is, the draws of the log-likelihood, the forecast errors and the
-handful of model specifications the criteria are calculated from. The
-posterior draws of the coefficients make up most of an exported model and
-are never touched, so the function does not need to hold a whole sub-model
-in memory to rank it.
+For the criteria that are calculated from the draws of the log-likelihood
+alone (\code{"LL"}, \code{"WAIC"}, \code{"LOOIC"}) and for those calculated
+from forecast errors, only the parts of a model file that enter the criterion
+are read, that is, the draws of the log-likelihood, the forecast errors and
+the handful of model specifications the criteria are calculated from. The
+posterior draws of the coefficients make up most of an exported model and are
+not touched, so the function does not need to hold a whole sub-model in
+memory to rank it.
+
+\code{"AIC"}, \code{"BIC"} and \code{"HQ"} are evaluated at the posterior mean
+of the parameters, see \code{\link[bvartools]{selection_criteria}}, which
+needs the draws of the coefficients and the data. For them each model file is
+read in full, one at a time, which takes longer.
+
+A model file that holds neither draws of the log-likelihood nor forecast
+errors -- a model an external sampler has not estimated, or failed on -- is
+skipped with a warning that names it, and the positions of the remaining
+models are those among all models of their sub-model. A sub-model none of
+whose models has been estimated gets the position \code{NA}.
 }
