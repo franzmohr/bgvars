@@ -69,7 +69,9 @@ selection. They are the first \eqn{K r} coefficients of a sub-model and are drop
 the vector of included positions, because the cointegration term is drawn in a step of
 its own and the sampler rejects an \code{include} that reaches into it. The elements of
 the cointegration matrix \eqn{\Pi = \alpha \beta^{\prime}} are therefore always in the
-model, whatever \code{prob} is.
+model, whatever \code{prob} is. Their prior inclusion probability is set to 1, which
+says just that; the sampler never reads it, but refuses a probability that is not a
+number.
 }
 \examples{
 

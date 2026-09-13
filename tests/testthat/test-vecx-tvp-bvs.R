@@ -36,11 +36,12 @@ test_that("the loadings are excluded from the inclusion prior", {
   n_det <- k * model[["model"]][["n"]]
   n_z <- ncol(model[["data"]][["train"]][["z"]])
 
-  # One prior per coefficient, and the loadings carry no inclusion probability
-  # because the cointegration term is drawn in a step of its own.
+  # One prior per coefficient. The loadings are always in the model, because
+  # the cointegration term is drawn in a step of its own, so their probability
+  # is 1. It must be a number all the same: the sampler refuses NA.
   expect_length(prior[["prior"]], n_z)
-  expect_true(all(is.na(prior[["prior"]][1:n_alpha])))
-  expect_false(any(is.na(prior[["prior"]][-(1:n_alpha)])))
+  expect_equal(prior[["prior"]][1:n_alpha], rep(1, n_alpha))
+  expect_true(all(is.finite(prior[["prior"]])))
 
   # Neither the loadings nor the deterministic terms are selected over.
   expect_length(prior[["include"]], n_z - n_alpha - n_det)
