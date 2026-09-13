@@ -106,7 +106,7 @@
 
       rows[[length(rows) + 1]] <- data.frame(
         submodel = submodel,
-        file = .submodel_file(i = i, submodel = submodel),
+        file = .submodel_file(i = i, submodel = submodel, n = length(models)),
         algorithm = field(specs, "algorithm", "character"),
         type = field(specs, "type", "character"),
         k = field(specs, "k", "integer"),
@@ -140,8 +140,15 @@
 }
 
 # Path of one sub-model's file, relative to the export folder.
-.submodel_file <- function(i, submodel) {
-  paste0("submodels/", submodel, "/", sprintf("%03d", i), ".h5")
+#
+# 'n' is the number of models of the sub-model. The numbers are padded to the
+# width of the largest, and to three digits at least, so that the files sort as
+# text in the order they were written: a sub-model of a thousand models would
+# otherwise put 1000.h5 before 101.h5 in any directory listing, and with it
+# bvartools::read_models_from_folder.
+.submodel_file <- function(i, submodel, n = i) {
+  width <- max(3L, nchar(as.character(n)))
+  paste0("submodels/", submodel, "/", formatC(i, width = width, flag = "0"), ".h5")
 }
 
 # How many cores an export uses when the caller does not say.
@@ -259,7 +266,8 @@
       list("models" = models,
            "filenames" = file.path(folder,
                                    vapply(seq_along(models), .submodel_file,
-                                          character(1), submodel = submodel)))
+                                          character(1), submodel = submodel,
+                                          n = length(models))))
     })
 
     # No more workers than there is work for them, and never a cluster to write

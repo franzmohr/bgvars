@@ -78,12 +78,41 @@ read_submodel_from_folder <- function(folder, submodel) {
     stop("Argument 'submodel' must be of class 'character'.")
   }
   
+  # Through the manifest where the export has one, as read_gvar_from_folder
+  # does. The position of a model -- which is what choose_best_model_from_hdf5
+  # returns -- is its row among the rows of its sub-model in the manifest.
+  # Walking the directory instead orders the files by name as text, which
+  # agrees with the manifest only while every name has the same number of
+  # digits.
+  filename_model <- file.path(folder, "model.h5")
+  if (file.exists(filename_model)) {
+    model_file <- hdf5r::h5file(filename_model, mode = "r")
+    on.exit(if (model_file$is_valid) model_file$close_all(), add = TRUE)
+    manifest <- NULL
+    if ("submodels" %in% names(model_file)) {
+      manifest <- model_file[["submodels"]]$read()
+    }
+    model_file$close_all()
+
+    if (!is.null(manifest)) {
+      rows <- manifest[manifest[, "submodel"] == submodel, , drop = FALSE]
+      if (nrow(rows) == 0) {
+        stop("Submodel ", submodel, " is not available. The export does not contain it.")
+      }
+
+      result <- .read_submodels(folder, rows)[[submodel]]
+      # Named after the files, as bvartools::read_models_from_folder names them.
+      names(result) <- sub("[.]h5$", "", basename(rows[, "file"]))
+      return(result)
+    }
+  }
+
   path_to_submodel <- file.path(folder, "submodels", submodel)
-  
+
   if (!dir.exists(path_to_submodel)) {
     stop("Submodel ", submodel, " is not available. Its folder does not exist.")
   }
-  
+
   return(bvartools::read_models_from_folder(path_to_submodel))
-  
+
 }

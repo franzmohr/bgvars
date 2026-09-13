@@ -139,3 +139,92 @@ test_that("a selection that does not fit the export is reported", {
     read_gvar_from_folder(folder, submodels = data.frame(submodel = "US")),
     "must have the column")
 })
+
+# The warnings an expression raises, with its value.
+collect_warnings <- function(expr) {
+  messages <- character(0)
+  value <- withCallingHandlers(expr, warning = function(w) {
+    messages <<- c(messages, conditionMessage(w))
+    invokeRestart("muffleWarning")
+  })
+  list(value = value, warnings = messages)
+}
+
+test_that("criteria of the log-likelihood draws rank without reading the coefficients", {
+  skip_if_not_installed("hdf5r")
+
+  export <- export_grid("bgvars-selection-waic")
+  on.exit(unlink(export[["folder"]], recursive = TRUE), add = TRUE)
+
+  for (criterion in c("WAIC", "LOOIC")) {
+    result <- collect_warnings(choose_best_model_from_hdf5(export[["folder"]], criterion))
+
+    # Reading only the draws of the log-likelihood leaves AIC, BIC and HQ out,
+    # which bvartools warns about for every file. None of that reaches the caller.
+    expect_equal(result[["warnings"]], character(0), info = criterion)
+
+    for (submodel in result[["value"]][, "submodel"]) {
+      models <- read_submodel_from_folder(export[["folder"]], submodel)
+      expect_equal(result[["value"]][result[["value"]][, "submodel"] == submodel, "position"],
+                   choose_best_model(selection_criteria(models), criterion = criterion)[1],
+                   info = paste(criterion, submodel))
+    }
+  }
+})
+
+test_that("model files without results are skipped and named", {
+  skip_if_not_installed("hdf5r")
+
+  export <- export_grid("bgvars-selection-unestimated")
+  on.exit(unlink(export[["folder"]], recursive = TRUE), add = TRUE)
+  folder <- export[["folder"]]
+
+  drop_posterior <- function(file) {
+    h5 <- hdf5r::h5file(file.path(folder, file), mode = "a")
+    h5$link_delete("posterior")
+    h5$close_all()
+  }
+  # One of the two models of US, both models of JP.
+  drop_posterior("submodels/US/001.h5")
+  drop_posterior("submodels/JP/001.h5")
+  drop_posterior("submodels/JP/002.h5")
+
+  for (criterion in c("WAIC", "BIC")) {
+    result <- collect_warnings(choose_best_model_from_hdf5(folder, criterion))
+    best <- result[["value"]]
+
+    expect_equal(best[best[, "submodel"] == "US", "position"], 2L, info = criterion)
+    expect_true(is.na(best[best[, "submodel"] == "JP", "position"]), info = criterion)
+    expect_false(is.na(best[best[, "submodel"] == "CA", "position"]), info = criterion)
+
+    expect_true(any(grepl("submodels/US/001.h5", result[["warnings"]], fixed = TRUE)),
+                info = criterion)
+    expect_true(any(grepl("Sub-model JP has no estimated model", result[["warnings"]],
+                          fixed = TRUE)), info = criterion)
+  }
+})
+
+test_that("sub-model files are numbered so that they sort in the order written", {
+  expect_equal(.submodel_file(7, "US", n = 12), "submodels/US/007.h5")
+  expect_equal(.submodel_file(7, "US", n = 1200), "submodels/US/0007.h5")
+  expect_equal(.submodel_file(1200, "US", n = 1200), "submodels/US/1200.h5")
+
+  files <- vapply(c(1, 101, 1000), .submodel_file, character(1), submodel = "US", n = 1000)
+  expect_equal(sort(files), files)
+})
+
+test_that("read_submodel_from_folder returns the models in the order of the manifest", {
+  skip_if_not_installed("hdf5r")
+
+  export <- export_grid("bgvars-selection-order")
+  on.exit(unlink(export[["folder"]], recursive = TRUE), add = TRUE)
+
+  models <- read_submodel_from_folder(export[["folder"]], "US")
+
+  expect_s3_class(models, "modellist")
+  expect_equal(names(models), c("001", "002"))
+  expect_equal(vapply(models, function(x) x[["model"]][["p_endogen"]], numeric(1),
+                      USE.NAMES = FALSE),
+               vapply(export[["object"]][["submodels"]][["US"]],
+                      function(x) x[["model"]][["p_endogen"]], numeric(1)))
+})

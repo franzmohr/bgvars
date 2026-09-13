@@ -311,9 +311,11 @@ global vector autoregressive models, and time varying sub-models are used for
 what this vignette shows: the paths of the coefficients and of the volatilities
 of each country separately.
 
-Exporting time varying sub-models with `write_to_hdf5` is subject to the same
-limit and fails on this object, so the route through BayesTS is not open for
-them either.
+Estimating them is not subject to that limit. `write_to_hdf5` exports time
+varying and stochastic volatility sub-models like any other, BayesTS estimates
+them, and `choose_best_model_from_hdf5` ranks them, by WAIC or LOOIC, against
+each other and against constant coefficient sub-models. It is only the step
+from the estimated sub-models to a solved global model that is closed.
 
 ## References
 

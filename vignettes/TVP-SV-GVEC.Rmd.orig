@@ -391,14 +391,15 @@ GVAR vignette: the paths and the period-wise summaries above are what a time
 varying specification gives, and a solved global model is built from sub-models
 with constant coefficients.
 
-Two further limits are worth knowing before they are met. Sub-models that use a
-global block cannot be rewritten in levels at all, whether or not they are time
-varying, so the restriction above is not the only thing standing between this
-object and a solved model. And `add_posterior_loglik` has no algorithm for time
-varying error correction models, so the selection criteria that choose between
-competing sub-model specifications are not available for them: a specification
-search is run on constant coefficient sub-models, and the time varying model is
-estimated for the one that wins.
+Choosing between specifications is not closed off. `add_posterior_loglik` has
+an algorithm for each time varying error correction sampler, so a time varying
+sub-model can be compared with other time varying ones and with constant
+coefficient ones. WAIC and LOOIC are the criteria for that comparison: AIC, BIC
+and HQ count parameters that a state equation does not use, as
+`?bvartools::selection_criteria` explains. The Pareto k diagnostics of LOOIC
+are worth reading for these models in particular, since a coefficient path that
+bends towards single observations shows up there as periods whose
+leave-one-out estimate cannot be trusted.
 
 Variable selection is available as `varsel = "bvs"`. SSVS is not implemented for
 error correction sub-models and is refused when the priors are added.
