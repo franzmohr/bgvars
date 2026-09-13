@@ -109,11 +109,13 @@ minnesota_prior.vecxsubmodel <- function(object, kappa1 = 2, kappa2 = .5, kappa3
       # Determine positions of deterministic terms for calculation of sigma
       pos_det <- NULL
       if (object[["model"]][["n_restricted"]] > 0 | object[["model"]][["n"]] > 0) {
+        # 'n_restricted' and 'n' are the numbers of terms, so every term is used
+        # rather than the first one alone, which length() of the count gave.
         if (object[["model"]][["n_restricted"]] > 0) {
-          pos_det <- c(pos_det, k + k_exogen + m + 1:length(object[["model"]][["n_restricted"]]))
+          pos_det <- c(pos_det, k + k_exogen + m + 1:object[["model"]][["n_restricted"]])
         }
         if (object[["model"]][["n"]] > 0) {
-          pos_det <- c(pos_det, n_ect + k * p_endogen + k_exogen * p_exogen + m * s + 1:length(object[["model"]][["n"]]))
+          pos_det <- c(pos_det, n_ect + k * p_endogen + k_exogen * p_exogen + m * s + 1:object[["model"]][["n"]])
         }
       }
       
@@ -158,10 +160,15 @@ minnesota_prior.vecxsubmodel <- function(object, kappa1 = 2, kappa2 = .5, kappa3
       }
       
       # Foreign variables
-      if (k_exogen > 0) {
-        p_exogen <- p_exogen - 1
+      #
+      # 'p_exogen' and 's' count blocks of differences from the contemporaneous
+      # one, and they are left as they are: the positions of the blocks that
+      # follow are counted with them. Decrementing them here put the prior of
+      # the global variables one block of foreign variables too early and let
+      # the prior of the deterministic terms overwrite the last blocks of both.
+      if (k_exogen > 0 & p_exogen > 0) {
         s_exo <- sqrt(apply(matrix(x[n_ect + k * p_endogen + 1:k_exogen, ], k_exogen), 1, stats::var))
-        for (r in 1:(p_exogen + 1)) {
+        for (r in 1:p_exogen) {
           for (l in 1:k) {
             for (j in 1:k_exogen) {
               # Note that in the loop r starts at 1, so that this is equivalent to l + 1
@@ -176,10 +183,9 @@ minnesota_prior.vecxsubmodel <- function(object, kappa1 = 2, kappa2 = .5, kappa3
       }
       
       # Global variables
-      if (m > 0) {
-        s <- s - 1
+      if (m > 0 & s > 0) {
         s_exo <- sqrt(apply(matrix(x[n_ect + k * p_endogen + k_exogen * p_exogen + 1:m,], m), 1, stats::var))
-        for (r in 1:(s + 1)) {
+        for (r in 1:s) {
           for (l in 1:k) {
             for (j in 1:m) {
               # Note that in the loop r starts at 1, so that this is equivalent to l + 1
