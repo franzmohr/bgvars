@@ -506,8 +506,18 @@ object <- read_gvar_from_folder("C:/path/to/gvar")
 
 #### Package 
 
+The series in the error correction term of a sub-model are on very different
+scales, while the prior on the cointegration space treats them alike.
+`scale_error_correction` divides them by the standard deviation of their
+differences, and `rescale_error_correction` puts the series and the draws back on
+the scale of the data after the simulation. The transformation is exact, so the
+model is the same, but it changes what the prior says, which is why it is a step
+of its own rather than something `add_posterior_coefficients` does implicitly.
+
 ```{r, eval = TRUE, message=FALSE, results='hide'}
+object <- scale_error_correction(object)
 object <- add_posterior_coefficients(object)
+object <- rescale_error_correction(object)
 ```
 
 ```{r, eval = TRUE, message=FALSE, results='hide'}

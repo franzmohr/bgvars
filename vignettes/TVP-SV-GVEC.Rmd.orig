@@ -152,16 +152,21 @@ coefficients of the differenced regressors as the only ones being selected over.
 ## Posterior draws
 
 ```{r posterior, message=FALSE, results='hide'}
+object <- scale_error_correction(object)
 object <- add_posterior_coefficients(object)
+object <- rescale_error_correction(object)
 ```
 
 The series in an error correction term are on very different scales -- a log
 level, an inflation rate and an oil price in the same term -- while the prior on
-the cointegration space treats them alike. `add_posterior_coefficients` therefore
-divides them by the standard deviation of their differences before simulating
-and puts the draws back afterwards, which is exact: with $D$ the diagonal matrix
-of factors, $\alpha (D \beta)^{\prime} (D^{-1} w)$ is the same term. Pass
-`scale_ect = FALSE` to simulate on the scale of the data instead.
+the cointegration space treats them alike. `scale_error_correction` therefore
+divides them by the standard deviation of their differences before simulating,
+and `rescale_error_correction` puts the series and the draws back afterwards.
+The transformation is exact: with $D$ the diagonal matrix of factors,
+$\alpha (D \beta)^{\prime} (D^{-1} w)$ is the same term. Scaling changes what the
+prior on the cointegration space says, so it is a deliberate step:
+`add_posterior_coefficients` never scales on its own, and leaving out both calls
+simulates on the scale of the data.
 
 ## Evaluation
 

@@ -1,21 +1,61 @@
-# Posterior simulation of GVEC sub-models on a scaled error correction term.
+# Scaling the error correction terms of a GVEC model.
 #
 # The series in the error correction term are on the scale of the data, and the
 # prior on the cointegration space is isotropic, so it treats them as if they
-# were comparably scaled. add_posterior_coefficients() therefore simulates on a
-# scaled term and puts the draws back afterwards.
+# were comparably scaled. Scaling is a deliberate step of the user's:
+# scale_error_correction() before the simulation and rescale_error_correction()
+# after it. add_posterior_coefficients() never scales on its own.
 
-test_that("the scaling methods come from bvartools", {
+gvec_prepared <- function(r = 1, tvp = FALSE, initial = TRUE) {
+  object <- gvec_object()
+  object <- add_submodels(object,
+                          endogen = c("y", "Dp"), p_endogen = 1,
+                          exogen = c("y", "Dp"), p_exogen = 1,
+                          const = "unrestricted",
+                          trend = if (tvp) NULL else "restricted",
+                          r = r, tvp = tvp,
+                          iterations = 20, burnin = 10)
+  if (tvp) {
+    object <- align_model_obs(object)
+  }
+  object <- add_priors(object,
+                       coef = if (tvp) {
+                         list(v_i = 1, v_i_det = 1 / 10, shape = 3,
+                              rate = 1e-8, rate_det = 1e-8)
+                       } else {
+                         list(v_i = 0)
+                       },
+                       coint = if (tvp) list(rho = 0.999) else list(v_i = 0, p_tau_i = 1),
+                       sigma = list(df = 3, scale = 0.0001))
+  if (initial) {
+    object <- add_initial_values(object)
+  }
+  object
+}
+
+w_of <- function(object, submodel = "US") {
+  object[["submodels"]][[submodel]][[1]][["data"]][["train"]][["w"]]
+}
+
+initial_of <- function(object, name = "beta", submodel = "US") {
+  object[["submodels"]][[submodel]][[1]][["initial"]][[name]]
+}
+
+test_that("the scaling methods for sub-models come from bvartools", {
   # bgvars used to carry its own copy of both, and the copy of the rescaling
   # method had drifted: it built the inverse with diag() of a matrix, which
   # extracts a diagonal rather than building one, and it transformed alpha,
   # which the transformation does not touch. A 'vecxsubmodel' inherits the
-  # bvartools methods through its 'bvecmodel' class, so there is nothing to
-  # keep in this package.
+  # bvartools methods through its 'bvecmodel' class, so what this package adds
+  # is only the step over all sub-models of a 'gvecmodel'.
   expect_null(getS3method("scale_error_correction", "vecxsubmodel",
                           optional = TRUE))
   expect_null(getS3method("rescale_error_correction", "vecxsubmodel",
                           optional = TRUE))
+  expect_false(is.null(getS3method("scale_error_correction", "gvecmodel",
+                                   optional = TRUE)))
+  expect_false(is.null(getS3method("rescale_error_correction", "gvecmodel",
+                                   optional = TRUE)))
 
   object <- gvec_estimated(iterations = 20, burnin = 10)
   expect_s3_class(object[["submodels"]][["US"]][[1]], "bvecmodel")
@@ -62,92 +102,107 @@ test_that("the transformation leaves the error correction term unchanged", {
   expect_equal(plain, transformed)
 })
 
-test_that("what comes back is on the scale of the data", {
-  # Only the draws should differ between a scaled and an unscaled simulation.
-  # The data of the model are the same either way.
-  object <- gvec_object()
-  object <- add_submodels(object,
-                          endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 1,
-                          const = "unrestricted", trend = "restricted", r = 1,
-                          iterations = 20, burnin = 10)
-  object <- add_priors(object,
-                       coef = list(v_i = 0),
-                       coint = list(v_i = 0, p_tau_i = 1),
-                       sigma = list(df = 3, scale = 0.0001))
-  object <- add_initial_values(object)
+test_that("posterior simulation does not scale on its own", {
+  object <- gvec_prepared()
 
-  scaled <- add_posterior_coefficients(object, scale_ect = TRUE)
-  plain <- add_posterior_coefficients(object, scale_ect = FALSE)
+  result <- add_posterior_coefficients(object)
 
   for (submodel in names(object[["submodels"]])) {
-
-    w <- scaled[["submodels"]][[submodel]][[1]][["data"]][["train"]][["w"]]
-
-    # The attribute is dropped by the rescaling, which is what stops a second
-    # rescaling from transforming the model again.
-    expect_null(attr(w, "scale"), info = submodel)
-
-    expect_equal(w, plain[["submodels"]][[submodel]][[1]][["data"]][["train"]][["w"]],
-                 info = submodel)
+    expect_null(attr(w_of(result, submodel), "scale"), info = submodel)
+    expect_equal(w_of(result, submodel), w_of(object, submodel), info = submodel)
   }
-})
-
-test_that("the initial values are left on the scale of the data", {
-  # add_initial_values() produces reduced rank maximum likelihood estimates
-  # that are compared with published cointegrating vectors, so the simulation
-  # must not leave a transformed copy behind.
-  object <- gvec_object()
-  object <- add_submodels(object,
-                          endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 1,
-                          const = "unrestricted", trend = "restricted", r = 1,
-                          iterations = 20, burnin = 10)
-  object <- add_priors(object,
-                       coef = list(v_i = 0),
-                       coint = list(v_i = 0, p_tau_i = 1),
-                       sigma = list(df = 3, scale = 0.0001))
-  object <- add_initial_values(object)
-
-  before <- object[["submodels"]][["US"]][[1]][["initial"]][["beta"]]
-  after <- add_posterior_coefficients(object)[["submodels"]][["US"]][[1]][["initial"]][["beta"]]
-
-  expect_equal(after, before)
-})
-
-test_that("scaling can be turned off", {
-  object <- gvec_object()
-  object <- add_submodels(object,
-                          endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 1,
-                          const = "unrestricted", trend = "restricted", r = 1,
-                          iterations = 20, burnin = 10)
-  object <- add_priors(object,
-                       coef = list(v_i = 0),
-                       coint = list(v_i = 0, p_tau_i = 1),
-                       sigma = list(df = 3, scale = 0.0001))
-  object <- add_initial_values(object)
-
-  result <- add_posterior_coefficients(object, scale_ect = FALSE)
-
-  expect_s3_class(result[["submodels"]][["US"]], "modellist")
-  expect_null(attr(result[["submodels"]][["US"]][[1]][["data"]][["train"]][["w"]],
-                   "scale"))
   expect_equal(nrow(result[["submodels"]][["US"]][[1]][["posterior"]][["beta"]][["coeffs"]]),
                20L)
 
-  expect_error(add_posterior_coefficients(object, scale_ect = "yes"),
-               "must be a single logical value")
+  # A script written for the implicit scaling must not run unscaled unnoticed.
+  expect_error(add_posterior_coefficients(object, scale_ect = TRUE),
+               "no longer supported")
 })
 
-test_that("a scaled simulation still solves into a global model", {
-  object <- gvec_to_gvar(gvec_estimated(iterations = 30, burnin = 10))
+test_that("every sub-model is scaled, and rescaling undoes it", {
+  object <- gvec_prepared()
 
-  gvec <- submodels_to_gvar(object)
+  scaled <- scale_error_correction(object)
+  expect_s3_class(scaled, "gvecmodel")
 
-  expect_s3_class(gvec, "bvarmodel")
-  expect_equal(gvec[["model"]][["k"]], 6L)
-  expect_false(any(is.na(gvec[["posterior"]][["a"]][["coeffs"]])))
+  for (submodel in names(object[["submodels"]])) {
+    expect_s3_class(scaled[["submodels"]][[submodel]], "modellist")
+    expect_false(is.null(attr(w_of(scaled, submodel), "scale")), info = submodel)
+  }
+
+  rescaled <- rescale_error_correction(scaled)
+  for (submodel in names(object[["submodels"]])) {
+    expect_null(attr(w_of(rescaled, submodel), "scale"), info = submodel)
+    expect_equal(unclass(w_of(rescaled, submodel)), unclass(w_of(object, submodel)),
+                 info = submodel)
+  }
+
+  # A model that was never scaled has nothing to rescale.
+  expect_error(rescale_error_correction(object), "does not have an attribute 'scale'")
+})
+
+test_that("a scaled simulation comes back on the scale of the data and solves", {
+  object <- gvec_prepared()
+
+  result <- rescale_error_correction(add_posterior_coefficients(scale_error_correction(object)))
+
+  for (submodel in names(object[["submodels"]])) {
+    expect_null(attr(w_of(result, submodel), "scale"), info = submodel)
+    expect_equal(unclass(w_of(result, submodel)), unclass(w_of(object, submodel)),
+                 info = submodel)
+  }
+
+  gvar <- submodels_to_gvar(gvec_to_gvar(result))
+  expect_s3_class(gvar, "bvarmodel")
+  expect_false(any(is.na(gvar[["posterior"]][["a"]][["coeffs"]])))
+})
+
+test_that("starting values follow the scaling, whichever comes first", {
+  # Initial values added before scaling are transformed with the data and put
+  # back afterwards.
+  object <- gvec_prepared()
+  before <- initial_of(object)
+
+  scaled <- scale_error_correction(object)
+  factors <- attr(w_of(scaled), "scale")
+  k_ect <- length(factors)
+  expect_equal(as.numeric(initial_of(scaled)),
+               as.numeric(diag(factors) %*% matrix(before, k_ect)))
+
+  back <- rescale_error_correction(scaled)
+  expect_equal(initial_of(back), before)
+  expect_equal(dim(initial_of(back)), dim(before))
+
+  # Initial values added after scaling are estimated on the scaled data, and
+  # rescaling puts them on the scale of the data. The cointegration space does
+  # not depend on the scale of the variables, so the vector is the same up to
+  # its normalisation.
+  late <- add_initial_values(scale_error_correction(gvec_prepared(initial = FALSE)))
+  late <- rescale_error_correction(late)
+  a <- as.numeric(initial_of(late))
+  b <- as.numeric(before)
+  expect_equal(abs(sum(a * b)) / sqrt(sum(a^2) * sum(b^2)), 1, tolerance = 1e-6)
+})
+
+test_that("the path and the state before the sample of time varying vectors follow as well", {
+  object <- gvec_prepared(tvp = TRUE)
+  path <- initial_of(object, "beta")
+  state <- initial_of(object, "beta_init")
+  expect_false(is.null(path))
+  expect_false(is.null(state))
+
+  scaled <- scale_error_correction(object)
+  factors <- attr(w_of(scaled), "scale")
+  k_ect <- length(factors)
+
+  expect_equal(as.numeric(initial_of(scaled, "beta_init")),
+               as.numeric(diag(factors) %*% matrix(state, k_ect)))
+  expect_equal(as.numeric(initial_of(scaled, "beta")),
+               as.numeric(diag(factors) %*% matrix(path, k_ect)))
+
+  back <- rescale_error_correction(scaled)
+  expect_equal(initial_of(back, "beta"), path)
+  expect_equal(initial_of(back, "beta_init"), state)
 })
 
 test_that("a cointegration rank above one is transformed correctly", {
@@ -155,20 +210,10 @@ test_that("a cointegration rank above one is transformed correctly", {
   # column of k_ect * r elements rather than as a k_ect by r matrix, so
   # applying the scaling factors to them without reshaping first happens to
   # work at rank one and is not conformable above it.
-  object <- gvec_object()
-  object <- add_submodels(object,
-                          endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 1,
-                          const = "unrestricted", trend = "restricted", r = 2,
-                          iterations = 20, burnin = 10)
-  object <- add_priors(object,
-                       coef = list(v_i = 0),
-                       coint = list(v_i = 0, p_tau_i = 1),
-                       sigma = list(df = 3, scale = 0.0001))
-  object <- add_initial_values(object)
+  object <- gvec_prepared(r = 2)
+  before <- initial_of(object)
 
-  before <- object[["submodels"]][["US"]][[1]][["initial"]][["beta"]]
-  result <- add_posterior_coefficients(object)
+  result <- rescale_error_correction(add_posterior_coefficients(scale_error_correction(object)))
   model <- result[["submodels"]][["US"]][[1]]
 
   expect_equal(model[["model"]][["rank"]], 2L)

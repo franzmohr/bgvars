@@ -6,52 +6,45 @@
 #' @param object an object of class 'gvecmodel', usually, a result of a
 #' call to \code{\link{create_gvecmodel}} in combination with
 #' \code{\link[bvartools]{add_priors}} and \code{\link[bvartools]{add_initial_values}}.
-#' @param scale_ect logical. Should the series in the error correction term be
-#' put on a comparable scale for the posterior simulation? Defaults to
-#' \code{TRUE}. See 'Details'.
 #' @param ... further arguments passed to or from other methods.
 #'
 #' @details
+#' Every sub-model is simulated on the error correction term it carries. The
+#' function does not change the scale of that term.
+#'
 #' The series in the error correction term of a sub-model are on the scale of
-#' the data, and those scales differ a great deal: a log level and an inflation
-#' rate of the same unit enter the same term, and so does a linear trend running
-#' into the hundreds. The prior on the cointegration space is isotropic --
-#' \code{\link[bvartools]{add_priors}} builds it from \code{coint$p_tau_i} as a
-#' multiple of the identity matrix -- so it treats all of those series as if they
-#' were comparably scaled.
-#'
-#' With \code{scale_ect = TRUE} each sub-model is therefore simulated on a
-#' scaled error correction term, using
-#' \code{\link[bvartools]{scale_error_correction}}, and the draws are put back
-#' on the scale of the data afterwards with
-#' \code{\link[bvartools]{rescale_error_correction}}. The transformation is
-#' exact: with \eqn{D} the diagonal matrix of scaling factors,
-#' \eqn{lpha eta' w_{t-1}} is unchanged by writing it as
-#' \eqn{lpha (D eta)' (D^{-1} w_{t-1})}, so the model that is estimated is
-#' the same one. Only the draws of \eqn{eta} are affected by the
-#' transformation, those of \eqn{lpha} are not.
-#'
-#' What the function returns is on the scale of the data either way. The initial
-#' values the object carries are left untouched, so that the reduced rank
-#' maximum likelihood estimates \code{\link[bvartools]{add_initial_values}}
-#' produced remain comparable with published cointegrating vectors.
+#' the data, and those scales differ a great deal, while the prior on the
+#' cointegration space is isotropic. To simulate on a comparable scale, call
+#' \code{\link[=scale_error_correction.gvecmodel]{scale_error_correction}} before
+#' this function and
+#' \code{\link[=scale_error_correction.gvecmodel]{rescale_error_correction}}
+#' after it:
+#' \preformatted{object <- scale_error_correction(object)
+#' object <- add_posterior_coefficients(object)
+#' object <- rescale_error_correction(object)}
+#' Scaling changes what the prior on the cointegration space says, so it is left
+#' to the user as a step of its own rather than done implicitly.
 #'
 #' @return A list of class 'gvecmodel'.
 #'
 #'
 #' @export
 #' @method add_posterior_coefficients gvecmodel
-add_posterior_coefficients.gvecmodel <- function(object, scale_ect = TRUE, ...){
+add_posterior_coefficients.gvecmodel <- function(object, ...){
 
-  if (!is.logical(scale_ect) || length(scale_ect) != 1) {
-    stop("Argument 'scale_ect' must be a single logical value.")
+  # The argument used to switch an implicit scaling on and off. Passed on
+  # through '...' it would be ignored by the samplers without a word, and a
+  # script written for the old default would simulate on unscaled terms without
+  # noticing, so it is refused.
+  if ("scale_ect" %in% names(list(...))) {
+    stop("Argument 'scale_ect' is no longer supported. Call 'scale_error_correction' ",
+         "before and 'rescale_error_correction' after 'add_posterior_coefficients' ",
+         "to simulate on scaled error correction terms.")
   }
-
-  draw <- if (scale_ect) .draw_scaled_vecxsubmodel else add_posterior_coefficients
 
   object[["submodels"]] <- lapply(object[["submodels"]], function(models) {
     model_class <- class(models)
-    models <- lapply(models, draw, ...)
+    models <- lapply(models, add_posterior_coefficients, ...)
     class(models) <- model_class
     models
   })
