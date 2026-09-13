@@ -17,7 +17,7 @@ they appear in a time-series object. If \code{NULL} (default), all variables are
 \item{...}{further arguments passed to or from other methods.}
 }
 \value{
-A differenced time-series object or a list of differenced time-series objects.
+An object of class 'submodeldata' with the selected endogenous variables differenced.
 }
 \description{
 Produces the first difference of variables in an object of class 'submodeldata'.

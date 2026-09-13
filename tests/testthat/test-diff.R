@@ -54,3 +54,12 @@ test_that("diff.submodeldata rejects unknown variables", {
   expect_error(diff(submodel_data, variables = "does_not_exist"),
                "is contained in the data")
 })
+
+test_that("diff.submodeldata returns an object of class 'submodeldata'", {
+  submodel_data <- gvar_data()
+  result <- diff(submodel_data, variables = "y", multi = 100)
+
+  expect_s3_class(result, "submodeldata")
+  expect_no_error(create_gvarmodel(submodel_data = result,
+                                   global_data = gvar_global_data()))
+})

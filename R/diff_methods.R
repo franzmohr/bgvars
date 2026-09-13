@@ -8,7 +8,7 @@
 #' @param multi optional. Numeric by which the differenced series should be multiplicated.
 #' @param ... further arguments passed to or from other methods.
 #' 
-#' @return A differenced time-series object or a list of differenced time-series objects.
+#' @return An object of class 'submodeldata' with the selected endogenous variables differenced.
 #' 
 #' @examples 
 #' # Load data
@@ -31,9 +31,11 @@ diff.submodeldata <- function(x, variables = NULL, multi = NULL, ...){
     variables <- variables[which(variables %in% vars_endogen)]
   }
   
-  x <- lapply(x, .diff_func, variables, multi)
-  
-  return(x)
+  # lapply drops the class, which the functions taking the data require
+  result <- lapply(x, .diff_func, variables, multi)
+  class(result) <- class(x)
+
+  return(result)
 }
 
 .diff_func <- function(x, variables, multi){
