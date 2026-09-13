@@ -77,37 +77,14 @@ Argument \code{coef} contains the following elements
   Only used for models with time varying parameters. Default is 0.01.}
 }
 
-Argument \code{coint} depends on whether the cointegration parameters are constant or time
-varying, since the two are given different kinds of prior: a matric-variate prior on the
-cointegration space in the first case, and a state equation in the second.
-\describe{
-  \item{\code{v_i}}{numeric between 0 and 1 specifying the shrinkage of the cointegration space prior.
-  Required for sub-models with constant cointegration parameters and not used otherwise.}
-  \item{\code{p_tau_i}}{numeric of the diagonal elements of the inverse prior matrix of
-  the central location of the cointegration space \eqn{sp(\beta)}.
-  Required for sub-models with constant cointegration parameters and not used otherwise.}
-  \item{\code{rho}}{a numeric specifying the autocorrelation coefficient
-  of the state equation of \eqn{\beta}. It must be smaller than 1.
-  Required for sub-models with time varying cointegration parameters and not used otherwise.
-  If \code{rho_min} and \code{rho_max} are given as well, this is the value the
-  chain starts \eqn{\rho} at rather than the value it keeps, and it must lie
-  between them.}
-  \item{\code{rho_min}, \code{rho_max}}{numerics specifying the support of a
-  uniform prior on \eqn{\rho}, which makes it a drawn parameter rather than a
-  fixed hyperparameter. Optional, and either both or neither; they must
-  satisfy \eqn{0 < }\code{rho_min}\eqn{ < }\code{rho_max}\eqn{ \le 1}.
-  Koop et al. (2011) use \eqn{(0.999, 1)}.
-  Only used for sub-models with time varying cointegration parameters.}
-}
-For a sub-model with time varying cointegration parameters the state equation is
-\eqn{\beta_t = \rho \beta_{t-1} + \eta_t} with \eqn{\eta_t \sim N(0, I)}, and
-the prior on the state before the sample is that equation's own stationary
-distribution, \eqn{N(0, I / (1 - \rho^2))}. This is what makes the prior
-proper, so a \eqn{\rho} close to one is intended and one further from it draws
-a warning. The loadings carry the compensating scale: only the product
-\eqn{\alpha \beta^{\prime}} is identified, so their prior variance is shrunk
-by \eqn{1 - \rho^2}, leaving the product on the scale \code{coef$v_i} asks
-for.
+Argument \code{coint} specifies the prior on the cointegration space. It is
+checked and built by \code{\link[bvartools]{cointspace_prior}}, the function
+\pkg{bvartools} uses for its own VEC models, and its section 'Prior on the
+cointegration space' is shown below. The error correction term
+\code{data$train$w} of a sub-model holds its endogenous, weakly exogenous and
+global variables and its restricted deterministic terms, and the prior has
+one row and column for each of them. Unrecognised elements of \code{coint}
+raise an error.
 
 Variable selection is available as \code{"bvs"}. The loadings are never subject to it,
 so the error correction term is always in the model, and one inclusion parameter is drawn
@@ -178,6 +155,131 @@ for lag \eqn{l} with \eqn{\kappa_1}, \eqn{\kappa_2}, \eqn{\kappa_3},
 \eqn{\kappa_4} as the first, second, third and forth element in
 \code{varsel$minnesota}, respectively.
 }
+\section{Prior on the cointegration space}{
+
+
+Argument \code{coint} can contain the following elements. Which of them are
+required depends on whether the cointegration vectors are constant or time
+varying, since the two are given different kinds of prior: a matric-variate
+prior on the cointegration space in the first case, and a state equation in
+the second. Any other element raises an error.
+\describe{
+  \item{\code{v_i}}{non-negative numeric specifying the shrinkage of the cointegration space prior,
+  or \code{"ml"}. See below. Required for models with constant cointegration parameters and not
+  used otherwise.}
+  \item{\code{p_tau_i}}{the inverse of the matrix \eqn{P_\tau}, which determines the
+  central location of the cointegration space \eqn{sp(\beta)}. Either a numeric of
+  its diagonal elements, a full symmetric matrix, or \code{"ml"}, with one row and
+  column per series in the error correction term \code{data$train$w}. See below.
+  Required for models with constant cointegration parameters. For models with time
+  varying cointegration parameters only \code{"ml"} is used.}
+  \item{\code{weight}}{positive numeric specifying the weight of a prior centred on the
+  maximum likelihood estimate in units of the information of the sample. Default is 1.
+  Only used if \code{p_tau_i = "ml"}.}
+  \item{\code{rho}}{a numeric specifying the autocorrelation coefficient
+  of the state equation of \eqn{\beta}. It must be smaller than 1.
+  Required for models with time varying cointegration parameters and not used otherwise.
+  If \code{rho_min} and \code{rho_max} are given as well, this is the value the
+  chain starts \eqn{\rho} at rather than the value it keeps, and it must lie
+  between them.}
+  \item{\code{rho_min}, \code{rho_max}}{numerics specifying the support of a
+  uniform prior on \eqn{\rho}, which makes it a drawn parameter rather than a
+  fixed hyperparameter. Optional, and either both or neither; they must
+  satisfy \eqn{0 < }\code{rho_min}\eqn{ < }\code{rho_max}\eqn{ \le 1}.
+  Koop et al. (2011) use \eqn{(0.999, 1)}.
+  Only used for models with time varying cointegration parameters.}
+}
+For a model with constant cointegration parameters the prior is that of
+Koop et al. (2010). The sampler uses \code{v_i} and \code{p_tau_i} only through
+their product, so with \code{v_i = 0} the prior on the cointegration space is
+uniform whatever \code{p_tau_i} is. An informative prior on the space
+therefore needs a positive \code{v_i}, which also shrinks the loadings: for
+\eqn{\beta} close to the centre of the space they have prior
+\eqn{N(0, \Sigma / v)}.
+
+With \code{p_tau_i = "ml"} the prior is centred on the space spanned by
+Johansen's (1995) maximum likelihood estimate \eqn{\hat{\beta}}, computed from
+the error correction term as it is stored in the model -- so call
+\code{\link[bvartools]{scale_error_correction}} first if the series should be scaled;
+scaling is refused afterwards.
+Let \eqn{H} be an orthonormal basis of that space, \eqn{H_\perp} one of its
+orthogonal complement and \eqn{\beta = H + H_\perp \delta}. The matrix
+\deqn{P_\tau^{-1} = H H^{\prime} + H_\perp T^{-1} H_\perp^{\prime}, \quad
+T = \frac{v}{w} (H_\perp^{\prime} S_{11} H_\perp)^{-1},}
+where \eqn{S_{11}} is the cross product of the residuals of a regression of the
+error correction term on the short-run regressors and \eqn{w} is \code{weight},
+makes the prior of \eqn{\delta} given \eqn{\alpha}
+\eqn{N(0, (\alpha^{\prime} \Sigma^{-1} \alpha)^{-1} \otimes w^{-1} (H_\perp^{\prime} S_{11} H_\perp)^{-1})}.
+This is the asymptotic distribution of the maximum likelihood estimator
+with its precision multiplied by \eqn{w}: \code{weight = 1} adds as much
+information about the space as the sample itself holds. Since the centre is
+estimated from the same sample, the posterior then overstates the precision
+of \eqn{sp(\beta)}. Eigenvalues of \eqn{T} are capped at one, which is the
+uniform prior.
+
+With \code{v_i = "ml"} the shrinkage is chosen so that the prior mean of
+\eqn{tr(\alpha^{\prime} \Sigma^{-1} \alpha)} is 100 times its maximum
+likelihood estimate. It can be combined with a numeric \code{p_tau_i}.
+
+For a model with time varying cointegration parameters the state equation is
+\eqn{\beta_t = \rho \beta_{t-1} + \eta_t} with \eqn{\eta_t \sim N(0, I)}, and
+the prior on the state before the sample is that equation's own stationary
+distribution, \eqn{N(0, I / (1 - \rho^2))}. This is what makes the prior
+proper, so a \eqn{\rho} close to one is intended and one further from it draws
+a warning. \code{\link[bvartools]{add_priors}} gives the loadings the compensating scale:
+only the product \eqn{\alpha \beta^{\prime}} is identified, so their prior
+variance is shrunk by \eqn{1 - \rho^2}, leaving the product on the scale
+\code{coef$v_i} asks for.
+
+When \eqn{\rho} is drawn, those last two are computed from \code{coint$rho}
+once and do not follow the draw: the state before the sample keeps the normal
+prior built here, and the loadings keep the shrinkage of
+\code{\link[bvartools]{add_priors}}. This is a deliberate departure from Koop et al.
+(2011), in whom the state before the sample is the stationary distribution of
+whatever \eqn{\rho} currently is. It is also what makes the draw an exact
+Gibbs block rather than their Metropolis-within-Gibbs step: with the state
+before the sample free of \eqn{\rho}, the conditional posterior of \eqn{\rho}
+is a normal truncated to the prior's support. Draws of \eqn{\rho} are
+returned in \code{object$posterior$beta$rho}.
+
+For such a model \code{p_tau_i = "ml"} centres the marginal prior of the
+cointegration space on Johansen's estimate as well, using the informative
+marginal prior of Koop et al. (2011, working paper version). The state
+equation becomes
+\eqn{\beta_t = \rho (I_r \otimes P_\tau) \beta_{t-1} + \eta_t} with
+\eqn{P_\tau = H H^{\prime} + H_\perp T H_\perp^{\prime}}: the part of
+\eqn{\beta_t} along \eqn{sp(H)} keeps \eqn{\rho}, the part off it decays
+faster, and the mode of the marginal distribution of \eqn{sp(\beta_t)} is
+\eqn{sp(H)} in every period. \eqn{T} is chosen so that the prior spread of the
+tilt of \eqn{\beta_t} away from \eqn{sp(H)} in a period, approximately
+\eqn{T^* = (1 - \rho^2)(I - \rho^2 T^2)^{-1}}, is the sampling variance of
+Johansen's estimator with its precision multiplied by \code{weight}. The
+state before the sample is given the stationary distribution the transition
+implies. The transition is stored as element \code{p_tau}.
+
+\eqn{\rho} limits how informative this prior can be: even \eqn{T = 0} leaves
+the tilt a spread of \eqn{1 - \rho^2} per period, and a \code{weight} asking
+for more is floored there with a warning.
+
+A larger \code{weight} does not always give a tighter posterior. It narrows
+the prior spread of the tilt in each period by lowering \eqn{T}, but \eqn{T}
+is also how much of the tilt carries over from one period to the next. As
+\eqn{T} approaches zero the tilt of each period becomes independent of the
+last, the data of neighbouring periods stop informing it, and the posterior
+spread of \eqn{sp(\beta_t)} can widen again. On data set E6 with
+\eqn{\rho = 0.999}, for example, \code{weight = 1}, which gives
+\eqn{T \approx 0.44}, produced a tighter posterior than \code{weight = 100},
+which reaches \eqn{T = 0}. The useful range of \code{weight} is the one that
+keeps \eqn{T} clearly above zero, and a \eqn{\rho} closer to one widens it.
+
+A \code{weight} so small that
+\eqn{T} would be the identity in every direction leaves the noninformative
+prior unchanged. Both \eqn{P_\tau} and the prior on the state before the
+sample are computed at \code{coint$rho}, and do not follow the draw if
+\eqn{\rho} is drawn. \code{coint$v_i} has no counterpart for these models.
+
+}
+
 \examples{
 
 # Load data
@@ -222,6 +324,9 @@ Chan, J., Koop, G., Poirier, D. J., & Tobias J. L. (2019). \emph{Bayesian econom
 George, E. I., Sun, D., & Ni, S. (2008). Bayesian stochastic search for VAR model
 restrictions. \emph{Journal of Econometrics, 142}(1), 553--580.
 \doi{10.1016/j.jeconom.2007.08.017}
+
+Johansen, S. (1995). \emph{Likelihood-based inference in cointegrated vector
+autoregressive models}. Oxford: Oxford University Press.
 
 Koop, G., León-González, R., & Strachan R. W. (2010). Efficient posterior
 simulation for cointegrated models with priors on the cointegration space.
