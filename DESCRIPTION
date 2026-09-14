@@ -8,7 +8,6 @@ License: GPL (>= 3)
 Depends: R (>= 4.4.0), bvartools (>= 0.3.0.9000)
 Imports:
     coda,
-    graphics,
     hdf5r,
     parallel,
     stats,
