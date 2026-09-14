@@ -176,7 +176,7 @@
 #' # Add priors
 #' object <- add_priors(object,
 #'                      coef = list(v_i = 0),
-#'                      sigma = list(df = 3, scale = 0.0001))
+#'                      sigma = list(df = 3, scale = 1e-8))
 #'                               
 #' 
 #' 

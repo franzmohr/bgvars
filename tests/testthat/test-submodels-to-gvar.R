@@ -206,7 +206,7 @@ test_that("constant weights make the period irrelevant", {
                           iterations = 20, burnin = 10)
   object <- align_model_obs(object)
   object <- add_priors(object, coef = list(v_i = 1),
-                       sigma = list(df = 3, scale = 0.0001))
+                       sigma = list(df = 3, scale = 1e-8))
   object <- add_initial_values(object)
   object <- add_posterior_coefficients(object)
 
@@ -343,7 +343,7 @@ test_that("a structural sub-model enters G through its A0", {
     iterations = 20, burnin = 10)
   object <- align_model_obs(object)
   for (i in names(object[["submodels"]])) {
-    sigma <- if (i == "US") list(shape = 3, rate = 0.0001) else list(df = 3, scale = 0.0001)
+    sigma <- if (i == "US") list(shape = 3, rate = 1e-8) else list(df = 3, scale = 1e-8)
     object[["submodels"]][[i]] <- add_priors(object[["submodels"]][[i]],
                                              coef = list(v_i = 1), sigma = sigma)
   }
