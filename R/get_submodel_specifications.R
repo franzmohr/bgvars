@@ -53,8 +53,10 @@ get_submodel_specifications <- function(object){
       result[i, "group"] <- names(object)[i]
     }
     type <- object[[i]][["model"]][["type"]]
-    if (object[[i]][["model"]][["structural"]]) {
-     type <- paste0("S", type) 
+    # create_varxsubmodel() and create_vecxsubmodel() name a structural model
+    # SVARX or SVECX already, so the prefix is only added where it is missing.
+    if (isTRUE(object[[i]][["model"]][["structural"]]) && !startsWith(type, "S")) {
+      type <- paste0("S", type)
     }
     if (object[[i]][["model"]][["error"]] %in% c("sv", "sv+covar")) {
       type <- paste0("SV-", type) 
