@@ -153,6 +153,24 @@ test_that("the loadings compensate the scale of the cointegration space", {
   expect_length(priors[["a"]][["rate"]], n_z)
 })
 
+test_that("the prior of the loadings follows coef$v_i", {
+  object <- add_priors(vecx_tvp(varsel = "none"),
+                       coef = list(v_i = 1 / 2, v_i_det = 1 / 10, shape = 3, rate = 1e-8,
+                                   rate_det = 1e-6),
+                       coint = list(rho = 0.999),
+                       sigma = list(shape = 3, rate = 0.01, mu = 0, v_i = 0.01,
+                                    state_variance = 0.05, offset = 1e-8))
+  submodel <- object[["submodels"]][["US"]][[1]]
+  n_alpha <- submodel[["model"]][["k_endogen"]] * submodel[["model"]][["rank"]]
+  precision <- diag(submodel[["priors"]][["a"]][["v_inv"]])
+
+  # Koop et al. (2011): the loadings' variance is that of the other
+  # coefficients times 1 - rho^2, so alpha beta' keeps the scale coef$v_i asks
+  # for once beta's stationary variance 1 / (1 - rho^2) is multiplied in.
+  expect_equal(precision[1:n_alpha], rep((1 / 2) / (1 - 0.999^2), n_alpha))
+  expect_equal(precision[n_alpha + 1], 1 / 2)
+})
+
 test_that("a time varying VECX sub-model can be estimated with BVS", {
   object <- vecx_priors(vecx_tvp(), varsel = list(inprior = 0.5, exclude_det = TRUE))
   object <- add_initial_values(object)
