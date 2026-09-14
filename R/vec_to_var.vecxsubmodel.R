@@ -95,12 +95,13 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
 
   specification <- object[["model"]]
 
-  if (isTRUE(specification[["structural"]])) {
-    stop("Structural GVEC sub-models cannot be rewritten in levels yet.\n",
-         "Feel free to send a feature request.")
-  }
-
   k <- specification[["k_endogen"]]
+  # A structural sub-model carries the free elements of its unit lower
+  # triangular A0 as its last coefficients, column by column.
+  n_struct <- 0L
+  if (isTRUE(specification[["structural"]]) && k > 1) {
+    n_struct <- as.integer(k * (k - 1) / 2)
+  }
   p <- specification[["p_endogen"]]
   m_exogen <- specification[["k_exogen"]]
   q_exogen <- specification[["p_exogen"]]
@@ -279,7 +280,7 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
     k_ect <- NCOL(w)
     n_x <- NCOL(x_diff)
 
-    if (NCOL(coeffs) != k * (rank + n_x)) {
+    if (NCOL(coeffs) != k * (rank + n_x) + n_struct) {
       stop("The posterior draws do not have the number of columns implied by ",
            "the model specification.")
     }
@@ -288,7 +289,7 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
     # sub-model stores them.
     n_out <- k * p + m_exogen * (top_exogen + 1) + m_global * (top_global + 1) +
       n_det_ur + n_det_r
-    result_coeffs <- matrix(NA_real_, draws, k * n_out)
+    result_coeffs <- matrix(NA_real_, draws, k * n_out + n_struct)
 
     beta <- posterior[["beta"]][["coeffs"]]
 
@@ -315,7 +316,17 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
 
     for (draw in seq_len(draws)) {
 
-      a <- matrix(coeffs[draw, ], k)
+      a <- matrix(coeffs[draw, seq_len(k * (rank + n_x))], k)
+
+      # In A0 dy_t = Pi w_t + ... the levels satisfy A0 y_t = A0 y_{t-1} + ...,
+      # so A0 takes the place of the identity on the first lag. It is kept as
+      # the last coefficients of the level representation as well.
+      a0 <- diag(1, k)
+      if (n_struct > 0) {
+        a0_free <- coeffs[draw, k * (rank + n_x) + seq_len(n_struct)]
+        a0[lower.tri(a0)] <- a0_free
+      }
+
       pi_plus <- matrix(0, k, k_ect)
       if (rank > 0) {
         alpha <- a[, 1:rank, drop = FALSE]
@@ -327,7 +338,7 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
       # Endogenous variables
       out_endogen <- matrix(0, k, k * p)
       gamma <- function(j) {a[, (j - 1) * k + 1:k, drop = FALSE]}
-      out_endogen[, 1:k] <- diag(1, k) + pi_plus[, 1:k, drop = FALSE] +
+      out_endogen[, 1:k] <- a0 + pi_plus[, 1:k, drop = FALSE] +
         (if (n_gamma > 0) gamma(1) else 0)
       if (p > 1) {
         for (j in 2:p) {
@@ -358,8 +369,9 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
                                  drop = FALSE])
       }
 
-      result_coeffs[draw, ] <- cbind(out_endogen, out_exogen, out_global,
-                                     out_det)
+      result_coeffs[draw, ] <- c(cbind(out_endogen, out_exogen, out_global,
+                                       out_det),
+                                 if (n_struct > 0) a0_free)
     }
 
     dimnames(result_coeffs) <- list(NULL, NULL)
