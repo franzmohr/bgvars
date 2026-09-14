@@ -40,3 +40,18 @@ test_that("columns that apply to no model are dropped", {
   # A VARX sub-model has no cointegration rank, so the column goes.
   expect_false("r" %in% names(specs))
 })
+
+test_that("a structural sub-model is marked as structural once", {
+  # Regression test. create_varxsubmodel() names a structural model SVARX
+  # already, and the function added a second prefix on top, giving SSVARX.
+  object <- gvar_object()
+  model <- create_varxsubmodel(object, submodel = "US",
+                               endogen = c("y", "Dp"), p_endogen = 1,
+                               exogen = c("y", "Dp"), p_exogen = 1,
+                               structural = TRUE, tvp = TRUE, error = "sv",
+                               iterations = 10, burnin = 5)
+
+  specs <- get_submodel_specifications(model)
+
+  expect_equal(specs[, "type"], "TVP-SV-SVARX")
+})

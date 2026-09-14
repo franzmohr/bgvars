@@ -159,3 +159,53 @@ reference_girf <- function(x, impulse, response, n_ahead) {
 
   vapply(seq_len(nrow(coeffs)), one_draw, numeric(n_ahead + 1))
 }
+
+# An estimated 'gvecmodel' whose sub-models have time varying parameters and
+# stochastic volatility. The US sub-model is structural with stochastic
+# volatility, the others carry error covariances, which are the two layouts a
+# time varying sub-model can have. A restricted trend puts a deterministic term
+# into the error correction term as well.
+gvec_tvp_sv_estimated <- function(iterations = 20, burnin = 10) {
+  object <- gvec_object(c("US", "JP", "CA"))
+  for (i in c("US", "JP", "CA")) {
+    object[["submodels"]][[i]] <- create_vecxsubmodel(object, submodel = i,
+      endogen = c("y", "Dp", "rs"), p_endogen = 2,
+      exogen = c("y", "Dp"), p_exogen = 2,
+      r = 1, const = "unrestricted", trend = "restricted",
+      structural = i == "US", tvp = TRUE,
+      error = if (i == "US") "sv" else "sv+covar",
+      iterations = iterations, burnin = burnin)
+  }
+  object <- align_model_obs(object)
+  object <- add_priors(object,
+                       coef = list(v_i = 1, v_i_det = 1 / 10,
+                                   shape = 3, rate = 1e-12, rate_det = 1e-10),
+                       coint = list(rho = 0.999),
+                       sigma = list(shape = 3, rate = 0.01, mu = 0, v_i = 0.01,
+                                    state_variance = 0.05, offset = 1e-8))
+  object <- add_initial_values(object)
+  add_posterior_coefficients(object)
+}
+
+# A time varying sub-model reduced by hand to the draws of one period of its
+# estimation sample, in the layout of a sub-model with constant coefficients and
+# a constant error covariance matrix.
+submodel_period_by_hand <- function(model, period) {
+  tt <- nrow(model[["data"]][["train"]][["y"]])
+  k <- model[["model"]][["k"]]
+  block <- function(draws, size) {
+    coda::mcmc(draws[, (period - 1) * size + seq_len(size), drop = FALSE])
+  }
+  posterior <- list(
+    "a" = list("coeffs" = block(model[["posterior"]][["a"]][["coeffs"]],
+                                ncol(model[["data"]][["train"]][["z"]]))),
+    "u_sigma_inv" = list("coeffs" = block(model[["posterior"]][["u_sigma_inv"]][["coeffs"]], k * k)))
+  if (!is.null(model[["posterior"]][["beta"]])) {
+    posterior[["beta"]] <- list("coeffs" = block(model[["posterior"]][["beta"]][["coeffs"]],
+                                                 ncol(model[["posterior"]][["beta"]][["coeffs"]]) / tt))
+  }
+  model[["posterior"]] <- posterior
+  model[["model"]][["tvp"]] <- FALSE
+  model[["model"]][["error"]] <- sub("sv", "gamma", model[["model"]][["error"]], fixed = TRUE)
+  model
+}

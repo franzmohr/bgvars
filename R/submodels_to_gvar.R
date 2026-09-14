@@ -7,9 +7,11 @@
 #' exactly one estimated model per sub-model. Use the \code{submodels} argument
 #' of \code{\link{read_gvar_from_folder}} to reduce an object with multiple
 #' candidate models per sub-model to one.
-#' @param period integer of the period, whose weight matrices should be used to
-#' solve the model. Defaults to the last period of the estimation sample. Only
-#' relevant for time varying weights.
+#' @param period integer of the period of the global data, at which the model
+#' should be solved. Defaults to the last period of the estimation sample. It
+#' selects the weight matrices, if they vary over time, and the coefficients and
+#' error covariance matrices of sub-models with time varying parameters or
+#' stochastic volatility, which must then lie within the estimation sample.
 #'
 #' @details
 #' Each sub-model \eqn{i} is a VARX* model in its endogenous variables
@@ -28,7 +30,9 @@
 #' single step as a GVAR model. The same holds for a model whose sub-models
 #' were chosen from VARX and VECX candidates alike and so come in both forms.
 #' The cointegration rank of a sub-model describes its error correction form
-#' only and plays no further role.
+#' only and plays no further role. A time varying sub-model in error correction
+#' form is reduced to the draws of \code{period} before it is rewritten, so only
+#' the draws of that period are transformed.
 #'
 #' The model is returned in its reduced form, that is, premultiplied by
 #' \eqn{G^{-1}}, which is the form the methods of \pkg{bvartools} work on.
@@ -49,6 +53,14 @@
 #' The error covariance matrix of the structural form is block diagonal, one
 #' block per sub-model. The reduced form errors \eqn{G^{-1} u_t} are
 #' correlated across sub-models accordingly.
+#'
+#' Sub-models with time varying parameters or stochastic volatility hold one set
+#' of coefficients and one error covariance matrix per period of the estimation
+#' sample. The global model is solved from the draws of the period given in
+#' \code{period}, so the result describes the global model at that date, and a
+#' model for every period of interest is obtained by calling the function once
+#' per period. Sub-models with constant coefficients and a constant error
+#' covariance matrix contribute the same draws in every period.
 #'
 #' The reduced form has constant coefficients, a full error precision and no
 #' structural form whatever the sub-models had, so the returned object names
@@ -155,24 +167,61 @@ submodels_to_gvar <- function(object, period = NULL) {
          "Affected sub-models: ", msg_names, ".")
   }
 
+  for (i in names(object[["submodels"]])) {
+    if (is.null(object[["submodels"]][[i]][[1]][["posterior"]])) {
+      stop("Sub-model ", i, " has not been estimated yet, so the global model ",
+           "cannot be solved.")
+    }
+  }
+
+  # Last observations
+  end_i <- unlist(lapply(object[["submodels"]],
+                         function(x){stats::tsp(x[[1]][["data"]][["train"]][["y"]])[2]}))
+  end <- unique(end_i)
+  if (length(end) > 1) {
+    stop("Last date of last period differs across sub-models.\n",
+         "Feel free to send a feature request.")
+  }
+
+  # Period of the solution ----
+  #
+  # Defaults to the last period of the estimation sample. Compared with a
+  # tolerance rather than for equality, since the times of a 'ts' object are
+  # accumulated in floating point and a quarter of a year is not exact.
+  times <- stats::time(object[["global"]][["endogen"]])
+
+  if (is.null(period)) {
+    period <- which.min(abs(times - end))
+    if (abs(times[period] - end) > 1e-6) {
+      stop("The last period of the sub-models is not part of the global data.")
+    }
+  } else {
+    if (length(period) != 1 || period < 1 || period > length(times)) {
+      stop("Argument 'period' must be a single integer between 1 and ",
+           length(times), ".")
+    }
+  }
+
+  # Sub-models whose coefficients or error covariance matrices move are reduced
+  # to the draws of that period, which leaves every sub-model with constant
+  # draws and lets the stacking below treat them alike. This comes first, so
+  # that only the draws of that period are collected and transformed.
+  #
   # Sub-models are stacked in levels, so one in error correction form is
-  # rewritten as the level VARX model it implies first. Done here rather than
+  # rewritten as the level VARX model it implies next. Done here rather than
   # in a step of its own, so that a GVEC model is solved like a GVAR model and
   # a model whose sub-models were chosen from VARX and VECX candidates, and so
   # come in both forms, is solved at all. The global data, the index and the
   # weight matrices describe the units and their weights, which neither form
   # changes.
   for (i in names(object[["submodels"]])) {
-    model_i <- object[["submodels"]][[i]][[1]]
-
-    if (is.null(model_i[["posterior"]])) {
-      stop("Sub-model ", i, " has not been estimated yet, so the global model ",
-           "cannot be solved.")
-    }
+    model_i <- .submodel_at_period(object[["submodels"]][[i]][[1]],
+                                   time = times[period], submodel = i)
 
     if (inherits(model_i, "vecxsubmodel")) {
-      object[["submodels"]][[i]][[1]] <- vec_to_var(model_i)
+      model_i <- vec_to_var(model_i)
     }
+    object[["submodels"]][[i]][[1]] <- model_i
   }
   
   # Endogenous variables
@@ -296,16 +345,7 @@ submodels_to_gvar <- function(object, period = NULL) {
     stop("Number of available observations differs across sub-models.\n",
          "Feel free to send a feature request.")
   }
-  
-  # Last observations
-  end_i <- unlist(lapply(object[["submodels"]],
-                         function(x){stats::tsp(x[[1]][["data"]][["train"]][["y"]])[2]}))
-  end <- unique(end_i)
-  if (length(end) > 1) {
-    stop("Last date of last period differs across sub-models.\n",
-         "Feel free to send a feature request.")
-  }
-  
+
   # Create the bvarmodel object ----
   
   # Model
@@ -340,10 +380,9 @@ submodels_to_gvar <- function(object, period = NULL) {
   # estimated: the solved global model has constant coefficients, a full error
   # precision and no structural form, whatever the sub-models had, and that
   # combination is what 'bvartools' calls VarNormalWishart. The sub-models are
-  # free to differ -- a sub-model drawn with stochastic volatility still leaves
-  # one precision matrix per draw once its block is stacked -- and the
-  # time-varying and stochastic volatility cases stop further up rather than
-  # reaching here with coefficients this name would misdescribe.
+  # free to differ: a sub-model with time varying parameters or stochastic
+  # volatility was reduced to the draws of a single period further up, so it
+  # leaves one set of coefficients and one precision matrix per draw as well.
   #
   # Without it add_posterior_forecasts() has nothing to dispatch on and fails
   # with an argument of length zero, which is why a solved global model could
@@ -447,40 +486,9 @@ submodels_to_gvar <- function(object, period = NULL) {
   }
   
   u_sigma_inv <- matrix(NA, draws, k * k)
-  
-  tvp_i <- unlist(lapply(object[["submodels"]], function(x){x[[1]][["model"]][["tvp"]]}))
-  tvp <- any(tvp_i)
-  if (tvp) {
-    stop("TVP functionality not implemented yet.\n",
-         "Feel free to send a feature request.")
-  }
-  
-  sv_i <- unlist(lapply(object[["submodels"]], function(x){x[[1]][["model"]][["error"]] %in% c("sv", "sv+covar")}))
-  sv <- any(sv_i)
-  if (sv) {
-    stop("SV functionality not implemented yet.\n",
-         "Feel free to send a feature request.")
-  }
-  
-  # Period of the weight matrices ----
+
+  # Weight matrices ----
   #
-  # Defaults to the last period of the estimation sample. Compared with a
-  # tolerance rather than for equality, since the times of a 'ts' object are
-  # accumulated in floating point and a quarter of a year is not exact.
-  times <- stats::time(object[["global"]][["endogen"]])
-
-  if (is.null(period)) {
-    period <- which.min(abs(times - end))
-    if (abs(times[period] - end) > 1e-6) {
-      stop("The last period of the sub-models is not part of the global data.")
-    }
-  } else {
-    if (length(period) != 1 || period < 1 || period > length(times)) {
-      stop("Argument 'period' must be a single integer between 1 and ",
-           length(times), ".")
-    }
-  }
-
   # Constant weights are stored as a single matrix, which is then used for
   # every period.
   n_periods_w <- vapply(submodels, function(i) {
@@ -535,12 +543,7 @@ submodels_to_gvar <- function(object, period = NULL) {
       }
       
       # Contemporary foreign
-      if (tvp_i[i]) {
-        stop("Implement TVP")
-        A0_exogen <- matrix(object[[i]][["posterior"]][["a"]][["coeffs"]][[period]][draw, pos_a0_exogen], k_endogen_i[i])
-      } else {
-        A0_exogen <- matrix(object[["submodels"]][[i]][[1]][["posterior"]][["a"]][["coeffs"]][draw, pos_a0_exogen], k_endogen_i[i])
-      }
+      A0_exogen <- matrix(object[["submodels"]][[i]][[1]][["posterior"]][["a"]][["coeffs"]][draw, pos_a0_exogen], k_endogen_i[i])
       
       a0_temp[k_pos[i] + 1:k_endogen_i[i],] <- cbind(A0, -A0_exogen) %*% w[[i]]
     }
@@ -568,23 +571,13 @@ submodels_to_gvar <- function(object, period = NULL) {
         # Endogenous draws of lag j
         if (j <= p_endogen_i[i]) { # If j is larger than p_endogen_i, leave the country matrix 0
           pos_endogen <- (j - 1) * k_endogen_i[i] * k_endogen_i[i] + 1:(k_endogen_i[i] * k_endogen_i[i])
-          if (tvp_i[i]) {
-            stop("Implement TVP")
-            temp_i[, 1:k_endogen_i[i]] <- object[[i]][["posterior"]][["domestic"]][[period]][draw, pos_endogen]
-          } else {
-            temp_i[, 1:k_endogen_i[i]] <- object[["submodels"]][[i]][[1]][["posterior"]][["a"]][["coeffs"]][draw, pos_endogen] 
-          }
+          temp_i[, 1:k_endogen_i[i]] <- object[["submodels"]][[i]][[1]][["posterior"]][["a"]][["coeffs"]][draw, pos_endogen]
         }
         
         # Foreign draws of lag j
         if (j <= p_exogen_i[i] - 1) { # Beyond the blocks of sub-model i, leave the country matrix 0
           pos_exogen <-  n_endogen_i[i] + j * (k_endogen_i[i] * k_exogen_i[i]) + 1:(k_endogen_i[i] * k_exogen_i[i])
-          if (tvp_i[i]) {
-            stop("Implement TVP")
-            temp_i[, k_endogen_i[i] + 1:k_exogen_i[i]] <- object[[i]][["posterior"]][["a"]][["coeffs"]][[period]][draw, pos_exogen]  
-          } else {
-            temp_i[, k_endogen_i[i] + 1:k_exogen_i[i]] <- object[["submodels"]][[i]][[1]][["posterior"]][["a"]][["coeffs"]][draw, pos_exogen] 
-          }
+          temp_i[, k_endogen_i[i] + 1:k_exogen_i[i]] <- object[["submodels"]][[i]][[1]][["posterior"]][["a"]][["coeffs"]][draw, pos_exogen]
         }
         
         a_temp[k_pos[i] + 1:k_endogen_i[i],] <- temp_i %*% w[[i]]
@@ -604,12 +597,7 @@ submodels_to_gvar <- function(object, period = NULL) {
           if (m_i[i] > 0) {
             if (j <= s_i[i]) {
               pos_global <- n_endogen_i[i] + n_exogen_i[i] + (j - 1) * k_endogen_i[i] * m_i[i] + 1:(k_endogen_i[i] * m_i[i])
-              if (tvp_i[i]) {
-                stop("Implement TVP")
-                #h_temp[k_pos[i] + 1:k_endogen_i[i],] <- object[[i]][["posterior"]][["a"]][["coeffs"]][[period]][draw, pos_global]
-              } else {
-                h_temp[k_pos[i] + 1:k_endogen_i[i],] <- object[["submodels"]][[i]][[1]][["posterior"]][["a"]][["coeffs"]][draw, pos_global] 
-              }
+              h_temp[k_pos[i] + 1:k_endogen_i[i],] <- object[["submodels"]][[i]][[1]][["posterior"]][["a"]][["coeffs"]][draw, pos_global]
             }  
           }
         }
@@ -629,12 +617,7 @@ submodels_to_gvar <- function(object, period = NULL) {
           pos_det <- n_endogen_i[i] + n_exogen_i[i] + n_global_i[i] + 1:(k_endogen_i[i] * n_i[i])
           # Matched by name, since a sub-model may order its terms differently.
           col_det <- match(det_names_i[[i]], det_names)
-          if (tvp_i[i]) {
-            stop("Implement TVP")
-            #d_temp[k_pos[i] + 1:k_endogen_i[i], col_det] <- object[[i]][["posterior"]][["a"]][["coeffs"]][[period]][draw, pos_det]
-          } else {
-            d_temp[k_pos[i] + 1:k_endogen_i[i], col_det] <- object[["submodels"]][[i]][[1]][["posterior"]][["a"]][["coeffs"]][draw, pos_det]
-          }
+          d_temp[k_pos[i] + 1:k_endogen_i[i], col_det] <- object[["submodels"]][[i]][[1]][["posterior"]][["a"]][["coeffs"]][draw, pos_det]
         }
       }
       
@@ -646,12 +629,7 @@ submodels_to_gvar <- function(object, period = NULL) {
     # Put together Sigma ----
     sigma_temp <- matrix(0, k, k)
     for (i in submodels) {
-      if (sv_i[i]) {
-        stop("Implement SV")
-        #sigma_temp[k_pos[i] + 1:k_endogen_i[i], k_pos[i] + 1:k_endogen_i[i]] <- object[[i]][["posterior"]][["sigma"]][["coeffs"]][[period]][draw, ] 
-      } else {
-        sigma_temp[k_pos[i] + 1:k_endogen_i[i], k_pos[i] + 1:k_endogen_i[i]] <- object[["submodels"]][[i]][[1]][["posterior"]][["u_sigma_inv"]][["coeffs"]][draw, ]
-      }
+      sigma_temp[k_pos[i] + 1:k_endogen_i[i], k_pos[i] + 1:k_endogen_i[i]] <- object[["submodels"]][[i]][[1]][["posterior"]][["u_sigma_inv"]][["coeffs"]][draw, ]
     }
     u_sigma_inv[draw, ] <- sigma_temp
     rm(sigma_temp)
@@ -715,4 +693,62 @@ submodels_to_gvar <- function(object, period = NULL) {
 
   class(result) <- list("bvarmodel", "list")
   return(result)
+}
+
+# The sub-model reduced to its draws at a single date.
+#
+# A time varying sub-model stores its coefficients period after period, one
+# block of ncol(z) per period, and a sub-model with stochastic volatility the
+# k x k error precision of every period. A time varying sub-model in error
+# correction form stores its cointegration vectors period after period as well.
+# What is kept is the block of the period at 'time', so that the result has the
+# layout of a sub-model with constant coefficients and a constant error
+# covariance matrix. A sub-model that has neither is returned as it is.
+.submodel_at_period <- function(model, time, submodel) {
+
+  k <- model[["model"]][["k"]]
+  kk <- k * k
+  y <- model[["data"]][["train"]][["y"]]
+  tt <- nrow(y)
+  tvp <- isTRUE(model[["model"]][["tvp"]])
+  a <- model[["posterior"]][["a"]][["coeffs"]]
+  u_sigma_inv <- model[["posterior"]][["u_sigma_inv"]][["coeffs"]]
+  sv <- ncol(u_sigma_inv) == tt * kk && tt > 1
+
+  if (!tvp && !sv) {
+    return(model)
+  }
+
+  tsp_y <- stats::tsp(y)
+  pos <- round((time - tsp_y[1]) * tsp_y[3]) + 1
+  if (pos < 1 || pos > tt) {
+    stop("Sub-model ", submodel, " has time varying parameters or stochastic ",
+         "volatility, which are only available for its estimation sample from ",
+         tsp_y[1], " to ", tsp_y[2], ", so the model cannot be solved at ",
+         time, ".")
+  }
+
+  if (tvp) {
+    n_a <- ncol(a) / tt
+    if (n_a != round(n_a)) {
+      stop("The coefficient draws of sub-model ", submodel, " do not divide ",
+           "into ", tt, " periods.")
+    }
+    model[["posterior"]][["a"]] <- list("coeffs" = coda::mcmc(a[, (pos - 1) * n_a + 1:n_a, drop = FALSE]))
+    beta <- model[["posterior"]][["beta"]][["coeffs"]]
+    if (!is.null(beta)) {
+      n_beta <- ncol(beta) / tt
+      model[["posterior"]][["beta"]] <- list("coeffs" = coda::mcmc(beta[, (pos - 1) * n_beta + 1:n_beta, drop = FALSE]))
+    }
+    model[["posterior"]][["psi"]] <- NULL
+    model[["model"]][["tvp"]] <- FALSE
+  }
+
+  if (sv) {
+    model[["posterior"]][["u_sigma_inv"]] <- list("coeffs" = coda::mcmc(u_sigma_inv[, (pos - 1) * kk + 1:kk, drop = FALSE]))
+    model[["posterior"]][["u_omega_inv"]] <- NULL
+    model[["model"]][["error"]] <- sub("sv", "gamma", model[["model"]][["error"]], fixed = TRUE)
+  }
+
+  return(model)
 }

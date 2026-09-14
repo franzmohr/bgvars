@@ -372,26 +372,97 @@ figure leaves each panel narrower than its own axis labels, which is what this
 avoids. A panel at a flat zero among the $\Gamma$ and $\Upsilon$ coefficients is
 one that variable selection switched off.
 
-## What cannot be done yet
+### Impulse responses of a sub-model
 
-`submodels_to_gvar` solves a GVEC model by rewriting every sub-model in levels
-with `vec_to_var` and stacking the result. The first step refuses a time varying
-sub-model:
+Impulse responses are defined for a model in levels, so a sub-model is rewritten
+with `vec_to_var` first. For a time varying sub-model the rewriting is done
+period by period: the loadings, the cointegration vectors and the coefficients
+of each period give the level VARX of that period, and the result holds one
+such model per period in the layout of a time varying GVAR sub-model.
 
-```{r, error=TRUE}
-submodels_to_gvar(object)
+```{r irf, fig.align='center', fig.height=4, fig.width=5.5}
+level_at <- vec_to_var(model_at)
+
+period_of <- function(object, year, quarter) {
+  which(stats::time(object[["data"]][["train"]][["y"]]) == year + (quarter - 1) / 4)
+}
+
+response <- irf(level_at, impulse = "r", response = "y", n_ahead = 12,
+                period = period_of(level_at, 2005, 1))
+
+plot(response, main = "Austria: output response to its interest rate")
 ```
 
-The transformation writes the coefficients of one draw as the coefficients of the
-corresponding level VARX, and a time varying model has one such VARX per period
-and per draw, so what would come back is not the object the rest of the package
-works on. The stacking step refuses time varying and stochastic volatility
-sub-models for the same reason, so the road ends in the same place as in the
-GVAR vignette: the paths and the period-wise summaries above are what a time
-varying specification gives, and a solved global model is built from sub-models
-with constant coefficients.
+As in the GVAR vignette, these are the dynamics of one sub-model with its
+foreign variables held fixed.
 
-Choosing between specifications is not closed off. `add_posterior_loglik` has
+## Solving the global model period by period
+
+`submodels_to_gvar` solves a GVEC model by rewriting every sub-model in levels
+and stacking the result. With time varying sub-models every period has a global
+model of its own, since the loadings, the cointegration vectors, the short-run
+coefficients and the error covariance matrices of all sub-models belong to a
+period, and so do the contemporaneous matrix $G_t$ and its inverse.
+
+Argument `period` names the period. Only the draws of that period are taken
+from each sub-model, and they are taken before the sub-model is rewritten in
+levels, so neither the rewriting nor the stacking touches the draws of any other
+period. The result is an ordinary global model with constant coefficients that
+describes the economy at that date, and a model for another date takes another
+call. `period` counts the periods of the global data, and it selects the weight
+matrices of that period as well.
+
+```{r solve, message=FALSE, results='hide'}
+times <- stats::time(object[["global"]][["endogen"]])
+dates <- c(1990, 2005, 2020)
+periods <- sapply(dates, function(x) {which.min(abs(times - x))})
+
+gvec <- lapply(periods, function(x) {submodels_to_gvar(object, period = x)})
+names(gvec) <- dates
+```
+
+Each element is a global VAR model in levels:
+
+```{r}
+sapply(gvec, function(x) {c(k = x[["model"]][["k"]], p = x[["model"]][["p"]])})
+```
+
+The draws of a sub-model exist only for its estimation sample, which starts
+later than the global data because the differences and their lags need
+observations of their own. A period before that is refused:
+
+```{r, error=TRUE}
+submodels_to_gvar(object, period = 1)
+```
+
+### Generalised impulse responses at different dates
+
+```{r girf, fig.align='center', fig.height=4, fig.width=5.5}
+girf <- lapply(gvec, irf, impulse = "US_r", response = "AT_y",
+               n_ahead = 12, type = "gir", shock = "sd")
+
+medians <- sapply(girf, function(x) {x[, 2]})
+matplot(0:12, medians, type = "l", lty = 1, lwd = 2,
+        col = grDevices::hcl.colors(length(dates), "Zissou 1"),
+        xlab = "Quarter", ylab = "",
+        main = "Austria: output response to the US interest rate")
+abline(h = 0, col = "grey")
+legend("topright", legend = dates, lty = 1, lwd = 2, bty = "n",
+       col = grDevices::hcl.colors(length(dates), "Zissou 1"))
+```
+
+The figure shows the posterior medians; `plot(girf[["2005"]])` draws one of
+them with its credible band. The caveat of the GVAR vignette applies here as
+well: `shock = "sd"` is one standard deviation of the US interest rate residual
+in the period at hand, which under stochastic volatility differs from date to
+date, so a difference between the lines mixes the size of the shock with its
+transmission. A shock of fixed size, given as a number in `shock`, isolates the
+second. The model is in levels, so a response need not return to zero: a shock
+to a cointegrated system can move the levels of its variables permanently.
+
+## Choosing between specifications
+
+Choosing between specifications is not closed off either. `add_posterior_loglik` has
 an algorithm for each time varying error correction sampler, so a time varying
 sub-model can be compared with other time varying ones and with constant
 coefficient ones. WAIC and LOOIC are the criteria for that comparison: AIC, BIC

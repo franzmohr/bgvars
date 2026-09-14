@@ -60,6 +60,13 @@ level representation. At cointegration rank zero there is no error correction
 term, so restricted terms have no effect on the model and are dropped, as
 \code{\link[bvartools]{vec_to_var}} does. \code{\link{submodels_to_gvar}}
 gives such a sub-model coefficients of zero on the terms it lacks.
+
+A sub-model with time varying parameters is a VECX model per period, so the
+transformation is applied to the loadings, the coefficients and the
+cointegration vectors of each period in turn, and the result holds one block
+of level coefficients per period, laid out period after period as the draws
+of a time varying VARX sub-model are. The draws of the error covariance
+matrix are the same in both representations and are passed on as they are.
 }
 \examples{
 
