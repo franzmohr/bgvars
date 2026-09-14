@@ -78,3 +78,66 @@ test_that("the level representation has the residuals of the error correction fo
     expect_false(anyNA(gvar[["posterior"]][["a"]][["coeffs"]]), info = info)
   }
 })
+
+test_that("a structural sub-model keeps its residuals and its A0 in levels", {
+  # Regression test. vec_to_var() stopped for structural sub-models. In
+  # A0 Dy_t = alpha beta' w_{t-1} + Gamma x_t + u_t the levels satisfy
+  # A0 y_t = B x_t + u_t, with A0 in place of the identity on the first lag, and
+  # the free elements of A0 stay the last coefficients.
+  object <- add_submodels(gvec_object(),
+                          endogen = c("y", "Dp", "rs"), p_endogen = 2,
+                          exogen = c("y", "Dp"), p_exogen = 2,
+                          const = "unrestricted", trend = "restricted", r = 1,
+                          iterations = 20, burnin = 10)
+  object[["submodels"]][["US"]] <- create_vecxsubmodel(object, submodel = "US",
+    endogen = c("y", "Dp", "rs"), p_endogen = 2,
+    exogen = c("y", "Dp"), p_exogen = 2,
+    const = "unrestricted", trend = "restricted", r = 1,
+    structural = TRUE, error = "gamma",
+    iterations = 20, burnin = 10)
+  object <- align_model_obs(object)
+  for (i in names(object[["submodels"]])) {
+    sigma <- if (i == "US") list(shape = 3, rate = 0.0001) else list(df = 3, scale = 0.0001)
+    object[["submodels"]][[i]] <- add_priors(object[["submodels"]][[i]],
+                                             coef = list(v_i = 0),
+                                             coint = list(v_i = 0, p_tau_i = 1),
+                                             sigma = sigma)
+  }
+  object <- add_initial_values(object)
+  object <- add_posterior_coefficients(object)
+
+  vecx <- object[["submodels"]][["US"]][[1]]
+  varx <- vec_to_var(vecx)
+  k <- vecx[["model"]][["k"]]
+  r <- vecx[["model"]][["rank"]]
+  n_struct <- k * (k - 1) / 2
+  coeffs <- vecx[["posterior"]][["a"]][["coeffs"]]
+  n_a <- ncol(coeffs) - n_struct
+
+  expect_true(varx[["model"]][["structural"]])
+  for (draw in c(1, 20)) {
+    a0 <- diag(1, k)
+    a0[lower.tri(a0)] <- coeffs[draw, n_a + 1:n_struct]
+    a <- matrix(coeffs[draw, 1:n_a], k)
+    beta <- matrix(vecx[["posterior"]][["beta"]][["coeffs"]][draw, ], ncol = r)
+    u_vecx <- unclass(vecx[["data"]][["train"]][["y"]]) %*% t(a0) -
+      unclass(vecx[["data"]][["train"]][["w"]]) %*% beta %*% t(a[, 1:r, drop = FALSE]) -
+      unclass(vecx[["data"]][["train"]][["x"]]) %*% t(a[, -(1:r), drop = FALSE])
+
+    b_all <- varx[["posterior"]][["a"]][["coeffs"]][draw, ]
+    b <- matrix(b_all[seq_len(length(b_all) - n_struct)], k)
+    u_varx <- unclass(varx[["data"]][["train"]][["y"]]) %*% t(a0) -
+      unclass(varx[["data"]][["train"]][["x"]]) %*% t(b)
+
+    expect_equal(u_varx, u_vecx, ignore_attr = TRUE, info = paste("draw", draw))
+    expect_equal(b_all[length(b_all) - n_struct + 1:n_struct],
+                 coeffs[draw, n_a + 1:n_struct], ignore_attr = TRUE)
+  }
+
+  gvec <- submodels_to_gvar(object)
+  pos <- match(paste0("US_", vecx[["model"]][["endogen"]]), gvec[["model"]][["endogen"]])
+  a0 <- diag(1, k)
+  a0[lower.tri(a0)] <- coeffs[1, n_a + 1:n_struct]
+  expect_equal(matrix(gvec[["g"]][1, ], gvec[["model"]][["k"]])[pos, pos], a0,
+               ignore_attr = TRUE)
+})
