@@ -52,12 +52,18 @@
 #'   based on LS estimates, but should not exceed a certain threshold. This can
 #'   be useful when using the BVS algorithm.}
 #'   \item{\code{shape}}{a numeric specifying the prior shape parameter of the error term of the
-#'   state equation. Only used for models with time varying parameters. Default is 3.}
+#'   state equation. Required for models with time varying parameters and not used otherwise.}
 #'   \item{\code{rate}}{a numeric specifying the prior rate parameter of the error term of the
-#'   state equation. Only used for models with time varying parameters. Default is 0.0001.}
+#'   state equation. Required for models with time varying parameters and not used otherwise.}
 #'   \item{\code{rate_det}}{a numeric specifying the prior rate parameter of the error term of the
-#'   state equation for coefficients, which correspond to deterministic terms.
-#'   Only used for models with time varying parameters. Default is 0.01.}
+#'   state equation for coefficients, which correspond to deterministic terms. If it is not given,
+#'   \code{rate} is used. Only used for models with time varying parameters.}
+#'   \item{\code{rate_alpha}}{a numeric specifying the prior rate parameter of the error term of
+#'   the state equation for the loadings. If it is not given, \code{rate} is used. Only used for
+#'   models with time varying parameters and a positive rank. The loadings multiply levels, so a
+#'   drift that is negligible for a coefficient on a differenced regressor moves the fitted
+#'   value of an equation by much more; a rate several orders of magnitude below \code{rate}
+#'   keeps them from absorbing the residuals while the other coefficients vary.}
 #' }
 #' 
 #' Argument \code{coint} specifies the prior on the cointegration space. It is
@@ -506,6 +512,10 @@ add_priors.vecxsubmodel <- function(object,
         object[["priors"]][["a"]][["rate"]] <- matrix(coef[["rate"]], tot_par)
         if (n_det > 0 & !is.null(coef[["rate_det"]])) {
           object[["priors"]][["a"]][["rate"]][tot_par - n_struct - n_det + 1:n_det, ] <- coef[["rate_det"]]
+        }
+        # The loadings come first among the coefficients.
+        if (r > 0 & !is.null(coef[["rate_alpha"]])) {
+          object[["priors"]][["a"]][["rate"]][1:n_alpha, ] <- coef[["rate_alpha"]]
         }
       } else {
         v_i <- diag(coef[["v_i"]], tot_par)
