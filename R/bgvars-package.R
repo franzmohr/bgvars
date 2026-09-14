@@ -2,7 +2,6 @@
 "_PACKAGE"
 
 ## usethis namespace: start
-#' @useDynLib bgvars, .registration = TRUE
 #' @importFrom bvartools add_initial_values
 #' @importFrom bvartools add_posterior_coefficients
 #' @importFrom bvartools add_posterior_forecasts
@@ -22,7 +21,6 @@
 #' @importFrom bvartools vec_to_var
 #' @importFrom bvartools write_to_hdf5
 #' @importFrom coda thin
-#' @importFrom Rcpp sourceCpp
 #' @importFrom stats predict
 #' @importFrom stats window
 #' @exportPattern "^[[:alpha:]]+"
