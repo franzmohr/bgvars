@@ -484,24 +484,26 @@ create_vecxsubmodel <- function(object,
   if(!is.null(seasonal)) {
     freq <- tsp_global[3]
     if (freq == 1) {
+      # Nothing to add, as for a VARX sub-model. The dummies used to be added
+      # after the warning all the same, from a variable that was never created.
       warning("The frequency of the provided data is 1. No seasonal dummmies are generated.")
     } else {
       s_name <- paste0("season.", 1:(freq - 1))
       seas <- det_global[, s_name, drop = FALSE]
-    }
-    
-    if (seasonal == "restricted") {
-      ect <- cbind(ect, seas)
-      ect_names <- c(ect_names, s_name)
-      det_name_r <- c(det_name_r, s_name)
-      n_ect <- n_ect + freq - 1
-    }
-    
-    if (seasonal == "unrestricted") {
-      x <- cbind(x, seas)
-      x_names <- c(x_names, s_name)
-      det_name_ur <- c(det_name_ur, s_name) 
-      n_det_ur <- n_det_ur + length(s_name)
+
+      if (seasonal == "restricted") {
+        ect <- cbind(ect, seas)
+        ect_names <- c(ect_names, s_name)
+        det_name_r <- c(det_name_r, s_name)
+        n_ect <- n_ect + freq - 1
+      }
+
+      if (seasonal == "unrestricted") {
+        x <- cbind(x, seas)
+        x_names <- c(x_names, s_name)
+        det_name_ur <- c(det_name_ur, s_name)
+        n_det_ur <- n_det_ur + length(s_name)
+      }
     }
   }
   

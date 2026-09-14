@@ -6,7 +6,7 @@ vignette: >
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
-  
+
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
@@ -15,9 +15,31 @@ knitr::opts_chunk$set(
 )
 ```
 
+This vignette sets up, estimates and solves the global vector error correction
+(GVEC) model of Dees, di Mauro, Pesaran and Smith (2007) with `bgvars`, and
+compares the results with the paper and its Supplement B. The country models,
+their lag orders and cointegration ranks are those of the paper.
+
+The comparison has two parts. The paper's own statistics -- lag orders,
+cointegration ranks, the maximum likelihood (ML) estimates, the stability of
+the global model and its generalised impulse responses -- are computed from
+the model `bgvars` sets up. Three of them are not functions of the package:
+information criteria of the unrestricted country models, Johansen's trace
+statistic with weakly exogenous regressors, and the generalised impulse
+responses of eq. (21) of the paper, which shock the country residuals with
+their full covariance. They take a few lines each, written out below. The
+Bayesian estimates of the package, simulated with
+[BayesTS](https://github.com/franzmohr/BayesTS), are then compared with them.
+
 ### Data
 
-The `bgvars` packages comes with the updated GVAR database of Mohaddes and Raissi (2020), which contains economic time series for 33 countries and 3 commodities from 1979Q2 to 2019Q4.[^gvar2019]
+The package contains the data set of Dees et al. (2007): quarterly series for
+26 economies from 1979Q2 to 2003Q4, the euro area among them as one economy,
+and the price of oil. The variables are log real output `y`, inflation `Dp`,
+the short- and long-term interest rates `rs` and `rl`, log real equity prices
+`q` and the log real exchange rate `ep`. Not every economy has every variable,
+as the table shows. The data of each economy also contain its annual trade
+with each of the other economies from 1980 to 2003.
 
 ```{r data, message=FALSE, eval = TRUE}
 #library(bgvars)
@@ -26,485 +48,485 @@ data("dees2007")
 
 submodel_data <- dees2007[["submodel_data"]]
 global_data <- dees2007[["global_data"]]
+
+submodel_data
 ```
 
+The price of oil is an endogenous variable of the US model. It is added to the
+US series, so that the other economies take it from the US model as a weakly
+exogenous variable.
+
 ```{r poil-into-us-model, message=FALSE, eval = TRUE}
-# Add global series to US series
 vars_us <- c(dimnames(submodel_data[["US"]][["endogen"]])[[2]], "poil")
 submodel_data[["US"]][["endogen"]] <- cbind(submodel_data[["US"]][["endogen"]], global_data)
 dimnames(submodel_data[["US"]][["endogen"]])[[2]] <- vars_us
 ```
 
+### Weights
 
-### Preparation
-
-```{r initialise, eval = TRUE}
-object <- create_gvecmodel(submodel_data = submodel_data)
-```
-
-Weight matrices for each country/region can be calculated with the function `add_weight_matrices`.
-
+The foreign variables of an economy are averages of the other economies'
+series, weighted by its trade with them over 1999-2001.
 
 ```{r weights, eval = TRUE}
-# Generate weight matrices
+object <- create_gvecmodel(submodel_data = submodel_data)
 object <- add_weight_matrices(object = object,
                               submodel_data = submodel_data,
                               period = 1999:2001)
 ```
 
+The first two rows of Table B1 of the supplement give the weights of the US and
+the euro area.
+
+```{r table-b1, eval = TRUE}
+table_b1 <- rbind(
+  US = c(US = 0.000, EA = 0.155, CN = 0.073, JP = 0.124, GB = 0.052, SE = 0.008,
+         CH = 0.012, NO = 0.004, AR = 0.005, BR = 0.018, CL = 0.004, MX = 0.141,
+         PE = 0.002, AU = 0.011, CA = 0.241, NZ = 0.003, ID = 0.008, KR = 0.038,
+         MY = 0.021, PH = 0.013, SG = 0.022, TH = 0.014, IN = 0.009, ZA = 0.004,
+         SA = 0.012, TR = 0.004),
+  EA = c(US = 0.227, EA = 0.000, CN = 0.056, JP = 0.072, GB = 0.238, SE = 0.057,
+         CH = 0.090, NO = 0.028, AR = 0.008, BR = 0.023, CL = 0.005, MX = 0.013,
+         PE = 0.001, AU = 0.012, CA = 0.019, NZ = 0.002, ID = 0.009, KR = 0.021,
+         MY = 0.013, PH = 0.007, SG = 0.016, TH = 0.011, IN = 0.014, ZA = 0.014,
+         SA = 0.014, TR = 0.028))
+
+trade_weights <- t(sapply(c("US", "EA"), function(i) {
+  trade <- colSums(window(submodel_data[[i]][["weights"]], start = 1999, end = 2001))
+  trade / sum(trade)
+}))
+
+max(abs(round(trade_weights[, colnames(table_b1)], 3) - table_b1))
+```
+
+Rounded to three decimals, the weights are those of the table.
 
 ### Model specification
 
-To reproduce the results of Dees et al. (2007), each sub-model is added manually for each country based on the specifications provided in the article's supplementary material.
+Table B9 of the supplement gives the lag order `p` of the domestic and `q` of the
+foreign variables of each country model and its cointegration rank `r`.
 
-```{r}
-submodel <- "US"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "rl", "q", "poil"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "ep"),
-  p_exogen = 2,
-  r = 2,
-  const = "unrestricted",
-  trend = "restricted"
-)
+```{r table-b9, eval = TRUE}
+table_b9 <- data.frame(
+  submodel = c("US", "EA", "CN", "JP", "GB", "SE", "CH", "NO", "AR", "BR",
+               "CL", "MX", "PE", "AU", "CA", "NZ", "ID", "KR", "MY", "PH",
+               "SG", "TH", "IN", "ZA", "SA", "TR"),
+  p = c(2, 2, 2, 1, 2, 2, 1, 2, 2, 2, 2, 1, 2, 1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2),
+  q = c(2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+  r = c(2, 2, 1, 4, 3, 3, 3, 2, 2, 1, 2, 3, 3, 4, 4, 3, 3, 4, 1, 2, 3, 3, 2, 1, 1, 1))
 ```
 
+Every country model is a VECX\* model with an unrestricted constant and a trend
+restricted to the cointegration space, case IV of Pesaran, Shin and Smith (2000).
+The US model contains output, inflation, both interest rates, equity prices and
+the oil price, and takes foreign output, inflation and the exchange rate as
+weakly exogenous. The other models contain whichever of the six domestic
+variables are available, and take foreign output, inflation, equity prices,
+interest rates and the oil price as weakly exogenous. A VARX\*(p, q) model in
+levels is a VECX\* model with `p_endogen = p` and `p_exogen = q`.
 
-```{r}
-submodel <- "EA"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 2,
-  r = 2,
-  const = "unrestricted",
-  trend = "restricted"
-)
+```{r specification, eval = TRUE}
+endogen_of <- function(submodel) {
+  if (submodel == "US") c("y", "Dp", "rs", "rl", "q", "poil") else c("y", "Dp", "rs", "rl", "q", "ep")
+}
+exogen_of <- function(submodel) {
+  if (submodel == "US") c("y", "Dp", "ep") else c("y", "Dp", "q", "rs", "rl", "poil")
+}
+
+for (i in seq_len(nrow(table_b9))) {
+  submodel <- table_b9[i, "submodel"]
+  object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
+    submodel = submodel,
+    endogen = endogen_of(submodel), p_endogen = table_b9[i, "p"],
+    exogen = exogen_of(submodel), p_exogen = table_b9[i, "q"],
+    r = table_b9[i, "r"],
+    const = "unrestricted", trend = "restricted",
+    iterations = 10000, burnin = 2000)
+}
 ```
 
+The models with a single lag keep one more observation than the others.
+`align_model_obs` puts all of them on the sample they have in common,
+1979Q4-2003Q4, which is the sample the statistics of the paper are computed on.
 
-```{r}
-submodel <- "CN"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  r = 1,
-  const = "unrestricted",
-  trend = "restricted"
-)
-```
-
-
-```{r}
-submodel <- "JP"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
-  p_endogen = 1,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  r = 4,
-  const = "unrestricted",
-  trend = "restricted"
-)
-```
-
-
-```{r}
-submodel <- "GB"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  r = 3,
-  const = "unrestricted",
-  trend = "restricted"
-)
-```
-
-
-```{r}
-submodel <- "SE"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  r = 3,
-  const = "unrestricted",
-  trend = "restricted"
-)
-```
-
-
-```{r}
-submodel <- "CH"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
-  p_endogen = 1,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  r = 3,
-  const = "unrestricted",
-  trend = "restricted"
-)
-```
-
-
-```{r}
-submodel <- "NO"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  r = 2,
-  const = "unrestricted",
-  trend = "restricted"
-)
-```
-
-
-```{r}
-submodel <- "AR"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "q", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  const = "unrestricted",
-  trend = "restricted",
-  r = 2
-)
-```
-
-
-```{r}
-submodel <- "BR"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  const = "unrestricted",
-  trend = "restricted",
-  r = 1
-)
-```
-
-
-```{r}
-submodel <- "CL"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "q", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  const = "unrestricted",
-  trend = "restricted",
-  r = 2
-)
-```
-
-
-```{r}
-submodel <- "MX"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "ep"),
-  p_endogen = 1,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  const = "unrestricted",
-  trend = "restricted",
-  r = 3
-)
-```
-
-
-```{r}
-submodel <- "PE"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  const = "unrestricted",
-  trend = "restricted",
-  r = 3
-)
-```
-
-
-```{r}
-submodel <- "AU"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
-  p_endogen = 1,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  const = "unrestricted",
-  trend = "restricted",
-  r = 4
-)
-```
-
-
-```{r}
-submodel <- "CA"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
-  p_endogen = 1,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  const = "unrestricted",
-  trend = "restricted",
-  r = 4
-)
-```
-
-
-```{r}
-submodel <- "NZ"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  const = "unrestricted",
-  trend = "restricted",
-  r = 3
-)
-```
-
-
-```{r}
-submodel <- "ID"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  const = "unrestricted",
-  trend = "restricted",
-  r = 3
-)
-```
-
-
-```{r}
-submodel <- "KR"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  const = "unrestricted",
-  trend = "restricted",
-  r = 4
-)
-```
-
-
-```{r}
-submodel <- "MY"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "q", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  const = "unrestricted",
-  trend = "restricted",
-  r = 1
-)
-```
-
-
-```{r}
-submodel <- "PH"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "q", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  const = "unrestricted",
-  trend = "restricted",
-  r = 2
-)
-```
-
-
-```{r}
-submodel <- "SG"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "q", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  const = "unrestricted",
-  trend = "restricted",
-  r = 3
-)
-```
-
-
-```{r}
-submodel <- "TH"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "q", "ep"),
-  p_endogen = 1,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  const = "unrestricted",
-  trend = "restricted",
-  r = 3
-)
-```
-
-
-```{r}
-submodel <- "IN"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "q", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  const = "unrestricted",
-  trend = "restricted",
-  r = 2
-)
-```
-
-
-
-```{r}
-submodel <- "ZA"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "rl", "q", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  const = "unrestricted",
-  trend = "restricted",
-  r = 1
-)
-```
-
-
-```{r}
-submodel <- "SA"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  const = "unrestricted",
-  trend = "restricted",
-  r = 1
-)
-```
-
-
-```{r}
-submodel <- "TR"
-object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
-  submodel = submodel,
-  endogen = c("y", "Dp", "rs", "ep"),
-  p_endogen = 2,
-  exogen = c("y", "Dp", "q", "rs", "rl", "poil"),
-  p_exogen = 1,
-  const = "unrestricted",
-  trend = "restricted",
-  r = 1
-)
-```
-
-
-The resulting sub-models have different sample sizes. Function `align_model_obs` can be employed to ensure that all sub-models use the same set of observations that are common to all sub-models.
-
-```{r}
+```{r align, eval = TRUE}
 object <- align_model_obs(object)
+stats::tsp(object[["submodels"]][["JP"]][[1]][["data"]][["train"]][["y"]])
 ```
 
+### Lag orders
 
+The paper chooses the lag orders by the Akaike information criterion (AIC) of
+the unrestricted VARX\*(p, q) model, with p and q at most two. In levels that
+model is the error correction model with an unrestricted matrix on the lagged
+levels, so its likelihood is that of a regression of the differences on all
+regressors of the sub-model. The criteria follow the convention of Microfit,
+where the log-likelihood less the number of parameters is maximised.
 
-### Prior specification
+```{r lag-orders, eval = TRUE}
+information_criteria <- function(model) {
+  y <- model[["data"]][["train"]][["y"]]
+  regressors <- cbind(model[["data"]][["train"]][["w"]], model[["data"]][["train"]][["x"]])
+  u <- qr.resid(qr(regressors), y)
+  tt <- nrow(y)
+  k <- ncol(y)
+  loglik <- -tt * k / 2 * (1 + log(2 * pi)) -
+    tt / 2 * as.numeric(determinant(crossprod(u) / tt)$modulus)
+  n_par <- k * ncol(regressors)
+  c(p = model[["model"]][["p_endogen"]], q = model[["model"]][["p_exogen"]],
+    aic = loglik - n_par, sbc = loglik - n_par / 2 * log(tt))
+}
 
-```{r, eval = TRUE}
+lag_orders <- do.call(rbind, lapply(table_b9[["submodel"]], function(submodel) {
+  candidates <- create_vecxsubmodel(object, submodel = submodel,
+                                    endogen = endogen_of(submodel), p_endogen = 1:2,
+                                    exogen = exogen_of(submodel), p_exogen = 1:2,
+                                    r = 0, const = "unrestricted", trend = "restricted")
+  ic <- as.data.frame(t(sapply(candidates, information_criteria)))
+  paper <- table_b9[table_b9[["submodel"]] == submodel, ]
+  given_q <- ic[ic[["q"]] == paper[["q"]], ]
+  data.frame(submodel = submodel, p_paper = paper[["p"]], q_paper = paper[["q"]],
+             p_aic = given_q[which.max(given_q[["aic"]]), "p"],
+             p_sbc = given_q[which.max(given_q[["sbc"]]), "p"])
+}))
+
+head(lag_orders)
+```
+
+All candidates of a country use the same observations, since
+`create_vecxsubmodel` builds them on the sample of the longest lags. Given the
+paper's q, the AIC chooses the paper's p for
+`r sum(lag_orders[["p_aic"]] == lag_orders[["p_paper"]])` of the 26 models. The
+Schwarz criterion would choose it for
+`r sum(lag_orders[["p_sbc"]] == lag_orders[["p_paper"]])`, so the AIC is the
+criterion the paper used.
+
+### Cointegration ranks
+
+The trace statistic for models with weakly exogenous I(1) regressors
+(Pesaran, Shin and Smith, 2000) is computed from the reduced rank regression of
+the differences on the lagged levels in `data$train$w`, both corrected for the
+short-run regressors in `data$train$x`.
+
+```{r trace-statistics, eval = TRUE}
+trace_statistics <- function(model) {
+  y <- unclass(model[["data"]][["train"]][["y"]])
+  w <- unclass(model[["data"]][["train"]][["w"]])
+  x <- unclass(model[["data"]][["train"]][["x"]])
+  tt <- nrow(y)
+  qx <- qr(x)
+  r0 <- qr.resid(qx, y)
+  r1 <- qr.resid(qx, w)
+  s00 <- crossprod(r0) / tt
+  s01 <- crossprod(r0, r1) / tt
+  s11 <- crossprod(r1) / tt
+  lambda <- eigen(solve(s11, t(s01)) %*% solve(s00, s01), only.values = TRUE)[["values"]]
+  lambda <- sort(Re(lambda), decreasing = TRUE)[1:ncol(y)]
+  # Statistics for H0: r = 0, r <= 1, ..., r <= k - 1
+  -tt * rev(cumsum(rev(log(1 - lambda))))
+}
+```
+
+Tables B4-B8 of the supplement give the statistics, and the 95% critical values
+depend on the number of unit roots under the null hypothesis and on the number
+of weakly exogenous I(1) variables, three in the US model and six elsewhere.
+
+```{r tables-b4-b8, eval = TRUE}
+table_b4_b8 <- list(
+  US = c(221.46, 130.18, 79.09, 43.62, 22.60, 6.31),
+  EA = c(248.38, 168.51, 112.48, 72.62, 40.37, 16.92),
+  JP = c(425.31, 224.10, 136.81, 92.41, 54.77, 19.94),
+  GB = c(347.78, 208.46, 135.20, 82.57, 44.61, 17.15),
+  SE = c(265.44, 188.96, 120.44, 81.84, 47.57, 18.96),
+  CH = c(310.00, 211.69, 129.85, 67.01, 34.64, 16.73),
+  NO = c(282.75, 173.54, 106.78, 61.05, 32.72, 12.13),
+  AU = c(305.63, 218.10, 147.83, 95.01, 50.18, 17.06),
+  CA = c(374.76, 265.47, 165.38, 105.34, 54.20, 19.57),
+  NZ = c(281.16, 184.02, 120.32, 69.75, 35.40, 16.91),
+  KR = c(314.16, 223.60, 156.29, 100.38, 49.30, 22.21),
+  ZA = c(212.91, 152.55, 95.48, 49.77, 23.36, 7.49),
+  AR = c(187.18, 122.28, 77.39, 36.68, 10.23),
+  CL = c(209.45, 133.43, 79.10, 44.11, 16.54),
+  MY = c(172.31, 110.53, 59.26, 28.53, 9.63),
+  PH = c(229.18, 129.99, 75.28, 42.54, 14.65),
+  SG = c(244.53, 162.04, 93.57, 41.65, 8.95),
+  TH = c(292.28, 185.96, 110.18, 52.49, 21.17),
+  IN = c(220.18, 121.87, 72.02, 34.00, 12.97),
+  CN = c(124.02, 69.83, 42.62, 17.13),
+  BR = c(146.25, 78.31, 37.86, 15.39),
+  MX = c(178.48, 98.86, 60.03, 24.57),
+  PE = c(180.83, 117.43, 61.68, 20.11),
+  ID = c(173.90, 109.19, 62.02, 18.45),
+  TR = c(148.62, 73.82, 40.16, 14.11),
+  SA = c(117.07, 52.61, 22.19))
+
+# 95% critical values, indexed by the number of unit roots under H0
+critical_values <- list(US = c(20.98, 41.03, 64.54, 91.81, 122.96, 158.01),
+                        other = c(28.81, 55.50, 85.44, 119.03, 156.44, 197.70))
+```
+
+The rank is the number of hypotheses that are rejected before the first that
+is not.
+
+```{r ranks, eval = TRUE}
+trace_tables <- lapply(table_b9[["submodel"]], function(submodel) {
+  trace <- trace_statistics(object[["submodels"]][[submodel]][[1]])
+  k <- length(trace)
+  cv <- rev(critical_values[[if (submodel == "US") "US" else "other"]][1:k])
+  data.frame(submodel = submodel, h0 = paste0("r <= ", 0:(k - 1)),
+             trace = trace, paper = table_b4_b8[[submodel]], cv95 = cv)
+})
+names(trace_tables) <- table_b9[["submodel"]]
+
+ranks <- do.call(rbind, lapply(trace_tables, function(x) {
+  data.frame(submodel = x[1, "submodel"],
+             r_paper = table_b9[table_b9[["submodel"]] == x[1, "submodel"], "r"],
+             r = sum(cumprod(x[["trace"]] > x[["cv95"]])),
+             max_abs_diff = max(abs(x[["trace"]] - x[["paper"]])))
+}))
+rownames(ranks) <- NULL
+
+knitr::kable(trace_tables[["US"]], digits = 2, row.names = FALSE)
+knitr::kable(trace_tables[["EA"]], digits = 2, row.names = FALSE)
+```
+
+All `r sum(sapply(trace_tables, nrow))` trace statistics are within
+`r format(max(ranks[["max_abs_diff"]]), digits = 2)` of the supplement, and the
+rank chosen at the 95% critical value is the rank of Table B9 for
+`r sum(ranks[["r"]] == ranks[["r_paper"]])` of the 26 models.
+
+### Maximum likelihood estimates
+
+The priors below are flat on the coefficients and on the cointegration space,
+with an uninformative Wishart prior on the error covariance.
+`add_initial_values` starts every chain at the reduced rank ML estimate of its
+sub-model, and those are the estimates of the paper.
+
+```{r priors, eval = TRUE}
 object <- add_priors(object,
                      coef = list(v_i = 0),
                      coint = list(v_i = 0, p_tau_i = 1),
                      sigma = list(df = 3, scale = 0.0001))
-```
-
-### Initial values
-
-```{r, eval = TRUE}
 object <- add_initial_values(object)
 ```
 
-Since the function creates initial values based on the reduced rank maximum likelihood estimator, closer inspection of the sub-models should show that the produced estimates are equal to the values provided in the supplementary material to Dees et al. (2007).
+Table B11 of the supplement reports the contemporaneous effect of each foreign
+variable on its domestic counterpart, with t-ratios based on White's
+heteroskedasticity-consistent standard errors.
 
-### Posterior simulation
-
-#### BayesTS
-
-Given the weight matrices, the sub-models of a global model are independent of
-one another, which makes it possible to estimate them outside R.
-`write_to_hdf5` exports the model to a folder, one HDF5 file per sub-model
-beside a `model.h5` holding the global data, the weight matrices and a table
-describing every sub-model file.
-
-```{r, eval = FALSE}
-write_to_hdf5(object, folder = "C:/path/to/gvar")
+```{r table-b11, eval = TRUE}
+table_b11 <- utils::read.csv(text = "
+submodel,variable,coef,t
+US,y,0.54,3.12
+US,Dp,0.06,0.87
+EA,y,0.53,4.03
+EA,Dp,0.25,3.31
+EA,q,1.15,8.90
+EA,rs,0.09,3.84
+EA,rl,0.63,7.86
+CN,y,-0.10,-0.66
+CN,Dp,0.61,2.30
+CN,rs,0.12,2.27
+JP,y,0.50,3.47
+JP,Dp,-0.04,-0.38
+JP,q,0.67,5.53
+JP,rs,-0.05,-0.89
+JP,rl,0.48,4.84
+GB,y,0.33,2.33
+GB,Dp,-0.15,-0.64
+GB,q,0.84,13.28
+GB,rs,0.27,1.48
+GB,rl,0.67,4.85
+SE,y,1.19,3.38
+SE,Dp,1.23,6.19
+SE,q,1.15,11.60
+SE,rs,1.25,3.56
+SE,rl,0.96,5.75
+CH,y,0.47,3.81
+CH,Dp,0.52,3.68
+CH,q,0.70,2.17
+CH,rs,0.16,3.10
+CH,rl,0.41,5.88
+NO,y,0.80,2.05
+NO,Dp,1.11,6.84
+NO,q,1.03,8.62
+NO,rs,0.15,0.85
+NO,rl,0.56,3.43
+AR,y,0.26,1.08
+AR,Dp,-1.54,-0.87
+AR,q,1.31,2.88
+AR,rs,3.31,1.99
+BR,y,0.57,1.52
+BR,Dp,0.82,1.06
+BR,rs,1.43,0.93
+CL,y,0.41,1.24
+CL,Dp,-0.01,-0.30
+CL,q,0.44,2.74
+CL,rs,0.04,1.67
+MX,y,0.47,2.28
+MX,Dp,1.12,1.79
+MX,rs,-0.05,-0.06
+PE,y,-0.06,-0.11
+PE,Dp,1.73,0.59
+PE,rs,-0.97,-0.70
+AU,y,0.52,2.70
+AU,Dp,0.51,3.10
+AU,q,0.94,4.93
+AU,rs,0.42,3.16
+AU,rl,0.86,5.33
+CA,y,0.44,3.63
+CA,Dp,0.73,4.89
+CA,q,1.13,13.70
+CA,rs,0.53,3.43
+CA,rl,0.98,15.67
+NZ,y,0.62,2.43
+NZ,Dp,0.23,0.89
+NZ,q,1.06,6.28
+NZ,rs,0.40,1.16
+NZ,rl,0.24,1.18
+ID,y,0.44,1.05
+ID,Dp,-0.41,-0.74
+ID,rs,1.09,1.73
+KR,y,0.53,1.32
+KR,Dp,0.95,3.05
+KR,q,0.80,3.50
+KR,rs,-0.16,-1.42
+KR,rl,0.06,0.18
+MY,y,1.48,4.84
+MY,Dp,0.43,1.97
+MY,q,1.20,2.66
+MY,rs,0.08,0.50
+PH,y,-0.04,-0.11
+PH,Dp,-0.91,-2.02
+PH,q,1.76,5.66
+PH,rs,1.14,2.58
+SG,y,0.98,4.17
+SG,Dp,0.39,2.69
+SG,q,0.16,0.93
+SG,rs,0.52,2.96
+TH,y,-0.07,-0.27
+TH,Dp,1.11,4.34
+TH,q,0.98,6.69
+TH,rs,0.89,2.14
+IN,y,0.74,2.35
+IN,Dp,-0.29,-0.66
+IN,q,0.74,4.38
+IN,rs,-0.30,-1.07
+ZA,y,0.15,0.88
+ZA,Dp,0.22,0.74
+ZA,q,1.00,7.54
+ZA,rs,0.06,0.64
+ZA,rl,0.32,1.22
+SA,y,0.74,1.50
+SA,Dp,0.23,1.23
+TR,y,0.87,1.38
+TR,Dp,8.60,8.13
+TR,rs,1.80,1.57
+", strip.white = TRUE)
 ```
 
-[BayesTS](https://github.com/franzmohr/BayesTS) is then pointed at the folder of
-sub-models and writes the posterior draws back into the files it read.
+In a sub-model, the coefficients `a` start with the `k * r` loadings, followed by
+`k` coefficients per column of `data$train$x`. The contemporaneous effect of
+foreign variable `v` is the coefficient on `d.v.s.00` in the equation of `d.v`.
+Its standard error is White's, with the small-sample factor T / (T - K).
 
-```{bash, eval = FALSE}
-bayests posterior C:/path/to/gvar/submodels
+```{r ml-effects, eval = TRUE}
+counterparts <- function(model) {
+  vars <- c("y", "Dp", "q", "rs", "rl")
+  vars[paste0("d.", vars) %in% dimnames(model[["data"]][["train"]][["y"]])[[2]] &
+         paste0("d.", vars, ".s.00") %in% dimnames(model[["data"]][["train"]][["x"]])[[2]]]
+}
+
+coef_position <- function(model, variable) {
+  k <- model[["model"]][["k"]]
+  j <- match(paste0("d.", variable, ".s.00"), dimnames(model[["data"]][["train"]][["x"]])[[2]])
+  i <- match(paste0("d.", variable), dimnames(model[["data"]][["train"]][["y"]])[[2]])
+  k * model[["model"]][["rank"]] + (j - 1) * k + i
+}
+
+ml_effects <- function(model) {
+  y <- unclass(model[["data"]][["train"]][["y"]])
+  w <- unclass(model[["data"]][["train"]][["w"]])
+  x <- unclass(model[["data"]][["train"]][["x"]])
+  k <- ncol(y)
+  a <- matrix(model[["initial"]][["a"]], k)
+  beta <- matrix(model[["initial"]][["beta"]], ncol(w))
+  regressors <- cbind(w %*% beta, x)
+  u <- y - regressors %*% t(a)
+  xtx_inv <- solve(crossprod(regressors))
+  tt <- nrow(regressors)
+  do.call(rbind, lapply(counterparts(model), function(v) {
+    pos <- coef_position(model, v)
+    i <- (pos - 1) %% k + 1
+    j <- (pos - 1) %/% k + 1
+    meat <- crossprod(regressors * u[, i])
+    se <- sqrt((xtx_inv %*% meat %*% xtx_inv)[j, j] * tt / (tt - ncol(regressors)))
+    data.frame(variable = v, ml = a[i, j], t_ml = a[i, j] / se)
+  }))
+}
+
+effects <- do.call(rbind, lapply(table_b9[["submodel"]], function(submodel) {
+  cbind(submodel = submodel, ml_effects(object[["submodels"]][[submodel]][[1]]))
+}))
+effects <- merge(table_b11, effects, sort = FALSE)
+
+# Rounding half away from zero, as a spreadsheet does. round() rounds half to
+# even, and works on the binary value, so it can differ in the last digit.
+round_half_up <- function(x, digits) sign(x) * floor(abs(x) * 10^digits + 0.5) / 10^digits
+same_as_table <- abs(round_half_up(round_half_up(effects[["ml"]], 3), 2) - effects[["coef"]]) < 1e-8
+
+knitr::kable(effects[effects[["submodel"]] %in% c("US", "EA"), ], digits = 2, row.names = FALSE)
 ```
 
-`read_gvar_from_folder` brings the whole model back, draws included. The
-sub-models are found through the table in `model.h5` rather than through the
-directory tree, so the names they are known by survive a folder that has been
-moved or renamed.
+All `r nrow(effects)` coefficients are within
+`r format(max(abs(effects[["ml"]] - effects[["coef"]])), digits = 2)` of Table B11.
+Rounded half away from zero to three decimals and then to two, which is
+evidently how the table was produced, `r sum(same_as_table)` of them are the
+published numbers. The largest difference between the t-ratios is
+`r format(max(abs(effects[["t_ml"]] - effects[["t"]])), digits = 2)`.
 
-```{r, eval = FALSE}
-object <- read_gvar_from_folder("C:/path/to/gvar")
+### Stability of the global model
+
+`submodels_to_gvar` solves the global model draw by draw. To solve it at the ML
+estimates, they are entered as a single posterior draw of each sub-model.
+
+```{r ml-model, eval = TRUE, message=FALSE, results='hide'}
+ml <- object
+for (submodel in names(ml[["submodels"]])) {
+  model <- ml[["submodels"]][[submodel]][[1]]
+  model[["posterior"]] <- list(
+    a = list(coeffs = coda::mcmc(t(model[["initial"]][["a"]]))),
+    beta = list(coeffs = coda::mcmc(t(model[["initial"]][["beta"]]))),
+    u_sigma_inv = list(coeffs = coda::mcmc(t(as.vector(model[["initial"]][["u_sigma_inv"]])))))
+  ml[["submodels"]][[submodel]][[1]] <- model
+}
+gvar_ml <- submodels_to_gvar(ml)
 ```
 
+The paper reports 71 unit roots of the companion matrix of the global model,
+and 0.907389, 0.884077 and 0.879361 as the largest of the remaining moduli.
 
-#### Package 
+```{r eigenvalues, eval = TRUE}
+companion_moduli <- function(gvar, draw = 1) {
+  k <- gvar[["model"]][["k"]]
+  p <- gvar[["model"]][["p"]]
+  a <- matrix(gvar[["posterior"]][["a"]][["coeffs"]][draw, 1:(k * k * p)], k)
+  companion <- rbind(a, cbind(diag(k * (p - 1)), matrix(0, k * (p - 1), k)))
+  sort(Mod(eigen(companion, only.values = TRUE)[["values"]]), decreasing = TRUE)
+}
+
+moduli_ml <- companion_moduli(gvar_ml)
+unit_roots <- abs(moduli_ml - 1) < 1e-6
+sum(unit_roots)
+# A complex pair shares its modulus, and the paper lists each modulus once
+unique(round(moduli_ml[!unit_roots], 6))[1:3]
+```
+
+The global model at the ML estimates has
+`r sum(unit_roots)` unit roots, and its largest remaining moduli differ from the
+paper's by at most
+`r format(max(abs(unique(round(moduli_ml[!unit_roots], 6))[1:3] - c(0.907389, 0.884077, 0.879361))), digits = 1)`.
+
+### Bayesian estimation
 
 The series in the error correction term of a sub-model are on very different
 scales, while the prior on the cointegration space treats them alike.
@@ -512,93 +534,254 @@ scales, while the prior on the cointegration space treats them alike.
 differences, and `rescale_error_correction` puts the series and the draws back on
 the scale of the data after the simulation. The transformation is exact, so the
 model is the same, but it changes what the prior says, which is why it is a step
-of its own rather than something `add_posterior_coefficients` does implicitly.
+of its own.
 
-```{r, eval = TRUE, message=FALSE, results='hide'}
+Given the weight matrices, the sub-models of a global model are independent of
+one another, which makes it possible to estimate them outside R.
+`write_to_hdf5` exports the model to a folder, one HDF5 file per sub-model
+beside a `model.h5` holding the global data, the weight matrices and a table
+describing every sub-model file. BayesTS is pointed at the folder of sub-models
+and writes the posterior draws back into the files it read, and
+`read_gvar_from_folder` brings the whole model back, draws and scaling factors
+included.
+
+```{r bayests, eval = TRUE, message=FALSE, results='hide'}
 object <- scale_error_correction(object)
-object <- add_posterior_coefficients(object)
+
+folder <- "D:/models/dees2007/vignette"
+dir.create(folder, showWarnings = FALSE)
+write_to_hdf5(object, folder = folder, overwrite = TRUE)
+
+status <- system2("D:/BayesTS/bin/bayests.exe",
+                  c("posterior", shQuote(file.path(folder, "submodels"))))
+if (status != 0) stop("BayesTS failed with status ", status, ".")
+
+object <- read_gvar_from_folder(folder)
 object <- rescale_error_correction(object)
 ```
 
-```{r, eval = TRUE, message=FALSE, results='hide'}
-object <- add_posterior_loglik(object)
+The same simulation runs inside R with `add_posterior_coefficients(object)` in
+place of the export, the call to BayesTS and the import.
+
+```{r posterior-effects, eval = TRUE}
+posterior <- do.call(rbind, lapply(table_b9[["submodel"]], function(submodel) {
+  model <- object[["submodels"]][[submodel]][[1]]
+  do.call(rbind, lapply(counterparts(model), function(v) {
+    draws <- as.numeric(model[["posterior"]][["a"]][["coeffs"]][, coef_position(model, v)])
+    data.frame(submodel = submodel, variable = v, post_mean = mean(draws),
+               q05 = unname(stats::quantile(draws, 0.05)),
+               q95 = unname(stats::quantile(draws, 0.95)))
+  }))
+}))
+effects <- merge(effects, posterior, sort = FALSE)
+
+knitr::kable(effects[effects[["submodel"]] %in% c("US", "EA"), ], digits = 2, row.names = FALSE)
 ```
 
-### Solve the model
+Every sub-model has `r nrow(object[["submodels"]][["US"]][[1]][["posterior"]][["a"]][["coeffs"]])`
+draws. For `r sum(effects[["coef"]] >= effects[["q05"]] & effects[["coef"]] <= effects[["q95"]])`
+of the `r nrow(effects)` coefficients the value of Table B11 lies inside the 90%
+posterior interval, and the posterior means correlate with the table at
+`r format(stats::cor(effects[["post_mean"]], effects[["coef"]]), digits = 3)`. The
+median absolute difference between posterior mean and ML estimate is
+`r format(stats::median(abs(effects[["post_mean"]] - effects[["ml"]])), digits = 2)`.
+With flat priors on the loadings and the short-run coefficients, their posterior
+given a draw of the cointegration space is centred on the least squares estimate
+for that space, and the ML estimate is that estimate at the ML space. The
+posterior mean averages over a posterior of the space that the flat prior leaves
+diffuse, which is where the two part.
 
-The sub-models are in error correction form, while the global model combines
-them in levels. `submodels_to_gvar` therefore rewrites every sub-model in levels
-with `vec_to_var` before it stacks them, so a GVEC model is solved in the same
-step as a GVAR model. The cointegration rank of a sub-model is a property of its
-error correction form and plays no further role.
+### Generalised impulse responses
 
-From here on the model is treated exactly as in the vignette on global vector
-autoregressive models.
+The paper's generalised impulse responses, eq. (21), are responses to a one
+standard error shock to a' u_t, where u_t are the residuals of the country
+models, stacked, and a is a unit vector for the shock to a single variable.
+With G the matrix of contemporaneous coefficients of the global model, the
+impact is G^-1 Sigma_u a / (a' Sigma_u a)^(1/2), and later horizons follow from
+the reduced form. Sigma_u is the full covariance of the country residuals,
+cross-country blocks included.
 
-```{r solve, eval = TRUE, message=FALSE, results='hide'}
-gvar <- submodels_to_gvar(object)
+`irf(type = "gir")` computes something else for the solved model: it shocks the
+errors of the reduced form, G^-1 u_t, whose covariance `submodels_to_gvar`
+assembles from block diagonal country covariances. The responses of the paper
+are therefore computed directly. Since u_t = G e_t for the reduced form residuals
+e_t, G^-1 Sigma_u a = Sigma_e G' a and a' Sigma_u a = (G' a)' Sigma_e (G' a).
+
+```{r girf-function, eval = TRUE}
+paper_girf <- function(gvar, impulse, response, n_ahead = 24) {
+  k <- gvar[["model"]][["k"]]
+  p <- gvar[["model"]][["p"]]
+  y <- unclass(gvar[["data"]][["train"]][["y"]])
+  x <- unclass(gvar[["data"]][["train"]][["x"]])
+  tt <- nrow(y)
+  keep <- match(response, gvar[["model"]][["endogen"]])
+  draws <- nrow(gvar[["posterior"]][["a"]][["coeffs"]])
+  result <- array(NA_real_, c(draws, n_ahead + 1, length(keep), ncol(impulse)),
+                  dimnames = list(NULL, 0:n_ahead, response, colnames(impulse)))
+  moduli <- numeric(draws)
+  for (d in 1:draws) {
+    b <- matrix(gvar[["posterior"]][["a"]][["coeffs"]][d, ], k)
+    sigma_e <- crossprod(y - x %*% t(b)) / tt
+    g <- matrix(gvar[["g"]][d, ], k)
+    ga <- crossprod(g, impulse)
+    impact <- sigma_e %*% ga
+    psi <- array(0, c(n_ahead + 1, k, ncol(impulse)))
+    psi[1, , ] <- sweep(impact, 2, sqrt(colSums(ga * impact)), "/")
+    for (h in 1:n_ahead) {
+      for (j in 1:min(h, p)) {
+        psi[h + 1, , ] <- psi[h + 1, , ] + b[, (j - 1) * k + 1:k] %*% psi[h - j + 1, , ]
+      }
+    }
+    result[d, , , ] <- psi[, keep, , drop = FALSE] * 100
+    moduli[d] <- companion_moduli(gvar, d)[1]
+  }
+  list(girf = result, max_modulus = moduli)
+}
 ```
 
-Stacking the sub-models gives the structural form
-$G y_t = A_1 y_{t-1} + \dots + u_t$, which `submodels_to_gvar` solves for the
-reduced form $y_t = G^{-1} A_1 y_{t-1} + \dots + G^{-1} u_t$. The draws of $G$
-are kept in element `g` of the result.
+Figures 1-3 of the paper show a negative shock to US equity prices, a positive
+shock to the oil price and a positive shock to the US short-term interest rate.
 
-```{r, eval = TRUE}
-gvar[["model"]][["k"]]
+```{r shocks, eval = TRUE}
+endogen <- gvar_ml[["model"]][["endogen"]]
+unit_shock <- function(variable, sign) {
+  a <- numeric(length(endogen))
+  a[match(variable, endogen)] <- sign
+  a
+}
+impulse <- cbind(us_equity = unit_shock("US_q", -1),
+                 oil = unit_shock("US_poil", 1),
+                 us_short_rate = unit_shock("US_rs", 1))
+panels <- c("US_y", "US_Dp", "US_q", "EA_y", "EA_Dp", "EA_q",
+            "US_rs", "US_rl", "US_poil", "EA_rs", "EA_rl", "EA_ep")
+
+girf_ml <- paper_girf(gvar_ml, impulse, panels)
 ```
 
-The restricted trend of the error correction term becomes an ordinary
-deterministic term of the level representation, beside the unrestricted
-constant.
+For the posterior, every tenth draw is used. A draw of the global model whose
+companion matrix has a root outside the unit circle has no impulse responses
+that die out, so only stable draws are summarised.
 
-```{r, eval = TRUE}
-gvar[["model"]][["deterministic"]]
+```{r girf-posterior, eval = TRUE, message=FALSE, results='hide'}
+thinned <- object
+thinned[["submodels"]] <- lapply(object[["submodels"]], function(models) {
+  models[[1]] <- thin(models[[1]], thin = 10)
+  models
+})
+gvar_post <- submodels_to_gvar(thinned)
+girf_post <- paper_girf(gvar_post, impulse, panels)
+stable <- girf_post[["max_modulus"]] < 1 + 1e-6
 ```
 
-### Impulse response analysis
+Only `r sum(stable)` of the `r length(stable)` draws give a stable global model,
+and the median of the largest modulus is
+`r format(stats::median(girf_post[["max_modulus"]]), digits = 4)`. Like the gap
+between posterior and ML estimates, this comes from how weakly the data
+determine the cointegration spaces: a drawn space far from the ML space leaves
+combinations of the variables that are not stationary.
 
-The solved model is of class `bvarmodel`, so generalised impulse responses are
-obtained with `irf` and `type = "gir"`.
+```{r girf-plot-function, eval = TRUE}
+titles <- c(US_y = "US real output", US_Dp = "US inflation", US_q = "US real equity prices",
+            EA_y = "EA real output", EA_Dp = "EA inflation", EA_q = "EA real equity prices",
+            US_rs = "US short-term rate", US_rl = "US long-term rate", US_poil = "Oil price",
+            EA_rs = "EA short-term rate", EA_rl = "EA long-term rate", EA_ep = "EA real exchange rate")
 
-```{r girf, eval = TRUE, fig.width=5.5, fig.height=4.5}
-gvar_irf <- irf(gvar, impulse = "US_rs", response = "EA_y",
-                n_ahead = 20, ci = .68,
-                type = "gir", shock = "sd")
-
-plot(gvar_irf)
+plot_girf <- function(shock) {
+  oldpar <- graphics::par(mfrow = c(4, 3), mar = c(3, 3, 2.5, 1), mgp = c(1.8, 0.6, 0))
+  on.exit(graphics::par(oldpar))
+  horizons <- 0:(dim(girf_ml[["girf"]])[2] - 1)
+  for (v in panels) {
+    ml_path <- girf_ml[["girf"]][1, , v, shock]
+    bands <- apply(girf_post[["girf"]][stable, , v, shock, drop = FALSE], 2,
+                   stats::quantile, probs = c(0.05, 0.5, 0.95))
+    graphics::plot(horizons, ml_path, type = "l", lwd = 2,
+                   ylim = range(c(ml_path, bands, 0)),
+                   xlab = "Quarters", ylab = "", main = titles[[v]], cex.main = 0.9)
+    graphics::lines(horizons, bands[2, ], lty = 2)
+    graphics::lines(horizons, bands[1, ], lty = 3)
+    graphics::lines(horizons, bands[3, ], lty = 3)
+    graphics::abline(h = 0, col = "grey50")
+  }
+}
 ```
 
-### Error variance decomposition
+In the figures, the solid line is the response at the ML estimates, the dashed
+line the posterior median and the dotted lines the 90% credible bounds of the
+stable draws, all in per cent.
 
-```{r gfevd, eval = TRUE, fig.width=5.5, fig.height=4.5}
-gvar_fevd <- fevd(gvar,
-                  response = "EA_y",
-                  n_ahead = 20,
-                  type = "gir",
-                  normalise_gir = TRUE,
-                  max_groups = 6)
-
-plot(gvar_fevd)
+```{r figure-1, eval = TRUE, fig.width=7, fig.height=8.5}
+plot_girf("us_equity")
 ```
 
+```{r figure-2, eval = TRUE, fig.width=7, fig.height=8.5}
+plot_girf("oil")
+```
+
+```{r figure-3, eval = TRUE, fig.width=7, fig.height=8.5}
+plot_girf("us_short_rate")
+```
+
+The responses at the ML estimates have the shapes of Figures 1-3: the fall in
+US equity prices lowers output, equity prices and interest rates in both
+regions, the oil shock raises inflation on impact, and the US short rate shock
+comes with the paper's price puzzle. Section 6 of the paper quotes the
+following numbers from its bootstrap means.
+
+```{r section-6, eval = TRUE}
+section_6 <- data.frame(
+  quantity = c("US equity shock: US equity prices, impact",
+               "US equity shock: US output, impact",
+               "US equity shock: US output, quarters 1-4",
+               "US equity shock: US output, quarters 5-8",
+               "US equity shock: EA equity prices, impact",
+               "Oil shock: oil price, impact",
+               "US short rate shock: US short rate, impact"),
+  paper = c("-4 to -5", "about -0.1", "-0.4", "-0.5", "about -4.0", "10 to 11", "0.2"),
+  shock = c("us_equity", "us_equity", "us_equity", "us_equity", "us_equity", "oil", "us_short_rate"),
+  variable = c("US_q", "US_y", "US_y", "US_y", "EA_q", "US_poil", "US_rs"),
+  from = c(0, 0, 1, 5, 0, 0, 0),
+  to = c(0, 0, 4, 8, 0, 0, 0))
+
+section_6[["ml"]] <- mapply(function(shock, variable, from, to) {
+  mean(girf_ml[["girf"]][1, as.character(from:to), variable, shock])
+}, section_6[["shock"]], section_6[["variable"]], section_6[["from"]], section_6[["to"]])
+section_6[["posterior"]] <- mapply(function(shock, variable, from, to) {
+  mean(girf_post[["girf"]][stable, as.character(from:to), variable, shock])
+}, section_6[["shock"]], section_6[["variable"]], section_6[["from"]], section_6[["to"]])
+
+knitr::kable(section_6[, c("quantity", "paper", "ml", "posterior")], digits = 2, row.names = FALSE)
+```
+
+The responses at the ML estimates are of the paper's size or somewhat larger.
+The model's dynamics are the paper's -- the moduli of the companion matrix are
+-- so the difference is in the size of the shocks, one residual standard error,
+which the averaging over bootstrap replicates behind the paper's figures does
+not let us recover.
+
+### Summary
+
+Set up with `bgvars`, the country models of Dees et al. (2007) give the paper's
+trade weights, lag orders, trace statistics and cointegration ranks, the
+contemporaneous effects of Table B11 and the eigenvalues of the global model.
+The generalised impulse responses at the ML estimates have the shapes of the
+paper's figures. The Bayesian estimates with flat priors contain the paper's
+estimates in their 90% intervals, but they are not the same thing: they average
+over a diffuse posterior of the cointegration spaces, and most draws of the
+global model are not stable.
+
+The supplement's Figures B1-B12 of global shocks are not reproduced, since they
+need the PPP-GDP weights of the paper, which the data set does not contain.
 
 ## References
 
-Chudik, A. & Pesaran, M. H. (2016). Theory and practice of GVAR modelling. *Journal of Economic Surveys 30*(1), 165-197. <https://doi.org/10.1111/joes.12095>
+Dees, S., di Mauro, F., Pesaran, M. H., & Smith, L. V. (2007). Exploring the international linkages of the euro area: A global VAR analysis. *Journal of Applied Econometrics 22*(1), 1-38. <https://doi.org/10.1002/jae.932>
 
-Dees, S., Mauro, F., Pesaran, M. H., & Smith, V. L. (2007). Exploring the international linkages of the euro area: A global VAR analysis. *Journal of Applied Econometrics 22*(1), 1-38. <https://doi.org/10.1002/jae.932>
+Koop, G., León-González, R., & Strachan, R. W. (2010). Efficient posterior simulation for cointegrated models with priors on the cointegration space. *Econometric Reviews 29*(2), 224-242. <https://doi.org/10.1080/07474930903382208>
 
-George, E. I., Sun, D., & Ni, S. (2008). Bayesian stochastic search for VAR model restrictions. *Journal of Econometrics, 142*(1), 553-580. <https://doi.org/10.1016/j.jeconom.2007.08.017>
+Pesaran, H. H., & Shin, Y. (1998). Generalized impulse response analysis in linear multivariate models. *Economics Letters, 58*(1), 17-29. <https://doi.org/10.1016/S0165-1765(97)00214-0>
 
-Koop, G., Pesaran, M. H., & Potter, S.M. (1996). Impulse response analysis in nonlinear multivariate models. *Journal of Econometrics 74*(1), 119-147. <https://doi.org/10.1016/0304-4076(95)01753-4>
+Pesaran, M. H., Schuermann, T., & Weiner, S. M. (2004). Modeling regional interdependencies using a global error-correcting macroeconometric model. *Journal of Business & Economic Statistics 22*(2), 129-162. <https://doi.org/10.1198/073500104000000019>
 
-Lütkepohl, H. (2007). *New introduction to multiple time series analysis* (2nd ed.). Berlin: Springer.
+Pesaran, M. H., Shin, Y., & Smith, R. J. (2000). Structural analysis of vector error correction models with exogenous I(1) variables. *Journal of Econometrics 97*(2), 293-343. <https://doi.org/10.1016/S0304-4076(99)00073-1>
 
-Mohaddes, K., & Raissi, M. (2020). Compilation, revision and updating of the global VAR (GVAR) database, 1979Q2--2019Q4 (mimeo). <https://www.mohaddes.org/gvar>.
-
-Pesaran, H. H., & Shin, Y. (1998). Generalized impulse response analys is in linear multivariate models. *Economics Letters, 58*(1), 17-29. <https://doi.org/10.1016/S0165-1765(97)00214-0>
-
-Pesaran, M., Schuermann, T., & Weiner, S. M. (2004). Modeling regional interdependencies using a global error-correcting macroeconometric model. *Journal of Business & Economic Statistics 22*(2), 129-162. <https://doi.org/10.1198/073500104000000019>
-
-[^gvar2019]: The paper and data set can be downloaded from <https://www.mohaddes.org/gvar>.
+White, H. (1980). A heteroskedasticity-consistent covariance matrix estimator and a direct test for heteroskedasticity. *Econometrica 48*(4), 817-838. <https://doi.org/10.2307/1912934>

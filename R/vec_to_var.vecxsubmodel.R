@@ -30,7 +30,10 @@
 #' B_l = \Upsilon_l - \Upsilon_{l-1}, \quad B_q = -\Upsilon_{q-1}.}
 #' A block of \eqn{q} differences therefore spans the lags \eqn{0} to \eqn{q} in
 #' levels, which is why \code{p_exogen} and \code{s_global} of the result are
-#' one larger than those of the sub-model it is given.
+#' one larger than those of the sub-model it is given. A block without
+#' differences, \eqn{q = 0}, still enters through the error correction term at
+#' lag one, so in levels it spans the lags \eqn{0} and \eqn{1}, with
+#' \eqn{B_0 = 0} and \eqn{B_1 = \Pi^{x}}, and the result counts two blocks.
 #'
 #' The coefficients of the result are ordered the way an estimated VARX
 #' sub-model orders them: the lags of the endogenous variables, then the weakly
@@ -210,6 +213,14 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
   }
   if (!is.null(det_data)) {dimnames(det_data) <- list(NULL, det_names)}
 
+  # The highest lag of a block of unmodelled variables in levels. A block of q
+  # differences reaches back to lag q, and a block without differences still
+  # enters at lag one through the error correction term. Counting q + 1 blocks
+  # for the latter gave one name and one coefficient block too few, and the
+  # rewrite failed on its own column names.
+  top_exogen <- max(q_exogen, 1L)
+  top_global <- max(q_global, 1L)
+
   # Names follow the convention of an estimated VARX sub-model.
   lag_label <- function(lags, max_lag) {
     width <- max(2, nchar(max(max_lag, 1)))
@@ -221,14 +232,14 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
                       rep(lag_label(1:p, p), each = k)))
   if (m_exogen > 0) {
     x_names <- c(x_names,
-                 paste0(rep(specification[["exogen"]], times = q_exogen + 1),
-                        ".l", rep(lag_label(0:q_exogen, q_exogen + 1),
+                 paste0(rep(specification[["exogen"]], times = top_exogen + 1),
+                        ".l", rep(lag_label(0:top_exogen, top_exogen + 1),
                                   each = m_exogen)))
   }
   if (m_global > 0) {
     x_names <- c(x_names,
-                 paste0(rep(specification[["global"]], times = q_global + 1),
-                        ".l", rep(lag_label(0:q_global, q_global + 1),
+                 paste0(rep(specification[["global"]], times = top_global + 1),
+                        ".l", rep(lag_label(0:top_global, top_global + 1),
                                   each = m_global)))
   }
   if (!is.null(det_data)) {
@@ -267,7 +278,7 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
 
     # Blocks of the level representation, in the order an estimated VARX
     # sub-model stores them.
-    n_out <- k * p + m_exogen * (q_exogen + 1) + m_global * (q_global + 1) +
+    n_out <- k * p + m_exogen * (top_exogen + 1) + m_global * (top_global + 1) +
       n_det_ur + n_det_r
     result_coeffs <- matrix(NA_real_, draws, k * n_out)
 
@@ -360,9 +371,9 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
   model[["p"]] <- p
   model[["p_endogen"]] <- p
   model[["k_exogen"]] <- m_exogen
-  model[["p_exogen"]] <- if (m_exogen > 0) q_exogen + 1L else 0L
+  model[["p_exogen"]] <- if (m_exogen > 0) top_exogen + 1L else 0L
   model[["m_global"]] <- m_global
-  model[["s_global"]] <- if (m_global > 0) q_global + 1L else 0L
+  model[["s_global"]] <- if (m_global > 0) top_global + 1L else 0L
   model[["m"]] <- model[["k_exogen"]] * model[["p_exogen"]] +
     model[["m_global"]] * model[["s_global"]]
   model[["s"]] <- model[["p_exogen"]]

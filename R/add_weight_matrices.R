@@ -11,16 +11,23 @@
 #' @param period either an integer for time varying weights or a numeric
 #' vector specifying the periods in \code{weights} that
 #' should be used to calculate constant weights. See 'Details'.
-#' 
-#' @details 
-#' 
-#' The function creates of sub-model-specific weight matrices.
+#'
+#' @details
+#'
+#' The function creates sub-model-specific weight matrices.
 #' If a numeric vector is provided as \code{period}, the function calculates
 #' weights based on the sums over the specified periods. If an integer
-#' is proved, the weights are constructed from rolling sums over the last
+#' is provided, the weights are constructed from rolling sums over the last
 #' \code{period} periods. If a sub-model series begins earlier than its
 #' corresponding weight series, the sums over the first \code{period}
 #' observations of a sub-model's weight data are used until the periods match.
+#'
+#' A single number is read as the length of a rolling window unless it is one
+#' of the periods of the weight series and larger than their number, so that
+#' \code{period = 2001} gives constant weights of the year 2001 for annual
+#' weights, and \code{period = 3} rolling sums over three years. Periods that
+#' the weight series does not contain and a window longer than the weight
+#' series are refused.
 #' 
 #' @return A list class 'gvarmodel' or 'gvecmodel'.
 #' 
@@ -61,7 +68,10 @@ add_weight_matrices <- function(object, submodel_data, period){
   # Check input
   .check_submodeldata(submodel_data)
   
-  weights <- lapply(submodel_data, .create_weights_submodel, period = period)
+  weights <- lapply(names(submodel_data), function(i) {
+    .create_weights_submodel(submodel_data[[i]], period = period, name = i)
+  })
+  names(weights) <- names(submodel_data)
   
   # Ensure that the order of weights is consistent with order of sub-models themselves
   # This ensures that weights are attributed correctly later.

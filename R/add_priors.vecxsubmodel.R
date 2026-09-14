@@ -440,7 +440,10 @@ add_priors.vecxsubmodel <- function(object,
                               coint_var = FALSE,
                               sigma = "AR")
       
-      object[["priors"]][["a"]][["v_inv"]] <- minn[["v_inv"]]
+      # minnesota_prior.vecxsubmodel() calls the precision 'v_i', as the method
+      # of bvartools for VEC models does. Reading 'v_inv' stored NULL, so a
+      # Minnesota prior left the sampler without a prior precision.
+      object[["priors"]][["a"]][["v_inv"]] <- minn[["v_i"]]
     }
     
     # SSVS prior ----

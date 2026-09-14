@@ -2,22 +2,30 @@
 % Please edit documentation in R/print.gvarmodel.R
 \name{print.gvarmodel}
 \alias{print.gvarmodel}
+\alias{print.gvecmodel}
 \title{Printing Model Information}
 \usage{
 \method{print}{gvarmodel}(x, digits = max(3L, getOption("digits") - 3L), ...)
+
+\method{print}{gvecmodel}(x, digits = max(3L, getOption("digits") - 3L), ...)
 }
 \arguments{
-\item{x}{an object of class 'gvarmodel'.}
+\item{x}{an object of class 'gvarmodel' or 'gvecmodel'.}
 
 \item{digits}{the number of significant digits to use when printing.}
 
 \item{...}{further arguments passed to or from other methods.}
 }
 \value{
-The object that was printed, invisibly. A table of the variables of
-every sub-model is printed as a side effect, with a mark for each variable
-that the sub-model contains.
+The object that was printed, invisibly.
 }
 \description{
-print method for objects of class 'gvarmodel'.
+print methods for objects of class 'gvarmodel' and 'gvecmodel'.
+}
+\details{
+Printed are the variables of every sub-model, with a mark for each variable
+that the sub-model contains, the global variables, whether weight matrices
+have been added and, once sub-models have been added, a line per sub-model:
+how many candidate models it holds, whether they have been estimated, and
+the specification of the model when there is only one.
 }
