@@ -63,7 +63,9 @@
 #'   models with time varying parameters and a positive rank. The loadings multiply levels, so a
 #'   drift that is negligible for a coefficient on a differenced regressor moves the fitted
 #'   value of an equation by much more; a rate several orders of magnitude below \code{rate}
-#'   keeps them from absorbing the residuals while the other coefficients vary.}
+#'   keeps their drift from absorbing the residuals while the other coefficients vary. It does
+#'   not reach the steps of the cointegration vectors, which can absorb the residuals as well;
+#'   see section 'Prior on the cointegration space'.}
 #' }
 #' 
 #' Argument \code{coint} specifies the prior on the cointegration space. It is
