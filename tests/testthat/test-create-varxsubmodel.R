@@ -220,3 +220,26 @@ test_that("the endogenous variables keep the order they were named in", {
   expect_equal(model[["model"]][["endogen"]], c("Dp", "y"))
   expect_equal(dimnames(model[["data"]][["train"]][["y"]])[[2]], c("Dp", "y"))
 })
+
+test_that("Minnesota-like inclusion priors give A0 of a structural sub-model kappa2", {
+  object <- gvar_object()
+  model <- create_varxsubmodel(object, submodel = "US",
+                               endogen = c("y", "Dp"), p_endogen = 2,
+                               exogen = c("y", "Dp"), p_exogen = 2,
+                               deterministic = "const",
+                               structural = TRUE, error = "gamma", varsel = "bvs",
+                               iterations = 10, burnin = 10)[[1]]
+  prior <- inclusion_prior(model, prob = 0.3, minnesota_like = TRUE,
+                           kappa1 = 0.8, kappa2 = 0.5, kappa3 = 0.4, kappa4 = 0.9)
+
+  k <- model[["model"]][["k"]]
+  n_struct <- k * (k - 1) / 2
+  n_det <- k * model[["model"]][["n"]]
+  values <- as.numeric(prior[["prior"]])
+
+  # The free elements of A0 are the last coefficients, after the deterministic
+  # terms, and they stay in the selection.
+  expect_equal(tail(values, n_struct), rep(0.5, n_struct))
+  expect_equal(values[length(values) - n_struct - n_det + 1:n_det], rep(0.9, n_det))
+  expect_true(all((length(values) - n_struct + 1:n_struct) %in% prior[["include"]]))
+})

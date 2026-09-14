@@ -88,6 +88,29 @@ test_that("Minnesota-like inclusion priors weight own lags differently", {
   expect_equal(tail(values, n_det), rep(0.9, n_det))
 })
 
+test_that("Minnesota-like inclusion priors give A0 of a structural sub-model kappa2", {
+  object <- add_submodels(gvec_object(),
+                          endogen = c("y", "Dp", "rs"), p_endogen = 2,
+                          exogen = c("y", "Dp"), p_exogen = 2,
+                          const = "unrestricted", r = 1, structural = TRUE,
+                          error = "gamma", varsel = "bvs",
+                          iterations = 20, burnin = 10)
+  model <- align_model_obs(object)[["submodels"]][["US"]][[1]]
+  prior <- inclusion_prior(model, prob = 0.3, minnesota_like = TRUE,
+                           kappa1 = 0.8, kappa2 = 0.5, kappa3 = 0.4, kappa4 = 0.9)
+
+  k <- model[["model"]][["k_endogen"]]
+  n_struct <- k * (k - 1) / 2
+  n_det <- k * model[["model"]][["n"]]
+  values <- as.numeric(prior[["prior"]])
+
+  # The free elements of A0 are the last coefficients, after the deterministic
+  # terms, and they stay in the selection.
+  expect_equal(tail(values, n_struct), rep(0.5, n_struct))
+  expect_equal(values[length(values) - n_struct - n_det + 1:n_det], rep(0.9, n_det))
+  expect_true(all((length(values) - n_struct + 1:n_struct) %in% prior[["include"]]))
+})
+
 test_that("a time varying VECX sub-model gets a state equation for beta", {
   object <- vecx_priors(vecx_tvp(varsel = "none"))
   priors <- object[["submodels"]][["US"]][[1]][["priors"]]
