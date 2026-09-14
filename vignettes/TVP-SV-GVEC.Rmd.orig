@@ -159,14 +159,15 @@ The draws are made on the scale of the data. `scale_error_correction` and
 `rescale_error_correction` could divide the series in the error correction term
 by the standard deviation of their differences before simulating and put them
 back afterwards, and for a sub-model with constant coefficients that is a
-reasonable, deliberate step. With time varying coefficients it is a risky one. On
-a scaled error correction term the coefficient paths can absorb the residuals of
-an equation almost entirely, which leaves its volatility far below that of a
-least squares fit and nearly flat over the sample. Whether a chain ends up there
-can depend on nothing but the seed, and a tighter `rho` makes it rarer without
-preventing it. `?add_priors.vecxsubmodel` says the same, after the bvartools
-vignette on TVP-SV-VEC models, where it was found. Unscaled series and a small
-`coef$rate` are the safer combination.
+reasonable, deliberate step. With time varying coefficients it is a risky one.
+Scaling makes the levels in the error correction term large relative to the
+residuals, so a small drift in a loading moves the fitted value by a lot, and the
+coefficient paths can absorb the residuals of an equation almost entirely, which
+leaves its volatility far below that of a least squares fit and nearly flat over
+the sample. In the bvartools vignette on TVP-SV-VEC models a scaled error
+correction term did that to the short-term interest rate equation in each of four
+chains, where the unscaled one did not. Unscaled series and a small `coef$rate`
+are the safer combination.
 
 Whatever the choice, the residuals are the check. The posterior standard
 deviation of the errors of each equation, averaged over the sample, should be of
@@ -199,17 +200,14 @@ residual_sd <- function(object) {
 lapply(object[["submodels"]], function(x) {residual_sd(x[[1]])})
 ```
 
-The output and interest rate equations are where they should be. The inflation
-equations of Austria and Germany are not. Across several chains with different
-seeds, the posterior standard deviation of German inflation was about half the
-least squares one in every chain, and that of Austrian inflation anywhere between
-a third and three quarters of it, depending on the seed. The same held with a
-scaled error correction term, so here it is not the scaling. It is the kind of result the
-check exists to raise, and it is left in on purpose: before the inflation
-equations of these sub-models are read, a smaller `coef$rate` or a different
-error specification is worth trying. A single chain that passes the check does
-not rule out another seed that fails it, so for a model that is to be used
-rather than illustrated, the comparison is worth repeating across chains.
+Every equation passes. The posterior standard deviations are of the order of the
+least squares ones, from about equal to them to about a third above, which is
+what a prior that keeps the coefficients close to constant and selects some of
+them out of the model should give: the posterior fit cannot be better than an
+unrestricted regression on the same regressors, and it is allowed to be a little
+worse. A single chain that passes the check does not rule out another seed that
+fails it, so for a model that is to be used rather than illustrated, the
+comparison is worth repeating across chains.
 
 ## Evaluation
 
@@ -325,9 +323,11 @@ plot(paths, main = "Volatility of the output equation")
 ```
 
 The equations are in differences, so these are the volatilities of the shocks to
-output growth, and they rise into the 2020s without spiking. That is worth
-dwelling on, because it is not what the raw data look like: Austrian output fell
-by ten percent in 2020Q2, six standard deviations of its own growth rate.
+output growth. The Austrian one rises into the 2020s without spiking, the German
+one falls until the early 2000s and recovers, and only the one of the United
+States jumps in 2020. The Austrian path is worth dwelling on, because it is not
+what the raw data look like: Austrian output fell by ten percent in 2020Q2, six
+standard deviations of its own growth rate.
 
 The reason is what a GVAR sub-model is for. The weakly exogenous foreign
 variables enter contemporaneously, and the pandemic hit every country in the

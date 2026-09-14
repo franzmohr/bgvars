@@ -109,7 +109,7 @@ choice in this vignette.
 ```{r priors}
 object <- add_priors(object,
                      coef = list(v_i = 1, v_i_det = 1 / 10,
-                                 shape = 3, rate = 1e-8, rate_det = 1e-6),
+                                 shape = 3, rate = 1e-10, rate_det = 1e-8),
                      sigma = list(shape = 3, rate = 0.01,
                                   mu = 0, v_i = 0.01,
                                   state_variance = 0.05, offset = 1e-8),
@@ -130,12 +130,14 @@ Each of these sub-models has 24 coefficients per period against three
 observations per period, so it is saturated: given enough freedom the
 coefficient path fits every observation exactly, the residuals collapse to
 zero, and the volatility process is left with nothing to explain. At
-`coef$rate = 0.0001` that is what happens -- the fitted residuals of the output
-equation have a standard deviation of 0.0004 against 0.012 for the same
-regression estimated by least squares, and the estimated volatility is a flat
-line. At `1e-8` the coefficients still move, the fit is a little better than
-least squares rather than perfect, and the volatilities do the work they are
-there for.
+`coef$rate = 0.0001` that is what happens -- the fitted residuals of the
+Austrian output equation have a standard deviation of 0.00004 against 0.012 for
+the same regression estimated by least squares. At `1e-8` the collapse is only
+partial, but it is still there: the residual standard deviation of the Austrian
+output equation is less than two fifths of the least squares one, and that of
+the German one less than a fifth. At `1e-10`, the value used here, the
+coefficients still move, the fit is close to that of least squares rather than
+better than it, and the volatilities do the work they are there for.
 
 The check is worth running on any time varying model with many coefficients and
 a short sample: compare the residuals under the posterior mean of the
@@ -250,8 +252,8 @@ regressor is either in a sub-model over the whole sample or out of it over the
 whole sample, and the inclusion probabilities therefore differ across countries
 but not across periods.
 
-The coefficient paths of this specification drift slowly and by small amounts,
-and the columns of $\Sigma_t$ beside them do not. That is the other side of the
+The coefficient paths of this specification are practically flat, and the
+columns of $\Sigma_t$ beside them are not. That is the other side of the
 prior discussed above and it is worth reading as a result rather than as a
 disappointment: for these series most of what changes over four decades is the
 size of the shocks, not the transmission, which is the usual finding for
