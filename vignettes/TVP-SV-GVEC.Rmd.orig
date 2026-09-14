@@ -264,7 +264,7 @@ sapply(object[["submodels"]], function(x) {drift(x[[1]])})
 ```
 
 Every block moves. The short-run coefficients that stay in the model drift by a
-median of 0.04 (US) to 0.15 (AT) posterior standard deviations over the sample,
+median of 0.06 (US) to 0.15 (AT) posterior standard deviations over the sample,
 and the largest of them by 0.55 in Austria and by close to three in Germany and
 the United States. The loadings and the constant, on their much smaller rates,
 move by fractions of a standard deviation, the US constant by almost two. With
