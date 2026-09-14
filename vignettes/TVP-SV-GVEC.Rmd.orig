@@ -462,15 +462,82 @@ to a cointegrated system can move the levels of its variables permanently.
 
 ## Choosing between specifications
 
-Choosing between specifications is not closed off either. `add_posterior_loglik` has
-an algorithm for each time varying error correction sampler, so a time varying
-sub-model can be compared with other time varying ones and with constant
-coefficient ones. WAIC and LOOIC are the criteria for that comparison: AIC, BIC
-and HQ count parameters that a state equation does not use, as
-`?bvartools::selection_criteria` explains. The Pareto k diagnostics of LOOIC
-are worth reading for these models in particular, since a coefficient path that
-bends towards single observations shows up there as periods whose
-leave-one-out estimate cannot be trusted.
+AIC, BIC and HQ count parameters that a state equation does not use, as
+`?bvartools::selection_criteria` explains, so they are no guide for these
+sub-models. WAIC and LOOIC are no reliable guide either. `add_posterior_loglik`
+evaluates the likelihood of each period at the states of that period, and those
+states have seen the period's observation: the state of a period is informed
+mostly by the observation it is evaluated at, so leaving that observation out by
+reweighting the draws fails for exactly the periods a path bends towards, which
+the Pareto k diagnostics of LOOIC report. Neither criterion then separates
+specifications that differ in how much freedom their states have, and the
+cointegration rank is such a difference.
+
+Koop, León-González and Strachan (2011) choose between their time varying
+cointegration models by the log predictive likelihood instead. For every period
+of an evaluation sample the model is estimated on the data up to the period
+before, its states are carried one period forward with their state equations,
+and the density of the observation that follows is averaged over the posterior
+draws. The sum of the logs of those densities conditions on nothing a period has
+not seen. For a sub-model the density is that of the country's own variables
+given the weakly exogenous and global variables of the same period, as its
+likelihood is.
+
+The rank is chosen by estimating one sub-model per rank on a sequence of
+expanding windows. `create_vecxsubmodel` produces the models of a country for
+several ranks at once, and the windows, the draws and the densities come from
+`bvartools`:
+
+```{r predictive, message=FALSE, results='hide'}
+models_at <- create_vecxsubmodel(object, submodel = "AT",
+                                 endogen = c("y", "Dp", "r"), p_endogen = 2,
+                                 exogen = c("y", "Dp", "r"), p_exogen = 2,
+                                 global = "poil", s = 2, r = 0:1,
+                                 const = "unrestricted", tvp = TRUE,
+                                 error = "sv+covar",
+                                 iterations = 2000, burnin = 1000)
+
+models_at <- add_priors(models_at,
+                        coef = list(v_i = 1, v_i_det = 1 / 10,
+                                    shape = 3, rate = 1e-12, rate_det = 1e-10),
+                        coint = list(rho = 0.999),
+                        sigma = list(shape = 3, rate = 0.01,
+                                     mu = 0, v_i = 0.01,
+                                     state_variance = 0.05, offset = 1e-8))
+
+# Eight windows, each predicting the quarter the next one adds
+y_at <- models_at[[1]][["data"]][["train"]][["y"]]
+windows_at <- use_expanding_window(models_at,
+                                   start = stats::time(y_at)[nrow(y_at) - 7])
+
+windows_at <- add_initial_values(windows_at)
+set.seed(20110816)
+windows_at <- add_posterior_coefficients(windows_at)
+windows_at <- add_predictive_loglik(windows_at)
+```
+
+`selection_criteria` sums the densities to criterion `"LPL"`, and
+`choose_best_model` picks the model with the largest one:
+
+```{r}
+sc_at <- selection_criteria(windows_at)
+sc_at
+
+choose_best_model(sc_at, criterion = "LPL")
+```
+
+Model 1 is the sub-model of rank zero and model 2 the one of rank one. Over
+eight quarters their log predictive likelihoods differ by 0.3, far inside bands
+about 16 wide, so these windows do not tell the two ranks apart.
+
+Each window is a full estimation, so the exercise costs one estimation per rank
+and period of the evaluation sample, and eight quarters are far too few to rank
+models on; they keep this vignette short. For a comparison to be used, the
+evaluation sample should cover a substantial part of the data, as the last 100
+of about 200 quarters do in Koop, León-González and Strachan (2011), and the
+sub-models are best exported with `write_to_hdf5` and estimated with BayesTS in
+parallel. The band of `"LPL"` is built from the spread of the densities over the
+periods, so two models whose bands overlap widely are not told apart.
 
 Variable selection is available as `varsel = "bvs"`. SSVS is not implemented for
 error correction sub-models and is refused when the priors are added.
