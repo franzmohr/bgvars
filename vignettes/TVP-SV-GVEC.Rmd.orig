@@ -170,13 +170,21 @@ by the standard deviation of their differences before simulating and put them
 back afterwards, and for a sub-model with constant coefficients that is a
 reasonable, deliberate step. With time varying coefficients it is a risky one.
 Scaling makes the levels in the error correction term large relative to the
-residuals, so a small drift in a loading moves the fitted value by a lot, and the
-coefficient paths can absorb the residuals of an equation almost entirely, which
-leaves its volatility far below that of a least squares fit and nearly flat over
-the sample. In the bvartools vignette on TVP-SV-VEC models a scaled error
-correction term did that to the short-term interest rate equation in each of four
-chains, where the unscaled one did not. Unscaled series and small rates for the
-loadings and the constant are the safer combination.
+residuals, so a small drift in a loading, and every step of the cointegration
+vectors, moves the fitted value by a lot, and the coefficient paths can absorb
+the residuals of an equation almost entirely, which leaves its volatility far
+below that of a least squares fit and nearly flat over the sample. In the
+bvartools vignette on TVP-SV-VEC models a scaled error correction term did that
+to the short-term interest rate equation in each of four chains, where the
+unscaled one did not. Unscaled series and small rates for the loadings and the
+constant are the safer combination, but not a sufficient one. The cointegration
+vectors take steps of unit variance whatever the rates are, and how far those
+steps move $\Pi_t$ depends on the prior precision of the loadings, `coef$v_i`
+divided by $1 - \rho^2$, relative to the scale of $\Pi$, and on the levels of
+the series: for log levels far from zero a step shifts the error correction term
+like a random walk intercept, or the loadings are drawn close to zero and switch
+the term off. Section 'Prior on the cointegration space' of
+`?add_priors.vecxsubmodel` describes both.
 
 Whatever the choice, the residuals are the check. The posterior standard
 deviation of the errors of each equation, averaged over the sample, should be of
