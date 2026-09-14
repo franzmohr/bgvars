@@ -140,8 +140,8 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
     stop("Argument 'object' must contain the data of the VEC model in ",
          "elements 'y' and 'w'.")
   }
-  if (!is.null(attr(w, "scale"))) {
-    stop("The series in the error correction term are still on the scale of ",
+  if (!is.null(attr(w, "scale")) || !is.null(attr(w, "centre"))) {
+    stop("The series in the error correction term are still scaled or centred by ",
          "'scale_error_correction'. Use 'rescale_error_correction' to put them ",
          "back on the scale of the input data before the model is transformed.")
   }

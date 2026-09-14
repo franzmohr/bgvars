@@ -6,7 +6,10 @@
 #'
 #' @param object an object of class 'gvecmodel', usually, the output of a call to
 #' \code{\link{create_gvecmodel}} in combination with \code{\link{add_submodels}}.
-#' @param ... further arguments passed to or from other methods.
+#' @param ... further arguments passed to
+#' \code{\link[bvartools]{scale_error_correction}} and
+#' \code{\link[bvartools]{rescale_error_correction}}, such as \code{scale} and
+#' \code{centre}.
 #'
 #' @details
 #' The series in the error correction term of a sub-model are on the scale of
@@ -37,8 +40,20 @@
 #' scaling makes no difference to what comes back: rescaling returns the
 #' starting values on the scale of the data either way.
 #'
-#' Scaling changes what the prior on the cointegration space says, so it is a
-#' modelling decision rather than a detail of the sampler.
+#' With \code{centre = TRUE}, which \code{scale_error_correction} passes on,
+#' the sample mean of each stochastic series is subtracted from it as well, and
+#' with \code{scale = FALSE, centre = TRUE} it is only centred. The unrestricted
+#' constant of a sub-model takes up the means, so a sub-model needs one, and
+#' \code{rescale_error_correction} shifts the draws of the constant back, period
+#' by period for a time varying sub-model. For a sub-model whose cointegration
+#' vectors vary over time, centring keeps a step of those vectors from acting
+#' as a random walk intercept on log levels far from zero; see section 'Prior on
+#' the cointegration space' of \code{\link{add_priors.vecxsubmodel}} and the
+#' details of \code{\link[bvartools]{scale_error_correction}}. Centring alone
+#' leaves the starting values of \eqn{\beta} as they are.
+#'
+#' Scaling and centring change what the priors say, so they are
+#' modelling decisions rather than details of the sampler.
 #' \code{\link[=add_posterior_coefficients.gvecmodel]{add_posterior_coefficients}}
 #' therefore never scales on its own. A scaled model has to be rescaled before its
 #' sub-models are transformed into level form or combined into a global model.
@@ -93,7 +108,13 @@ scale_error_correction.gvecmodel <- function(object, ...) {
 
   .map_vecxsubmodels(object, function(model) {
     model <- scale_error_correction(model, ...)
-    .transform_initial_beta(model, attr(model[["data"]][["train"]][["w"]], "scale"))
+    # Centring alone leaves beta in the units of the series, so only scaling
+    # carries factors to transform the starting values by.
+    factors <- attr(model[["data"]][["train"]][["w"]], "scale")
+    if (is.null(factors)) {
+      return(model)
+    }
+    .transform_initial_beta(model, factors)
   })
 }
 
@@ -104,10 +125,13 @@ rescale_error_correction.gvecmodel <- function(object, ...) {
 
   .map_vecxsubmodels(object, function(model) {
     # Read before the call, which drops the attribute -- and which refuses a
-    # sub-model that was never scaled, so the factors are there whenever they
-    # are used.
+    # sub-model that was neither scaled nor centred. A centred sub-model that
+    # was not scaled has no factors, and its starting values of beta stay.
     factors <- attr(model[["data"]][["train"]][["w"]], "scale")
     model <- rescale_error_correction(model, ...)
+    if (is.null(factors)) {
+      return(model)
+    }
     .transform_initial_beta(model, 1 / factors)
   })
 }

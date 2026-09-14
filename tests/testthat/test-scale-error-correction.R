@@ -222,3 +222,45 @@ test_that("a cointegration rank above one is transformed correctly", {
   k_ect <- ncol(model[["data"]][["train"]][["w"]])
   expect_equal(ncol(model[["posterior"]][["beta"]][["coeffs"]]), k_ect * 2L)
 })
+
+test_that("centring passes on to the sub-models and back", {
+  # Centring alone leaves beta in the units of the series, so its starting
+  # values stay as they are, while the constant takes up the means.
+  for (tvp in c(FALSE, TRUE)) {
+    object <- gvec_prepared(tvp = tvp)
+    centred <- scale_error_correction(object, scale = FALSE, centre = TRUE)
+    back <- rescale_error_correction(centred)
+
+    for (submodel in names(object[["submodels"]])) {
+      info <- paste0(submodel, ", tvp: ", tvp)
+      expect_false(is.null(attr(w_of(centred, submodel), "centre")), info = info)
+      expect_null(attr(w_of(centred, submodel), "scale"), info = info)
+      expect_equal(initial_of(centred, "beta", submodel), initial_of(object, "beta", submodel),
+                   info = info)
+
+      expect_null(attr(w_of(back, submodel), "centre"), info = info)
+      expect_equal(unclass(w_of(back, submodel)), unclass(w_of(object, submodel)),
+                   ignore_attr = TRUE, info = info)
+      expect_equal(initial_of(back, "a", submodel), initial_of(object, "a", submodel), info = info)
+      expect_equal(initial_of(back, "beta", submodel), initial_of(object, "beta", submodel),
+                   info = info)
+    }
+  }
+})
+
+test_that("a centred and scaled GVEC model can be simulated and solved", {
+  object <- gvec_prepared()
+  result <- rescale_error_correction(add_posterior_coefficients(
+    scale_error_correction(object, centre = TRUE)))
+
+  for (submodel in names(object[["submodels"]])) {
+    expect_null(attr(w_of(result, submodel), "centre"), info = submodel)
+    expect_null(attr(w_of(result, submodel), "scale"), info = submodel)
+    expect_equal(initial_of(result, "beta", submodel), initial_of(object, "beta", submodel),
+                 info = submodel)
+  }
+
+  gvar <- submodels_to_gvar(result)
+  expect_s3_class(gvar, "bvarmodel")
+  expect_false(any(is.na(gvar[["posterior"]][["a"]][["coeffs"]])))
+})
