@@ -7,7 +7,7 @@ test_that("add_priors attaches priors to every sub-model", {
                           iterations = 10, burnin = 10)
   object <- add_priors(object,
                        coef = list(v_i = 1),
-                       sigma = list(df = 3, scale = 0.0001))
+                       sigma = list(df = 3, scale = 1e-8))
 
   expect_s3_class(object, "gvarmodel")
   for (i in names(object[["submodels"]])) {
@@ -35,7 +35,7 @@ test_that("add_initial_values attaches initial values to every sub-model", {
                           iterations = 10, burnin = 10)
   object <- add_priors(object,
                        coef = list(v_i = 1),
-                       sigma = list(df = 3, scale = 0.0001))
+                       sigma = list(df = 3, scale = 1e-8))
   object <- add_initial_values(object)
 
   for (i in names(object[["submodels"]])) {
@@ -82,7 +82,7 @@ test_that("posterior simulation leaves the model set-up untouched", {
   before <- object[["submodels"]][["US"]][[1]]
 
   object <- add_priors(object, coef = list(v_i = 1),
-                       sigma = list(df = 3, scale = 0.0001))
+                       sigma = list(df = 3, scale = 1e-8))
   object <- add_initial_values(object)
   object <- add_posterior_coefficients(object)
   after <- object[["submodels"]][["US"]][[1]]

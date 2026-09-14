@@ -68,7 +68,7 @@ gvar_estimated <- function(iterations = 50, burnin = 10, p_endogen = 1) {
                           iterations = iterations, burnin = burnin)
   object <- add_priors(object,
                        coef = list(v_i = 1),
-                       sigma = list(df = 3, scale = 0.0001))
+                       sigma = list(df = 3, scale = 1e-8))
   object <- add_initial_values(object)
   add_posterior_coefficients(object)
 }
@@ -104,7 +104,7 @@ gvar_estimated_spec <- function(..., iterations = 30, burnin = 10,
   object <- align_model_obs(object)
   object <- add_priors(object,
                        coef = list(v_i = 1),
-                       sigma = list(df = 3, scale = 0.0001))
+                       sigma = list(df = 3, scale = 1e-8))
   object <- add_initial_values(object)
   object <- add_posterior_coefficients(object)
   if (loglik) {
