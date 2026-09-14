@@ -678,13 +678,13 @@ knitr::kable(effects[effects[["submodel"]] %in% c("US", "EA"), ], digits = 2, ro
 
 |submodel |variable | coef|    t|   ml| t_ml| post_mean|   q05|  q95|
 |:--------|:--------|----:|----:|----:|----:|---------:|-----:|----:|
-|US       |y        | 0.54| 3.12| 0.54| 3.12|      0.58|  0.30| 0.86|
+|US       |y        | 0.54| 3.12| 0.54| 3.12|      0.57|  0.30| 0.84|
 |US       |Dp       | 0.06| 0.87| 0.06| 0.87|      0.09| -0.03| 0.21|
-|EA       |y        | 0.53| 4.03| 0.53| 4.03|      0.54|  0.31| 0.76|
-|EA       |Dp       | 0.25| 3.31| 0.25| 3.31|      0.26|  0.09| 0.43|
-|EA       |q        | 1.15| 8.90| 1.15| 8.90|      1.17|  1.03| 1.30|
+|EA       |y        | 0.53| 4.03| 0.53| 4.03|      0.51|  0.28| 0.73|
+|EA       |Dp       | 0.25| 3.31| 0.25| 3.31|      0.24|  0.08| 0.41|
+|EA       |q        | 1.15| 8.90| 1.15| 8.90|      1.16|  1.03| 1.30|
 |EA       |rs       | 0.09| 3.84| 0.09| 3.84|      0.08|  0.01| 0.15|
-|EA       |rl       | 0.63| 7.86| 0.62| 7.86|      0.63|  0.32| 0.94|
+|EA       |rl       | 0.63| 7.86| 0.62| 7.86|      0.63|  0.33| 0.94|
 
 
 
@@ -692,7 +692,7 @@ Every sub-model has 10000
 draws. For 105
 of the 105 coefficients the value of Table B11 lies inside the 90%
 posterior interval, and the posterior means correlate with the table at
-0.984. The
+0.966. The
 median absolute difference between posterior mean and ML estimate is
 0.043.
 With flat priors on the loadings and the short-run coefficients, their posterior
@@ -786,9 +786,9 @@ girf_post <- paper_girf(gvar_post, impulse, panels)
 stable <- girf_post[["max_modulus"]] < 1 + 1e-6
 ```
 
-Only 236 of the 1000 draws give a stable global model,
+Only 266 of the 1000 draws give a stable global model,
 and the median of the largest modulus is
-1.037. Like the gap
+1.022. Like the gap
 between posterior and ML estimates, this comes from how weakly the data
 determine the cointegration spaces: a drawn space far from the ML space leaves
 combinations of the variables that are not stationary.
@@ -880,12 +880,12 @@ knitr::kable(section_6[, c("quantity", "paper", "ml", "posterior")], digits = 2,
 
 |quantity                                   |paper      |    ml| posterior|
 |:------------------------------------------|:----------|-----:|---------:|
-|US equity shock: US equity prices, impact  |-4 to -5   | -5.65|     -5.95|
+|US equity shock: US equity prices, impact  |-4 to -5   | -5.65|     -5.96|
 |US equity shock: US output, impact         |about -0.1 | -0.10|     -0.11|
 |US equity shock: US output, quarters 1-4   |-0.4       | -0.54|     -0.56|
-|US equity shock: US output, quarters 5-8   |-0.5       | -0.67|     -0.66|
-|US equity shock: EA equity prices, impact  |about -4.0 | -5.04|     -5.36|
-|Oil shock: oil price, impact               |10 to 11   | 12.48|     13.32|
+|US equity shock: US output, quarters 5-8   |-0.5       | -0.67|     -0.63|
+|US equity shock: EA equity prices, impact  |about -4.0 | -5.04|     -5.27|
+|Oil shock: oil price, impact               |10 to 11   | 12.48|     13.28|
 |US short rate shock: US short rate, impact |0.2        |  0.19|      0.21|
 
 
