@@ -19,8 +19,34 @@ test_that("sigma$df can be given in terms of k", {
                        coint = list(v_i = 0, p_tau_i = 1),
                        sigma = list(df = "k + 3", scale = 0.0001))
 
-  # k = 2 endogenous variables plus 3, and the rank is added on top.
-  expect_equal(result[["priors"]][["u_sigma"]][["df"]], 2 + 3 + 1)
+  # k = 2 endogenous variables plus 3. The rank is not added: BayesTS adds it
+  # to the posterior degrees of freedom itself.
+  expect_equal(result[["priors"]][["u_sigma"]][["df"]], 2 + 3)
+})
+
+test_that("sigma$df and sigma$shape are stored as given for any rank", {
+  submodel <- function(r, error) {
+    suppressMessages(
+      create_vecxsubmodel(gvec_object(), submodel = "US",
+                          endogen = c("y", "Dp"), p_endogen = 2,
+                          exogen = c("y", "Dp"), p_exogen = 2,
+                          const = "unrestricted", r = r, error = error,
+                          iterations = 10, burnin = 10))[[1]]
+  }
+
+  for (r in 1:2) {
+    result <- add_priors(submodel(r, "wishart"), coef = list(v_i = 1),
+                         coint = list(v_i = 0, p_tau_i = 1),
+                         sigma = list(df = 3, scale = 0.0001))
+    expect_equal(result[["priors"]][["u_sigma"]][["type"]], "wishart")
+    expect_equal(result[["priors"]][["u_sigma"]][["df"]], 3)
+
+    result <- add_priors(submodel(r, "gamma"), coef = list(v_i = 1),
+                         coint = list(v_i = 0, p_tau_i = 1),
+                         sigma = list(shape = 3, rate = 0.0001))
+    expect_equal(result[["priors"]][["u_sigma"]][["type"]], "gamma")
+    expect_equal(c(result[["priors"]][["u_sigma"]][["shape"]]), c(3, 3))
+  }
 })
 
 test_that("coef$const sets the prior mean of the unrestricted constant", {
