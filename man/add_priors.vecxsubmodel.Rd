@@ -21,8 +21,8 @@ cointegration space of VEC models. See 'Details'.}
 
 \item{sigma}{a named list of prior specifications for the error variance-covariance matrix.
 For the default specification of an inverse Wishart distribution the prior degrees
-of freedom are set to the number of endogenous variables plus the rank of
-the cointegration matrix. The prior variance is to 1. See 'Details'.}
+of freedom are set to the number of endogenous variables. The prior variance is 1.
+See 'Details'.}
 
 \item{varsel}{optional; a named list of prior specifications for the variable
 selection algorithm. See 'Details'.}
@@ -98,7 +98,8 @@ Argument \code{sigma} can contain the following elements:
   Default is \code{"k"}, which indicates the amount of endogenous variables in the respective model.
   \code{"k + 3"} can be used to set the prior to the amount of endogenous variables plus 3. If an integer
   is provided, the degrees of freedom are set to this value in all models.
-  In all cases the rank \eqn{r} of the cointegration matrix is automatically added.}
+  The value is stored as given. The sampler adds the rank \eqn{r} of the cointegration
+  matrix to the posterior degrees of freedom, as the prior of the loadings requires.}
   \item{\code{scale}}{a numeric specifying the prior error variance of endogenous variables.
   Default is 1.}
   \item{\code{shape}}{a numeric or character specifying the prior shape parameter of the error term. Only
