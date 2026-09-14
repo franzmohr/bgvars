@@ -92,7 +92,7 @@ test_that("a VECX sub-model takes its trend from the same place", {
 
   model <- create_vecxsubmodel(object, submodel = "US",
                                endogen = c("y", "Dp"), p_endogen = 1,
-                               exogen = c("y", "Dp"), p_exogen = 1,
+                               exogen = c("y", "Dp"), p_exogen = 2,
                                const = "unrestricted", trend = "restricted",
                                r = 1)[[1]]
 

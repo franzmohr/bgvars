@@ -122,7 +122,10 @@ the oil price, and takes foreign output, inflation and the exchange rate as
 weakly exogenous. The other models contain whichever of the six domestic
 variables are available, and take foreign output, inflation, equity prices,
 interest rates and the oil price as weakly exogenous. A VARX\*(p, q) model in
-levels is a VECX\* model with `p_endogen = p` and `p_exogen = q`.
+levels is a VECX\* model with `p_endogen = p` and `p_exogen = q + 1`. The lag
+orders of `create_vecxsubmodel` are those of the model in levels and, as in
+`create_varxsubmodel`, count the weakly exogenous variables from the
+contemporaneous term onwards.
 
 ```{r specification, eval = TRUE}
 endogen_of <- function(submodel) {
@@ -137,7 +140,7 @@ for (i in seq_len(nrow(table_b9))) {
   object[["submodels"]][[submodel]] <- create_vecxsubmodel(object,
     submodel = submodel,
     endogen = endogen_of(submodel), p_endogen = table_b9[i, "p"],
-    exogen = exogen_of(submodel), p_exogen = table_b9[i, "q"],
+    exogen = exogen_of(submodel), p_exogen = table_b9[i, "q"] + 1,
     r = table_b9[i, "r"],
     const = "unrestricted", trend = "restricted",
     iterations = 10000, burnin = 2000)
@@ -172,14 +175,14 @@ information_criteria <- function(model) {
   loglik <- -tt * k / 2 * (1 + log(2 * pi)) -
     tt / 2 * as.numeric(determinant(crossprod(u) / tt)$modulus)
   n_par <- k * ncol(regressors)
-  c(p = model[["model"]][["p_endogen"]], q = model[["model"]][["p_exogen"]],
+  c(p = model[["model"]][["p_endogen"]], q = model[["model"]][["p_exogen"]] - 1,
     aic = loglik - n_par, sbc = loglik - n_par / 2 * log(tt))
 }
 
 lag_orders <- do.call(rbind, lapply(table_b9[["submodel"]], function(submodel) {
   candidates <- create_vecxsubmodel(object, submodel = submodel,
                                     endogen = endogen_of(submodel), p_endogen = 1:2,
-                                    exogen = exogen_of(submodel), p_exogen = 1:2,
+                                    exogen = exogen_of(submodel), p_exogen = 2:3,
                                     r = 0, const = "unrestricted", trend = "restricted")
   ic <- as.data.frame(t(sapply(candidates, information_criteria)))
   paper <- table_b9[table_b9[["submodel"]] == submodel, ]

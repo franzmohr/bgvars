@@ -7,7 +7,7 @@ vecx_tvp <- function(varsel = "bvs", error = "sv+covar", tvp = TRUE, r = 1) {
   object <- gvec_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 2,
-                          exogen = c("y", "Dp"), p_exogen = 1,
+                          exogen = c("y", "Dp"), p_exogen = 2,
                           const = "unrestricted", r = r,
                           tvp = tvp, error = error, varsel = varsel,
                           iterations = 20, burnin = 10)

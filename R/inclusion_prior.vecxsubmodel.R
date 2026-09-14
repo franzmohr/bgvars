@@ -75,7 +75,7 @@
 #' object <- create_vecxsubmodel(object,
 #'                               submodel = "AT",
 #'                               endogen = c("y", "Dp", "r"), p_endogen = 2,
-#'                               exogen = c("y", "Dp"), p_exogen = 1,
+#'                               exogen = c("y", "Dp"), p_exogen = 2,
 #'                               r = 1, const = "unrestricted",
 #'                               iterations = 10, burnin = 10)
 #' # Number of iterations and burn-in should be much higher.
@@ -142,15 +142,15 @@ inclusion_prior.vecxsubmodel <- function(object,
     r <- object[["model"]][["rank"]]
     n_alpha <- k_endogen * r
 
-    # The specification carries the lag order of the level VAR, so the model
-    # contains one lag of the differences less than that. The blocks of the
-    # weakly exogenous and of the global variables already count their lags,
-    # the first of which is the contemporaneous one.
+    # The specification carries the lag orders of the model in levels, so the
+    # model contains one block of differences less than that for each group of
+    # variables. For the weakly exogenous and the global variables the first
+    # block is the contemporaneous difference.
     p_endogen <- object[["model"]][["p_endogen"]] - 1
     k_exogen <- object[["model"]][["k_exogen"]]
-    p_exogen <- object[["model"]][["p_exogen"]]
+    p_exogen <- max(object[["model"]][["p_exogen"]] - 1, 0)
     m <- object[["model"]][["m_global"]]
-    s <- object[["model"]][["s_global"]]
+    s <- max(object[["model"]][["s_global"]] - 1, 0)
     n_c_unres <- object[["model"]][["n"]]
 
     n_endogen <- k_endogen * p_endogen

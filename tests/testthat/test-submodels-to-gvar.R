@@ -221,7 +221,7 @@ test_that("candidates in error correction form are refused before they are rewri
   object <- gvec_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 1,
+                          exogen = c("y", "Dp"), p_exogen = 2,
                           const = "unrestricted", r = 0:1,
                           iterations = 20, burnin = 10)
 

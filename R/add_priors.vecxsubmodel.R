@@ -189,9 +189,9 @@
 #' 
 #' # Create sub-models
 #' object <- add_submodels(object,
-#'                         p_endogen = 1, p_exogen = 1,
+#'                         p_endogen = 1, p_exogen = 2,
 #'                         global = "poil",
-#'                         s = 1,
+#'                         s = 2,
 #'                         r = 1,
 #'                         error = "wishart",
 #'                         iterations = 10,
@@ -339,6 +339,12 @@ add_priors.vecxsubmodel <- function(object,
   
   # Substract lag from domestic model for VEC
   p_endogen <- p_endogen - 1
+  
+  # The weakly exogenous and the global variables carry the lag orders of the
+  # model in levels as well, counted from the contemporaneous term onwards, so
+  # the model holds one block of their differences less.
+  p_exogen <- max(p_exogen - 1, 0)
+  s_global <- max(s_global - 1, 0)
   
   # Total # of non-deterministic coefficients
   n_alpha <- k_endogen * r

@@ -38,14 +38,14 @@ varx_residuals <- function(model, draw) {
 }
 
 test_that("the level representation has the residuals of the error correction form", {
-  # p_exogen = 0 and s = 0 put the weakly exogenous and the global variables into
+  # p_exogen = 1 and s = 1 put the weakly exogenous and the global variables into
   # the error correction term alone. In levels they enter at lag one with their
   # columns of Pi and at lag zero with a coefficient of zero, which is two
   # blocks. The rewrite counted one and failed on its own column names.
-  specs <- list(list(p_exogen = 2, global = "poil", s = 1),
-                list(p_exogen = 0, global = NULL, s = NULL),
-                list(p_exogen = 1, global = "poil", s = 0),
-                list(p_exogen = 0, global = "poil", s = 0))
+  specs <- list(list(p_exogen = 3, global = "poil", s = 2),
+                list(p_exogen = 1, global = NULL, s = NULL),
+                list(p_exogen = 2, global = "poil", s = 1),
+                list(p_exogen = 1, global = "poil", s = 1))
 
   for (spec in specs) {
     info <- paste0("p_exogen = ", spec$p_exogen,
@@ -62,12 +62,12 @@ test_that("the level representation has the residuals of the error correction fo
                      ignore_attr = TRUE, info = paste(info, i, draw))
       }
 
-      if (spec$p_exogen == 0) {
+      if (spec$p_exogen == 1) {
         expect_equal(varx[["model"]][["p_exogen"]], 2L, info = info)
         expect_true(all(c("y.s.l00", "y.s.l01") %in% colnames(varx[["data"]][["train"]][["x"]])),
                     info = info)
       }
-      if (identical(spec$s, 0)) {
+      if (identical(spec$s, 1)) {
         expect_equal(varx[["model"]][["s_global"]], 2L, info = info)
         expect_true(all(c("poil.l00", "poil.l01") %in% colnames(varx[["data"]][["train"]][["x"]])),
                     info = info)

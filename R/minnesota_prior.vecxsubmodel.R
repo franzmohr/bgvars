@@ -97,9 +97,11 @@ minnesota_prior.vecxsubmodel <- function(object, kappa1 = 2, kappa2 = .5, kappa3
       p_endogen <- object[["model"]][["p_endogen"]]
       p_endogen <- p_endogen - 1
       k_exogen <- object[["model"]][["k_exogen"]]
-      p_exogen <- object[["model"]][["p_exogen"]]
+      # The lag orders of the weakly exogenous and the global variables are those
+      # of the model in levels, which holds one block of their differences less.
+      p_exogen <- max(object[["model"]][["p_exogen"]] - 1, 0)
       m <- object[["model"]][["m_global"]]
-      s <- object[["model"]][["s_global"]]
+      s <- max(object[["model"]][["s_global"]] - 1, 0)
       
       V <- matrix(rep(NA, tot_par), k) # Set up matrix for variances
       
@@ -162,10 +164,11 @@ minnesota_prior.vecxsubmodel <- function(object, kappa1 = 2, kappa2 = .5, kappa3
       # Foreign variables
       #
       # 'p_exogen' and 's' count blocks of differences from the contemporaneous
-      # one, and they are left as they are: the positions of the blocks that
-      # follow are counted with them. Decrementing them here put the prior of
-      # the global variables one block of foreign variables too early and let
-      # the prior of the deterministic terms overwrite the last blocks of both.
+      # one at this point, and they are not decremented again: the positions of
+      # the blocks that follow are counted with them. Decrementing them here put
+      # the prior of the global variables one block of foreign variables too
+      # early and let the prior of the deterministic terms overwrite the last
+      # blocks of both.
       if (k_exogen > 0 & p_exogen > 0) {
         s_exo <- sqrt(apply(matrix(x[n_ect + k * p_endogen + 1:k_exogen, ], k_exogen), 1, stats::var))
         for (r in 1:p_exogen) {

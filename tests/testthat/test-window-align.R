@@ -24,7 +24,7 @@ test_that("window.gvecmodel restricts every sub-model to the given period", {
   object <- gvec_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 1,
+                          exogen = c("y", "Dp"), p_exogen = 2,
                           const = "unrestricted", trend = "restricted", r = 1,
                           iterations = 10, burnin = 10)
 
@@ -76,7 +76,7 @@ test_that("align_model_obs equalises the sample of a GVEC model", {
       create_vecxsubmodel(object, submodel = i,
                           endogen = c("y", "Dp"),
                           p_endogen = switch(i, "US" = 1, "JP" = 2, "CA" = 3),
-                          exogen = c("y", "Dp"), p_exogen = 1,
+                          exogen = c("y", "Dp"), p_exogen = 2,
                           const = "unrestricted", trend = "restricted", r = 1,
                           iterations = 10, burnin = 10)
   }

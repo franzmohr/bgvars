@@ -131,7 +131,7 @@ object <- add_weight_matrices(object = object,
                               period = 1999:2001)
 object <- add_submodels(object,
                         endogen = c("y", "Dp"), p_endogen = 1,
-                        exogen = c("y", "Dp"), p_exogen = 1,
+                        exogen = c("y", "Dp"), p_exogen = 2,
                         const = "unrestricted", trend = "restricted", r = 1,
                         iterations = 20, burnin = 10)
 # Number of iterations and burn-in should be much higher.
