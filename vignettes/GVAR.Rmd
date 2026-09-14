@@ -110,7 +110,7 @@ object <- align_model_obs(object)
 ``` r
 object <- add_priors(object,
                      coef = list(v_i = 0),
-                     sigma = list(df = 3, scale = 0.0001))
+                     sigma = list(df = 3, scale = 1e-8))
 ```
 
 ### Initial values
@@ -188,7 +188,7 @@ plot(sc, criterion = "BIC")
 
 ``` r
 choose_best_model(sc, criterion = "AIC")
-#> [1] 4
+#> [1] 8
 ```
 
 The process can be automated using `choose_best_model_from_hdf5`, which ranks
