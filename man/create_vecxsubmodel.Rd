@@ -53,7 +53,7 @@ onwards, so 1 uses the lagged levels alone, 2 adds \eqn{\Delta x_t} and 3
 adds \eqn{\Delta x_{t-1}}. A VARX\eqn{^*}(p, q) model, whose weakly exogenous
 variables reach back to lag q, is therefore specified by
 \code{p_endogen = p} and \code{p_exogen = q + 1}, and
-\code{\link{vec_to_var}} returns a VARX sub-model with the same
+\code{\link[bvartools]{vec_to_var}} returns a VARX sub-model with the same
 \code{p_exogen}. The exception is \code{p_exogen = 1}, whose lagged levels
 take two blocks in levels, the contemporaneous one with a coefficient of zero.}
 
