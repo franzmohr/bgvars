@@ -300,3 +300,49 @@ test_that("sub-models with different deterministic terms can be solved together"
     }
   }
 })
+
+test_that("a time varying VECX sub-model is rewritten in levels period by period", {
+  # Regression test. vec_to_var() stopped with "Posterior draws of models with
+  # time varying parameters cannot be transformed", which left a time varying
+  # GVEC sub-model without impulse responses and its global model unsolved.
+  object <- gvec_tvp_sv_estimated()
+
+  for (i in c("US", "JP")) {
+    model <- object[["submodels"]][[i]][[1]]
+    tt <- nrow(model[["data"]][["train"]][["y"]])
+    levels <- vec_to_var(model)
+
+    n_out <- ncol(levels[["data"]][["train"]][["z"]])
+    expect_equal(ncol(levels[["posterior"]][["a"]][["coeffs"]]), tt * n_out, info = i)
+    expect_true(levels[["model"]][["tvp"]], info = i)
+
+    for (period in c(1L, tt)) {
+      constant <- vec_to_var(submodel_period_by_hand(model, period))
+      expect_equal(unclass(levels[["posterior"]][["a"]][["coeffs"]])[, (period - 1) * n_out + seq_len(n_out)],
+                   unclass(constant[["posterior"]][["a"]][["coeffs"]]),
+                   ignore_attr = TRUE, info = paste(i, "period", period))
+    }
+  }
+
+  us <- vec_to_var(object[["submodels"]][["US"]][[1]])
+  expect_s3_class(irf(us, impulse = "rs", response = "y", n_ahead = 4,
+                      type = "sir", period = 10), "bvarirf")
+})
+
+test_that("a sub-model rewritten in levels can be summarised", {
+  # Regression test. The rewritten model counted its unmodelled blocks twice,
+  # once in 'm' and again in 's', so summary() looked for more regressors than
+  # the model has and failed.
+  object <- gvec_tvp_sv_estimated()
+
+  us <- object[["submodels"]][["US"]][[1]]
+  constant <- vec_to_var(submodel_period_by_hand(us, 5L))
+  expect_equal(constant[["model"]][["s"]], 0L)
+
+  result <- summary(constant)
+  expect_equal(dim(result[["a"]][["means"]]),
+               c(constant[["model"]][["k"]], ncol(constant[["data"]][["train"]][["x"]]) + constant[["model"]][["k"]]))
+
+  expect_no_error(summary(vec_to_var(us), period = 5))
+  expect_no_error(summary(vec_to_var(object[["submodels"]][["JP"]][[1]]), period = 5))
+})

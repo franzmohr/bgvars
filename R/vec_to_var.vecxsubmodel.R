@@ -49,6 +49,13 @@
 #' \code{\link[bvartools]{vec_to_var}} does. \code{\link{submodels_to_gvar}}
 #' gives such a sub-model coefficients of zero on the terms it lacks.
 #'
+#' A sub-model with time varying parameters is a VECX model per period, so the
+#' transformation is applied to the loadings, the coefficients and the
+#' cointegration vectors of each period in turn, and the result holds one block
+#' of level coefficients per period, laid out period after period as the draws
+#' of a time varying VARX sub-model are. The draws of the error covariance
+#' matrix are the same in both representations and are passed on as they are.
+#'
 #' @return An object of class 'varxsubmodel'.
 #'
 #' @references
@@ -269,18 +276,19 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
   posterior <- object[["posterior"]]
   if (!is.null(posterior)) {
 
-    if (isTRUE(specification[["tvp"]])) {
-      stop("Posterior draws of models with time varying parameters cannot be ",
-           "transformed.")
-    }
-
     coeffs <- posterior[["a"]][["coeffs"]]
     mcpar <- attr(posterior[["u_sigma_inv"]][["coeffs"]], "mcpar")
     draws <- nrow(coeffs)
     k_ect <- NCOL(w)
     n_x <- NCOL(x_diff)
 
-    if (NCOL(coeffs) != k * (rank + n_x) + n_struct) {
+    # A time varying model stores one block of coefficients and one of
+    # cointegration vectors per period, which are transformed period by period.
+    n_periods <- if (isTRUE(specification[["tvp"]])) nrow(y_diff) else 1L
+    n_a <- k * (rank + n_x) + n_struct
+    n_beta <- k_ect * rank
+
+    if (NCOL(coeffs) != n_periods * n_a) {
       stop("The posterior draws do not have the number of columns implied by ",
            "the model specification.")
     }
@@ -289,7 +297,8 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
     # sub-model stores them.
     n_out <- k * p + m_exogen * (top_exogen + 1) + m_global * (top_global + 1) +
       n_det_ur + n_det_r
-    result_coeffs <- matrix(NA_real_, draws, k * n_out + n_struct)
+    n_out_period <- k * n_out + n_struct
+    result_coeffs <- matrix(NA_real_, draws, n_periods * n_out_period)
 
     beta <- posterior[["beta"]][["coeffs"]]
 
@@ -314,23 +323,27 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
       out
     }
 
-    for (draw in seq_len(draws)) {
+    # One pass per draw and period, draws in the outer order.
+    for (cell in seq_len(draws * n_periods)) {
 
-      a <- matrix(coeffs[draw, seq_len(k * (rank + n_x))], k)
+      draw <- (cell - 1) %/% n_periods + 1
+      period <- (cell - 1) %% n_periods + 1
+      a_row <- coeffs[draw, (period - 1) * n_a + seq_len(n_a)]
+      a <- matrix(a_row[seq_len(k * (rank + n_x))], k)
 
       # In A0 dy_t = Pi w_t + ... the levels satisfy A0 y_t = A0 y_{t-1} + ...,
       # so A0 takes the place of the identity on the first lag. It is kept as
       # the last coefficients of the level representation as well.
       a0 <- diag(1, k)
       if (n_struct > 0) {
-        a0_free <- coeffs[draw, k * (rank + n_x) + seq_len(n_struct)]
+        a0_free <- a_row[k * (rank + n_x) + seq_len(n_struct)]
         a0[lower.tri(a0)] <- a0_free
       }
 
       pi_plus <- matrix(0, k, k_ect)
       if (rank > 0) {
         alpha <- a[, 1:rank, drop = FALSE]
-        b <- matrix(beta[draw, ], k_ect, rank)
+        b <- matrix(beta[draw, (period - 1) * n_beta + seq_len(n_beta)], k_ect, rank)
         pi_plus <- alpha %*% t(b)
       }
       a <- a[, rank + seq_len(n_x), drop = FALSE]
@@ -369,7 +382,7 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
                                  drop = FALSE])
       }
 
-      result_coeffs[draw, ] <- c(cbind(out_endogen, out_exogen, out_global,
+      result_coeffs[draw, (period - 1) * n_out_period + seq_len(n_out_period)] <- c(cbind(out_endogen, out_exogen, out_global,
                                        out_det),
                                  if (n_struct > 0) a0_free)
     }
@@ -396,7 +409,11 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
   model[["s_global"]] <- if (m_global > 0) top_global + 1L else 0L
   model[["m"]] <- model[["k_exogen"]] * model[["p_exogen"]] +
     model[["m_global"]] * model[["s_global"]]
-  model[["s"]] <- model[["p_exogen"]]
+  # 'm' already counts every block of unmodelled regressors, so there is no
+  # further block on top of it. This is what create_varxsubmodel() sets, and
+  # what the methods of 'bvartools', which count k * p + m * (s + 1) + n
+  # regressors, need to find the coefficients where they are.
+  model[["s"]] <- 0L
   model[["n"]] <- n_det_ur + n_det_r
   model[["deterministic"]] <- det_names
   model[["n_restricted"]] <- 0L
@@ -408,9 +425,29 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
   # by, so it is kept for reference.
   model[["rank"]] <- specification[["rank"]]
 
+  # The name of the sampler of the level representation, which is what the
+  # methods of 'bvartools' that dispatch on it expect of a 'bvarmodel'.
+  if (!is.null(model[["algorithm"]])) {
+    model[["algorithm"]] <- sub("^Vec", "Var", model[["algorithm"]])
+  }
+
   result <- object
   result[["model"]] <- model
   result[["data"]][["train"]] <- list("y" = y, "x" = x)
+
+  # The methods for time varying models count the coefficients of a period by
+  # the columns of 'z', so a time varying result carries it, contemporaneous
+  # regressors of a structural model included, as create_varxsubmodel() builds
+  # it.
+  if (isTRUE(specification[["tvp"]])) {
+    z <- kronecker(as.matrix(x), diag(1, k))
+    if (n_struct > 0) {
+      pos <- unlist(lapply(1:k, function(j) {(j - 1) * k + 1:j}))
+      z <- cbind(z, kronecker(-as.matrix(y), diag(1, k))[, -pos, drop = FALSE])
+    }
+    dimnames(z) <- NULL
+    result[["data"]][["train"]][["z"]] <- z
+  }
   result[["posterior"]] <- posterior
 
   class(result) <- c("varxsubmodel", "bvarmodel", "list")

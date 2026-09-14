@@ -12,9 +12,11 @@ exactly one estimated model per sub-model. Use the \code{submodels} argument
 of \code{\link{read_gvar_from_folder}} to reduce an object with multiple
 candidate models per sub-model to one.}
 
-\item{period}{integer of the period, whose weight matrices should be used to
-solve the model. Defaults to the last period of the estimation sample. Only
-relevant for time varying weights.}
+\item{period}{integer of the period of the global data, at which the model
+should be solved. Defaults to the last period of the estimation sample. It
+selects the weight matrices, if they vary over time, and the coefficients and
+error covariance matrices of sub-models with time varying parameters or
+stochastic volatility, which must then lie within the estimation sample.}
 }
 \value{
 An object of class 'bvarmodel', which can be analysed with the
@@ -45,7 +47,9 @@ is therefore rewritten as the level VARX model it implies first, with
 single step as a GVAR model. The same holds for a model whose sub-models
 were chosen from VARX and VECX candidates alike and so come in both forms.
 The cointegration rank of a sub-model describes its error correction form
-only and plays no further role.
+only and plays no further role. A time varying sub-model in error correction
+form is reduced to the draws of \code{period} before it is rewritten, so only
+the draws of that period are transformed.
 
 The model is returned in its reduced form, that is, premultiplied by
 \eqn{G^{-1}}, which is the form the methods of \pkg{bvartools} work on.
@@ -66,6 +70,14 @@ keep it.
 The error covariance matrix of the structural form is block diagonal, one
 block per sub-model. The reduced form errors \eqn{G^{-1} u_t} are
 correlated across sub-models accordingly.
+
+Sub-models with time varying parameters or stochastic volatility hold one set
+of coefficients and one error covariance matrix per period of the estimation
+sample. The global model is solved from the draws of the period given in
+\code{period}, so the result describes the global model at that date, and a
+model for every period of interest is obtained by calling the function once
+per period. Sub-models with constant coefficients and a constant error
+covariance matrix contribute the same draws in every period.
 
 The reduced form has constant coefficients, a full error precision and no
 structural form whatever the sub-models had, so the returned object names

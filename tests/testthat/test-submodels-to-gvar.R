@@ -367,3 +367,110 @@ test_that("a structural sub-model enters G through its A0", {
   }
   expect_false(any(is.na(gvar[["posterior"]][["a"]][["coeffs"]])))
 })
+
+# Sub-models with time varying parameters and stochastic volatility.
+#
+# The US sub-model is structural with stochastic volatility, the others carry
+# error covariances, which are the two layouts a time varying sub-model can have.
+gvar_tvp_sv_estimated <- function(iterations = 20, burnin = 10) {
+  object <- gvar_object(c("US", "JP", "CA"))
+  for (i in c("US", "JP", "CA")) {
+    object[["submodels"]][[i]] <- create_varxsubmodel(object, submodel = i,
+      endogen = c("y", "Dp", "r"), p_endogen = 1,
+      exogen = c("y", "Dp", "r"), p_exogen = 2,
+      deterministic = "const",
+      structural = i == "US", tvp = TRUE,
+      error = if (i == "US") "sv" else "sv+covar",
+      iterations = iterations, burnin = burnin)
+  }
+  object <- align_model_obs(object)
+  object <- add_priors(object,
+                       coef = list(v_i = 1, v_i_det = 1 / 10,
+                                   shape = 3, rate = 1e-8, rate_det = 1e-6),
+                       sigma = list(shape = 3, rate = 0.01, mu = 0, v_i = 0.01,
+                                    state_variance = 0.05, offset = 1e-8))
+  object <- add_initial_values(object)
+  add_posterior_coefficients(object)
+}
+
+test_that("time varying sub-models are solved from the draws of one period", {
+  # Regression test. submodels_to_gvar() stopped with "TVP functionality not
+  # implemented yet" for time varying or stochastic volatility sub-models.
+  object <- gvar_tvp_sv_estimated()
+  times <- stats::time(object[["global"]][["endogen"]])
+  period <- which.min(abs(times - 2000))
+
+  gvar <- suppressMessages(submodels_to_gvar(object, period = period))
+  k <- gvar[["model"]][["k"]]
+  expect_false(anyNA(gvar[["posterior"]][["a"]][["coeffs"]]))
+  expect_equal(gvar[["model"]][["algorithm"]], "VarNormalWishart")
+
+  # The block of 2000Q1 in the draws of every sub-model.
+  block <- function(model) {
+    tsp_y <- stats::tsp(model[["data"]][["train"]][["y"]])
+    round((times[period] - tsp_y[1]) * tsp_y[3]) + 1
+  }
+
+  us <- object[["submodels"]][["US"]][[1]]
+  k_us <- us[["model"]][["k"]]
+  n_z <- ncol(us[["data"]][["train"]][["z"]])
+  n_struct <- k_us * (k_us - 1) / 2
+  pos_us <- match(paste0("US_", us[["model"]][["endogen"]]), gvar[["model"]][["endogen"]])
+
+  for (draw in c(1L, 20L)) {
+    g <- matrix(gvar[["g"]][draw, ], k)
+
+    a0 <- diag(1, k_us)
+    a0[lower.tri(a0)] <- us[["posterior"]][["a"]][["coeffs"]][draw, (block(us) - 1) * n_z + n_z - n_struct + 1:n_struct]
+    expect_equal(g[pos_us, pos_us], a0, ignore_attr = TRUE, info = paste("draw", draw))
+
+    # The precision of the structural errors of that period, block by block.
+    omega <- matrix(0, k, k)
+    for (i in names(object[["submodels"]])) {
+      model <- object[["submodels"]][[i]][[1]]
+      k_i <- model[["model"]][["k"]]
+      pos <- match(paste0(i, "_", model[["model"]][["endogen"]]), gvar[["model"]][["endogen"]])
+      omega[pos, pos] <- model[["posterior"]][["u_sigma_inv"]][["coeffs"]][draw, (block(model) - 1) * k_i^2 + 1:k_i^2]
+    }
+    expect_equal(matrix(gvar[["posterior"]][["u_sigma_inv"]][["coeffs"]][draw, ], k),
+                 t(g) %*% omega %*% g, ignore_attr = TRUE, info = paste("draw", draw))
+  }
+
+  # Another period gives another model.
+  other <- suppressMessages(submodels_to_gvar(object))
+  expect_false(isTRUE(all.equal(gvar[["g"]], other[["g"]])))
+})
+
+test_that("time varying sub-models cannot be solved outside their sample", {
+  object <- gvar_tvp_sv_estimated()
+
+  expect_error(suppressMessages(submodels_to_gvar(object, period = 1)),
+               "only available for its estimation sample")
+})
+
+test_that("time varying VECX sub-models are solved from the draws of one period", {
+  # The sub-models are reduced to the period before they are rewritten in
+  # levels, so the result has to be the global model of sub-models that held
+  # the draws of that period and nothing else.
+  object <- gvec_tvp_sv_estimated()
+  times <- stats::time(object[["global"]][["endogen"]])
+  period <- which.min(abs(times - 1995))
+
+  gvec <- suppressMessages(submodels_to_gvar(object, period = period))
+
+  by_hand <- object
+  for (i in names(by_hand[["submodels"]])) {
+    model <- by_hand[["submodels"]][[i]][[1]]
+    tsp_y <- stats::tsp(model[["data"]][["train"]][["y"]])
+    by_hand[["submodels"]][[i]][[1]] <- submodel_period_by_hand(model, round((times[period] - tsp_y[1]) * tsp_y[3]) + 1)
+  }
+  expected <- suppressMessages(submodels_to_gvar(by_hand, period = period))
+
+  expect_false(anyNA(gvec[["posterior"]][["a"]][["coeffs"]]))
+  expect_equal(gvec[["g"]], expected[["g"]])
+  expect_equal(gvec[["posterior"]][["a"]][["coeffs"]], expected[["posterior"]][["a"]][["coeffs"]])
+  expect_equal(gvec[["posterior"]][["u_sigma_inv"]][["coeffs"]], expected[["posterior"]][["u_sigma_inv"]][["coeffs"]])
+
+  # Another period gives another model.
+  expect_false(isTRUE(all.equal(gvec[["g"]], suppressMessages(submodels_to_gvar(object))[["g"]])))
+})
