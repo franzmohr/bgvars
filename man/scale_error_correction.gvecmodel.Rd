@@ -13,7 +13,10 @@
 \item{object}{an object of class 'gvecmodel', usually, the output of a call to
 \code{\link{create_gvecmodel}} in combination with \code{\link{add_submodels}}.}
 
-\item{...}{further arguments passed to or from other methods.}
+\item{...}{further arguments passed to
+\code{\link[bvartools]{scale_error_correction}} and
+\code{\link[bvartools]{rescale_error_correction}}, such as \code{scale} and
+\code{centre}.}
 }
 \value{
 An object of class 'gvecmodel'.
@@ -52,8 +55,20 @@ Whether \code{\link[bvartools]{add_initial_values}} is called before or after
 scaling makes no difference to what comes back: rescaling returns the
 starting values on the scale of the data either way.
 
-Scaling changes what the prior on the cointegration space says, so it is a
-modelling decision rather than a detail of the sampler.
+With \code{centre = TRUE}, which \code{scale_error_correction} passes on,
+the sample mean of each stochastic series is subtracted from it as well, and
+with \code{scale = FALSE, centre = TRUE} it is only centred. The unrestricted
+constant of a sub-model takes up the means, so a sub-model needs one, and
+\code{rescale_error_correction} shifts the draws of the constant back, period
+by period for a time varying sub-model. For a sub-model whose cointegration
+vectors vary over time, centring keeps a step of those vectors from acting
+as a random walk intercept on log levels far from zero; see section 'Prior on
+the cointegration space' of \code{\link{add_priors.vecxsubmodel}} and the
+details of \code{\link[bvartools]{scale_error_correction}}. Centring alone
+leaves the starting values of \eqn{\beta} as they are.
+
+Scaling and centring change what the priors say, so they are
+modelling decisions rather than details of the sampler.
 \code{\link[=add_posterior_coefficients.gvecmodel]{add_posterior_coefficients}}
 therefore never scales on its own. A scaled model has to be rescaled before its
 sub-models are transformed into level form or combined into a global model.
