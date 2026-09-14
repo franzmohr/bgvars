@@ -11,10 +11,8 @@ Imports:
     graphics,
     hdf5r,
     parallel,
-    Rcpp (>= 0.12.14),
     stats,
     utils
-LinkingTo: Rcpp, RcppArmadillo, bvartools
 LazyData: true
 Encoding: UTF-8
 URL: https://github.com/franzmohr/bgvars

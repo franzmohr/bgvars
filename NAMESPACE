@@ -46,7 +46,6 @@ export(read_submodel_from_folder)
 export(select_list_elements)
 export(submodels_to_gvar)
 exportPattern("^[[:alpha:]]+")
-importFrom(Rcpp,sourceCpp)
 importFrom(bvartools,
   add_initial_values,
   add_posterior_coefficients,
@@ -72,4 +71,3 @@ importFrom(stats,
   predict,
   window
 )
-useDynLib(bgvars, .registration = TRUE)
