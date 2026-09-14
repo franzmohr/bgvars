@@ -120,7 +120,7 @@ test_that("submodels_to_gvar reports what it cannot solve", {
   object <- gvec_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 1,
+                          exogen = c("y", "Dp"), p_exogen = 2,
                           const = "unrestricted", trend = "restricted", r = 1,
                           iterations = 20, burnin = 10)
   expect_error(submodels_to_gvar(object), "has not been estimated yet")
@@ -154,8 +154,8 @@ test_that("a sub-model with global variables is rewritten in levels", {
   object <- gvec_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 2,
-                          exogen = c("y", "Dp"), p_exogen = 2,
-                          global = "poil", s = 1,
+                          exogen = c("y", "Dp"), p_exogen = 3,
+                          global = "poil", s = 2,
                           const = "unrestricted", trend = "restricted", r = 1,
                           iterations = 30, burnin = 10)
   object <- add_priors(object,
@@ -170,7 +170,7 @@ test_that("a sub-model with global variables is rewritten in levels", {
 
   expect_s3_class(model, "varxsubmodel")
   expect_equal(specification[["global"]], "poil")
-  # One block of differences spans one more lag in levels.
+  # The level representation carries the lag orders the sub-model was given.
   expect_equal(specification[["p_exogen"]], 3L)
   expect_equal(specification[["s_global"]], 2L)
   expect_equal(ncol(model[["data"]][["train"]][["x"]]),
@@ -192,8 +192,8 @@ test_that("the level representation fits what the error correction form fits", {
   object <- gvec_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 2,
-                          exogen = c("y", "Dp"), p_exogen = 2,
-                          global = "poil", s = 1,
+                          exogen = c("y", "Dp"), p_exogen = 3,
+                          global = "poil", s = 2,
                           const = "unrestricted", trend = "restricted", r = 1,
                           iterations = 20, burnin = 10)
   object <- add_priors(object,
@@ -238,7 +238,7 @@ test_that("sub-models with different deterministic terms can be solved together"
   object <- gvec_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 1,
+                          exogen = c("y", "Dp"), p_exogen = 2,
                           const = "unrestricted", trend = "restricted", r = 0:1,
                           iterations = 20, burnin = 10)
   object <- add_priors(object,

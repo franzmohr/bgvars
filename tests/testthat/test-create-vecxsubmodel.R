@@ -3,7 +3,7 @@ test_that("create_vecxsubmodel returns one model per specification", {
 
   models <- create_vecxsubmodel(object, submodel = "US",
                                 endogen = c("y", "Dp"), p_endogen = 1:2,
-                                exogen = c("y", "Dp"), p_exogen = 1,
+                                exogen = c("y", "Dp"), p_exogen = 2,
                                 const = "unrestricted", trend = "restricted",
                                 r = 0:2,
                                 iterations = 10, burnin = 10)
@@ -26,7 +26,7 @@ test_that("the model specification reflects the requested variables", {
   object <- gvec_object()
   model <- create_vecxsubmodel(object, submodel = "US",
                                endogen = c("y", "Dp"), p_endogen = 1,
-                               exogen = c("y", "Dp"), p_exogen = 1,
+                               exogen = c("y", "Dp"), p_exogen = 2,
                                const = "unrestricted", trend = "restricted",
                                r = 1,
                                iterations = 10, burnin = 10)[[1]]
@@ -38,7 +38,7 @@ test_that("the model specification reflects the requested variables", {
   expect_equal(specs[["k_endogen"]], 2L)
   expect_equal(specs[["p_endogen"]], 1L)
   expect_equal(specs[["k_exogen"]], 2L)
-  expect_equal(specs[["p_exogen"]], 1L)
+  expect_equal(specs[["p_exogen"]], 2L)
   expect_equal(specs[["rank"]], 1L)
   expect_equal(specs[["endogen"]], c("y", "Dp"))
   expect_equal(specs[["exogen"]], c("y.s", "Dp.s"))
@@ -53,7 +53,7 @@ test_that("the cointegration space grows with the restricted terms", {
   build <- function(...) {
     create_vecxsubmodel(object, submodel = "US",
                         endogen = c("y", "Dp"), p_endogen = 1,
-                        exogen = c("y", "Dp"), p_exogen = 1, r = 1,
+                        exogen = c("y", "Dp"), p_exogen = 2, r = 1,
                         iterations = 10, burnin = 10, ...)[[1]]
   }
 
@@ -76,7 +76,7 @@ test_that("data matrices are consistent with the model specification", {
   object <- gvec_object()
   model <- create_vecxsubmodel(object, submodel = "US",
                                endogen = c("y", "Dp"), p_endogen = 1,
-                               exogen = c("y", "Dp"), p_exogen = 1,
+                               exogen = c("y", "Dp"), p_exogen = 2,
                                const = "unrestricted", trend = "restricted",
                                r = 1,
                                iterations = 10, burnin = 10)[[1]]
@@ -104,6 +104,14 @@ test_that("create_vecxsubmodel validates its arguments", {
                "may only contain one element")
   expect_error(create_vecxsubmodel(object, submodel = "US", global = "poil"),
                "argument 's' must be specified")
+  # The lag orders are those of the model in levels, which has at least one lag.
+  expect_error(create_vecxsubmodel(object, submodel = "US", p_endogen = 0, r = 1),
+               "'p_endogen' must be at least 1")
+  expect_error(create_vecxsubmodel(object, submodel = "US", p_exogen = 0:1, r = 1),
+               "'p_exogen' must be at least 1")
+  expect_error(create_vecxsubmodel(object, submodel = "US", global = "poil",
+                                   s = 0, r = 1),
+               "'s' must be at least 1")
   # An unspecified rank makes the function report the ranks it falls back to.
   expect_error(suppressMessages(
     create_vecxsubmodel(object, submodel = "US", error = "unknown")),
@@ -113,13 +121,35 @@ test_that("create_vecxsubmodel validates its arguments", {
     "argument 'varsel' is not supported")
 })
 
+test_that("the lag orders are those of the VARX model in levels", {
+  # p_endogen, p_exogen and s are given as for create_varxsubmodel, and the
+  # error correction form holds one block of differences less of each. The
+  # specification keeps the lag orders as they were given.
+  object <- gvec_object()
+  model <- create_vecxsubmodel(object, submodel = "US",
+                               endogen = c("y", "Dp"), p_endogen = 3,
+                               exogen = c("y", "Dp"), p_exogen = 3,
+                               global = "poil", s = 2, r = 1,
+                               iterations = 10, burnin = 10)[[1]]
+
+  specs <- model[["model"]]
+  expect_equal(specs[["p_endogen"]], 3L)
+  expect_equal(specs[["p_exogen"]], 3L)
+  expect_equal(specs[["s_global"]], 2L)
+  expect_equal(dimnames(model[["data"]][["train"]][["x"]])[[2]],
+               c("d.y.01", "d.Dp.01", "d.y.02", "d.Dp.02",
+                 "d.y.s.00", "d.Dp.s.00", "d.y.s.01", "d.Dp.s.01",
+                 "d.poil.00"))
+  expect_equal(specs[["m"]], 2L * 2L + 1L)
+})
+
 test_that("create_vecxsubmodel falls back to all admissible ranks", {
   object <- gvec_object()
 
   expect_message(
     models <- create_vecxsubmodel(object, submodel = "US",
                                   endogen = c("y", "Dp"), p_endogen = 1,
-                                  exogen = c("y", "Dp"), p_exogen = 1,
+                                  exogen = c("y", "Dp"), p_exogen = 2,
                                   const = "unrestricted", trend = "restricted",
                                   iterations = 10, burnin = 10),
     "rank")
@@ -132,7 +162,7 @@ test_that("add_submodels builds a model list for every sub-model", {
   object <- gvec_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 1,
+                          exogen = c("y", "Dp"), p_exogen = 2,
                           const = "unrestricted", trend = "restricted",
                           r = 0:1,
                           iterations = 10, burnin = 10)
@@ -150,7 +180,7 @@ test_that("the levels of the global variables enter the error correction term", 
   build <- function(...) {
     create_vecxsubmodel(object, submodel = "US",
                         endogen = c("y", "Dp"), p_endogen = 1,
-                        exogen = c("y", "Dp"), p_exogen = 1, r = 1,
+                        exogen = c("y", "Dp"), p_exogen = 2, r = 1,
                         const = "unrestricted",
                         iterations = 10, burnin = 10, ...)[[1]]
   }
@@ -161,7 +191,7 @@ test_that("the levels of the global variables enter the error correction term", 
   # assignment to n_ect rather than an addition, which left a single column in
   # 'w' and moved every other level into the stationary regressors of 'x'.
   plain <- build()
-  with_global <- build(global = "poil", s = 1)
+  with_global <- build(global = "poil", s = 2)
 
   expect_equal(plain[["model"]][["k_beta"]], 4L)
   expect_equal(dimnames(plain[["data"]][["train"]][["w"]])[[2]],
@@ -186,8 +216,8 @@ test_that("add_submodels keeps the global levels in the error correction term", 
   object <- gvec_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 1,
-                          global = "poil", s = 1,
+                          exogen = c("y", "Dp"), p_exogen = 2,
+                          global = "poil", s = 2,
                           const = "unrestricted", trend = "restricted", r = 1,
                           iterations = 10, burnin = 10)
 
@@ -201,7 +231,7 @@ test_that("add_submodels keeps the global levels in the error correction term", 
   }
 })
 
-test_that("a lag order of zero drops the differences but keeps the levels", {
+test_that("a lag order of one drops the differences but keeps the levels", {
   object <- gvec_object()
   build <- function(...) {
     create_vecxsubmodel(object, submodel = "US",
@@ -216,7 +246,7 @@ test_that("a lag order of zero drops the differences but keeps the levels", {
   # was picked up twice and every offset behind it addressed the wrong column.
   # The error correction term is unaffected by the lag orders: the levels of the
   # global variables stay in it whether or not their differences are used.
-  no_global_diff <- build(p_exogen = 1, global = "poil", s = 0)
+  no_global_diff <- build(p_exogen = 2, global = "poil", s = 1)
   expect_equal(no_global_diff[["model"]][["k_beta"]], 5L)
   expect_equal(dimnames(no_global_diff[["data"]][["train"]][["w"]])[[2]],
                c("l.y", "l.Dp", "l.y.s", "l.Dp.s", "l.poil"))
@@ -224,13 +254,13 @@ test_that("a lag order of zero drops the differences but keeps the levels", {
                c("d.y.s.00", "d.Dp.s.00", "const"))
   expect_equal(no_global_diff[["model"]][["m"]], 2L)
 
-  no_exogen_diff <- build(p_exogen = 0, global = "poil", s = 1)
+  no_exogen_diff <- build(p_exogen = 1, global = "poil", s = 2)
   expect_equal(dimnames(no_exogen_diff[["data"]][["train"]][["x"]])[[2]],
                c("d.poil.00", "const"))
   expect_equal(no_exogen_diff[["model"]][["m"]], 1L)
 
   # A model whose only regressor is deterministic still has to come together.
-  only_det <- build(p_exogen = 0, global = "poil", s = 0)
+  only_det <- build(p_exogen = 1, global = "poil", s = 1)
   expect_equal(dimnames(only_det[["data"]][["train"]][["x"]])[[2]], "const")
   expect_equal(only_det[["model"]][["m"]], 0L)
   expect_equal(only_det[["model"]][["k_beta"]], 5L)
@@ -239,8 +269,8 @@ test_that("a lag order of zero drops the differences but keeps the levels", {
   # the error correction term only.
   bare <- create_vecxsubmodel(object, submodel = "US",
                               endogen = c("y", "Dp"), p_endogen = 1,
-                              exogen = c("y", "Dp"), p_exogen = 0,
-                              global = "poil", s = 0, r = 1,
+                              exogen = c("y", "Dp"), p_exogen = 1,
+                              global = "poil", s = 1, r = 1,
                               iterations = 10, burnin = 10)[[1]]
   expect_null(bare[["data"]][["train"]][["x"]])
   expect_equal(ncol(bare[["data"]][["train"]][["z"]]),
@@ -251,8 +281,8 @@ test_that("a grid over s keeps the regressors of every model distinct", {
   object <- gvec_object()
   models <- create_vecxsubmodel(object, submodel = "US",
                                 endogen = c("y", "Dp"), p_endogen = 1,
-                                exogen = c("y", "Dp"), p_exogen = 1,
-                                global = "poil", s = 0:2, r = 1,
+                                exogen = c("y", "Dp"), p_exogen = 2,
+                                global = "poil", s = 1:3, r = 1,
                                 const = "unrestricted",
                                 iterations = 10, burnin = 10)
 
@@ -267,8 +297,8 @@ test_that("a grid over s keeps the regressors of every model distinct", {
     # A column addressed twice is the signature of the 1:0 selection.
     expect_false(any(duplicated(dimnames(i[["data"]][["train"]][["x"]])[[2]])))
     expect_equal(i[["model"]][["m"]],
-                 i[["model"]][["k_exogen"]] * i[["model"]][["p_exogen"]] +
-                   i[["model"]][["m_global"]] * i[["model"]][["s_global"]])
+                 i[["model"]][["k_exogen"]] * (i[["model"]][["p_exogen"]] - 1) +
+                   i[["model"]][["m_global"]] * (i[["model"]][["s_global"]] - 1))
     expect_equal(ncol(i[["data"]][["train"]][["z"]]),
                  ncol(i[["data"]][["train"]][["x"]]) * i[["model"]][["k"]] +
                    i[["model"]][["k"]] * i[["model"]][["rank"]])
@@ -279,8 +309,8 @@ test_that("a sub-model with a global block estimates end to end", {
   object <- gvec_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 1,
-                          global = "poil", s = 1,
+                          exogen = c("y", "Dp"), p_exogen = 2,
+                          global = "poil", s = 2,
                           const = "unrestricted", trend = "restricted", r = 1,
                           iterations = 20, burnin = 10)
 
@@ -291,11 +321,11 @@ test_that("a sub-model with a global block estimates end to end", {
   # level.
   expect_true("d.poil.00" %in% dimnames(model[["data"]][["train"]][["x"]])[[2]])
   expect_true("l.poil" %in% dimnames(model[["data"]][["train"]][["w"]])[[2]])
-  # 'p_exogen' and 's_global' count blocks of regressors, the same way they do
-  # in a VARX model.
+  # 'p_exogen' and 's_global' are the lag orders of the VARX model in levels, so
+  # 'm' counts one block of differences less of each.
   expect_equal(model[["model"]][["m"]],
-               model[["model"]][["k_exogen"]] * model[["model"]][["p_exogen"]] +
-                 model[["model"]][["m_global"]] * model[["model"]][["s_global"]])
+               model[["model"]][["k_exogen"]] * (model[["model"]][["p_exogen"]] - 1) +
+                 model[["model"]][["m_global"]] * (model[["model"]][["s_global"]] - 1))
 
   expect_no_error(add_priors(object,
                              coef = list(v_i = 0),

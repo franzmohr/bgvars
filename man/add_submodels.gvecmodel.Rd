@@ -9,7 +9,7 @@
   endogen = NULL,
   p_endogen = 1,
   exogen = NULL,
-  p_exogen = 1,
+  p_exogen = 2,
   global = NULL,
   s = NULL,
   r = NULL,
@@ -32,28 +32,28 @@
 \item{endogen}{character vector of variables that should enter each sub-model
 as endogenous variables, if they are available for the respective sub-model.}
 
-\item{p_endogen}{an integer vector of the lag order of endogenous variables
-in the (levels) VAR. Thus, the resulting model's lag will be \code{p_endogen - 1}.}
+\item{p_endogen}{an integer vector of the lag order of the endogenous
+variables in the corresponding VAR model in levels (default is
+\code{p_endogen = 1}). The sub-models hold \code{p_endogen - 1} lagged
+differences of them. See \code{\link{create_vecxsubmodel}}.}
 
 \item{exogen}{character vector of variables that should enter each sub-model
 as exogenous variables.}
 
-\item{p_exogen}{an integer vector of the number of differences of a
-sub-model's weakly exogenous variables, counted from the contemporaneous
-difference onwards (default is \code{p_exogen = 1}). The lagged levels enter
-the error correction term whatever the value, so 1 uses
-\eqn{\Delta x_t} beside \eqn{x_{t-1}}, 2 adds \eqn{\Delta x_{t-1}}, and 0
-leaves the lagged levels alone. In levels, a VECX sub-model with
-\code{p_exogen = q} therefore holds the regressors of a VARX sub-model with
-\code{p_exogen = q + 1}, which is what \code{\link{vec_to_var}} returns.}
+\item{p_exogen}{an integer vector of the lag order of the weakly exogenous
+variables in the corresponding VARX sub-model in levels, counted from the
+contemporaneous term onwards as in \code{\link{add_submodels.gvarmodel}}
+(default is \code{p_exogen = 2}). The sub-models hold \code{p_exogen - 1}
+differences of them beside their lagged levels in the error correction term.
+See \code{\link{create_vecxsubmodel}}.}
 
 \item{global}{character vector of variables that should enter each sub-model
 as global variables.}
 
-\item{s}{an integer vector of the number of differences of a sub-model's
-global variables, counted in the same way as \code{p_exogen}, so that it is
-one smaller than the \code{s} of a VARX sub-model with the same regressors.
-If \code{NULL} (default), models do not include global variables.}
+\item{s}{an integer vector of the lag order of the global variables in the
+corresponding VARX sub-model in levels, counted in the same way as
+\code{p_exogen}. If \code{NULL} (default), models do not include global
+variables.}
 
 \item{r}{an integer vector of the cointegration rank.}
 
@@ -124,9 +124,9 @@ object <- add_weight_matrices(object = object,
 
 # Create sub-models
 object <- add_submodels(object,
-                        p_endogen = 1, p_exogen = 1,
+                        p_endogen = 1, p_exogen = 2,
                         global = "poil",
-                        s = 1,
+                        s = 2,
                         r = 1,
                         error = "wishart",
                         iterations = 10,

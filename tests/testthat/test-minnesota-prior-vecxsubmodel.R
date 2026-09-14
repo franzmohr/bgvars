@@ -5,8 +5,8 @@ test_that("the Minnesota prior of a VECX sub-model reaches the sampler, block by
   # the formulas in ?minnesota_prior.vecxsubmodel.
   model <- create_vecxsubmodel(gvec_object(), "JP",
                                endogen = c("y", "Dp"), p_endogen = 2,
-                               exogen = c("y", "Dp"), p_exogen = 2,
-                               global = "poil", s = 2,
+                               exogen = c("y", "Dp"), p_exogen = 3,
+                               global = "poil", s = 3,
                                const = "unrestricted", trend = "restricted", r = 1,
                                iterations = 10, burnin = 10)[[1]]
   kappa <- list(kappa1 = 2, kappa2 = 0.5, kappa3 = 0.5, kappa4 = 5)

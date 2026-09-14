@@ -5,7 +5,7 @@ vecx_submodel <- function() {
   models <- suppressMessages(
     create_vecxsubmodel(object, submodel = "US",
                         endogen = c("y", "Dp"), p_endogen = 2,
-                        exogen = c("y", "Dp"), p_exogen = 1,
+                        exogen = c("y", "Dp"), p_exogen = 2,
                         const = "unrestricted", r = 1,
                         iterations = 10, burnin = 10))
   models[[1]]

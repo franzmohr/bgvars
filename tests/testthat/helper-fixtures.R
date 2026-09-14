@@ -80,7 +80,7 @@ gvec_estimated <- function(iterations = 50, burnin = 10, r = 1) {
   object <- gvec_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 1,
+                          exogen = c("y", "Dp"), p_exogen = 2,
                           const = "unrestricted", trend = "restricted", r = r,
                           iterations = iterations, burnin = burnin)
   object <- add_priors(object,

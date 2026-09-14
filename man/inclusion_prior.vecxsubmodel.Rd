@@ -94,7 +94,7 @@ object <- add_weight_matrices(object = object,
 object <- create_vecxsubmodel(object,
                               submodel = "AT",
                               endogen = c("y", "Dp", "r"), p_endogen = 2,
-                              exogen = c("y", "Dp"), p_exogen = 1,
+                              exogen = c("y", "Dp"), p_exogen = 2,
                               r = 1, const = "unrestricted",
                               iterations = 10, burnin = 10)
 # Number of iterations and burn-in should be much higher.

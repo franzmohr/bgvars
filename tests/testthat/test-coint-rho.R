@@ -10,7 +10,7 @@ vecx_rho <- function(coint, error = "wishart", iterations = 20, burnin = 10) {
   object <- gvec_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 2,
-                          exogen = c("y", "Dp"), p_exogen = 1,
+                          exogen = c("y", "Dp"), p_exogen = 2,
                           const = "unrestricted", r = 1,
                           tvp = TRUE, error = error,
                           iterations = iterations, burnin = burnin)

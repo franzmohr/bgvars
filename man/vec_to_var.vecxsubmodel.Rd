@@ -41,11 +41,14 @@ with \eqn{q} blocks of differences and level coefficient \eqn{\Pi^{x}},
 \deqn{B_0 = \Upsilon_0, \quad B_1 = \Upsilon_1 - \Upsilon_0 + \Pi^{x}, \quad
 B_l = \Upsilon_l - \Upsilon_{l-1}, \quad B_q = -\Upsilon_{q-1}.}
 A block of \eqn{q} differences therefore spans the lags \eqn{0} to \eqn{q} in
-levels, which is why \code{p_exogen} and \code{s_global} of the result are
-one larger than those of the sub-model it is given. A block without
-differences, \eqn{q = 0}, still enters through the error correction term at
-lag one, so in levels it spans the lags \eqn{0} and \eqn{1}, with
-\eqn{B_0 = 0} and \eqn{B_1 = \Pi^{x}}, and the result counts two blocks.
+levels. \code{p_exogen} and \code{s_global} of a VECX sub-model are the lag
+orders of its model in levels, counted from the contemporaneous term onwards,
+so the sub-model holds \eqn{q} = \code{p_exogen - 1} differences, and the
+result carries the same \code{p_exogen} and \code{s_global} as the sub-model
+it is given. A block without differences, \eqn{q = 0}, still enters through
+the error correction term at lag one, so in levels it spans the lags \eqn{0}
+and \eqn{1}, with \eqn{B_0 = 0} and \eqn{B_1 = \Pi^{x}}, and the result
+counts two blocks where the sub-model counts one.
 
 The coefficients of the result are ordered the way an estimated VARX
 sub-model orders them: the lags of the endogenous variables, then the weakly
@@ -76,7 +79,7 @@ object <- add_weight_matrices(object = object,
                               period = 1999:2001)
 object <- add_submodels(object,
                         endogen = c("y", "Dp"), p_endogen = 1,
-                        exogen = c("y", "Dp"), p_exogen = 1,
+                        exogen = c("y", "Dp"), p_exogen = 2,
                         const = "unrestricted", trend = "restricted", r = 1,
                         iterations = 20, burnin = 10)
 # Number of iterations and burn-in should be much higher.

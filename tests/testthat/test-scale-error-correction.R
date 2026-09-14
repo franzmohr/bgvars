@@ -10,7 +10,7 @@ gvec_prepared <- function(r = 1, tvp = FALSE, initial = TRUE) {
   object <- gvec_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 1,
+                          exogen = c("y", "Dp"), p_exogen = 2,
                           const = "unrestricted",
                           trend = if (tvp) NULL else "restricted",
                           r = r, tvp = tvp,

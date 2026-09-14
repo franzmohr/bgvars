@@ -10,7 +10,7 @@ create_vecxsubmodel(
   endogen = NULL,
   p_endogen = 1,
   exogen = NULL,
-  p_exogen = 1,
+  p_exogen = 2,
   global = NULL,
   s = NULL,
   r = NULL,
@@ -35,28 +35,35 @@ based on the input in argument \code{object}.}
 \item{endogen}{character vector of variables that should enter each sub-model
 as endogenous variables, if they are available.}
 
-\item{p_endogen}{an integer vector of the lag order (default is \code{p_endogen = 1})
-of a sub-model's endogenous variables.}
+\item{p_endogen}{an integer vector of the lag order of a sub-model's
+endogenous variables in the corresponding VAR model in levels (default is
+\code{p_endogen = 1}). It must be at least 1, since the sub-model holds
+\code{p_endogen - 1} lagged differences of the endogenous variables.}
 
 \item{exogen}{character vector of variables that should enter each sub-model
 as weakly exogenous variables.}
 
-\item{p_exogen}{an integer vector of the number of differences of a
-sub-model's weakly exogenous variables, counted from the contemporaneous
-difference onwards (default is \code{p_exogen = 1}). The lagged levels enter
-the error correction term whatever the value, so 1 uses
-\eqn{\Delta x_t} beside \eqn{x_{t-1}}, 2 adds \eqn{\Delta x_{t-1}}, and 0
-leaves the lagged levels alone. In levels, a VECX sub-model with
-\code{p_exogen = q} therefore holds the regressors of a VARX sub-model with
-\code{p_exogen = q + 1}, which is what \code{\link{vec_to_var}} returns.}
+\item{p_exogen}{an integer vector of the lag order of a sub-model's weakly
+exogenous variables in the corresponding VARX sub-model in levels, counted
+from the contemporaneous term onwards as in \code{\link{create_varxsubmodel}}
+(default is \code{p_exogen = 2}). It must be at least 1. The lagged levels
+\eqn{x_{t-1}} enter the error correction term whatever the value, and the
+sub-model holds the \code{p_exogen - 1} differences from \eqn{\Delta x_t}
+onwards, so 1 uses the lagged levels alone, 2 adds \eqn{\Delta x_t} and 3
+adds \eqn{\Delta x_{t-1}}. A VARX\eqn{^*}(p, q) model, whose weakly exogenous
+variables reach back to lag q, is therefore specified by
+\code{p_endogen = p} and \code{p_exogen = q + 1}, and
+\code{\link{vec_to_var}} returns a VARX sub-model with the same
+\code{p_exogen}. The exception is \code{p_exogen = 1}, whose lagged levels
+take two blocks in levels, the contemporaneous one with a coefficient of zero.}
 
 \item{global}{character vector of variables that should enter each sub-model
 as global variables.}
 
-\item{s}{an integer vector of the number of differences of a sub-model's
-global variables, counted in the same way as \code{p_exogen}, so that it is
-one smaller than the \code{s} of a VARX sub-model with the same regressors.
-If \code{NULL} (default), models do not include global variables.}
+\item{s}{an integer vector of the lag order of a sub-model's global
+variables in the corresponding VARX sub-model in levels, counted in the same
+way as \code{p_exogen}. It must be at least 1. If \code{NULL} (default),
+models do not include global variables.}
 
 \item{r}{an integer vector of the cointegration rank. See 'Details'.}
 
@@ -163,7 +170,7 @@ model <- create_vecxsubmodel(object,
                              submodel = "EA",
                              r = 1,
                              global = "poil",
-                             s = 1,
+                             s = 2,
                              iterations = 10,
                              burnin = 10)
 # Number of iterations and burn-in should be much higher.

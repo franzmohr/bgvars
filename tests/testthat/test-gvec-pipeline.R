@@ -2,7 +2,7 @@ test_that("add_priors attaches priors on the cointegration space", {
   object <- gvec_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 1,
+                          exogen = c("y", "Dp"), p_exogen = 2,
                           const = "unrestricted", trend = "restricted", r = 1,
                           iterations = 10, burnin = 10)
   object <- add_priors(object,
@@ -21,7 +21,7 @@ test_that("add_priors requires a specification for the cointegration space", {
   object <- gvec_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 1,
+                          exogen = c("y", "Dp"), p_exogen = 2,
                           const = "unrestricted", trend = "restricted", r = 1,
                           iterations = 10, burnin = 10)
 
@@ -33,7 +33,7 @@ test_that("add_initial_values attaches initial values to every sub-model", {
   object <- gvec_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1,
-                          exogen = c("y", "Dp"), p_exogen = 1,
+                          exogen = c("y", "Dp"), p_exogen = 2,
                           const = "unrestricted", trend = "restricted", r = 1,
                           iterations = 10, burnin = 10)
   object <- add_priors(object,

@@ -7,24 +7,31 @@
 #' based on the input in argument \code{object}.
 #' @param endogen character vector of variables that should enter each sub-model
 #' as endogenous variables, if they are available.
-#' @param p_endogen an integer vector of the lag order (default is \code{p_endogen = 1})
-#' of a sub-model's endogenous variables.
+#' @param p_endogen an integer vector of the lag order of a sub-model's
+#' endogenous variables in the corresponding VAR model in levels (default is
+#' \code{p_endogen = 1}). It must be at least 1, since the sub-model holds
+#' \code{p_endogen - 1} lagged differences of the endogenous variables.
 #' @param exogen character vector of variables that should enter each sub-model
 #' as weakly exogenous variables.
-#' @param p_exogen an integer vector of the number of differences of a
-#' sub-model's weakly exogenous variables, counted from the contemporaneous
-#' difference onwards (default is \code{p_exogen = 1}). The lagged levels enter
-#' the error correction term whatever the value, so 1 uses
-#' \eqn{\Delta x_t} beside \eqn{x_{t-1}}, 2 adds \eqn{\Delta x_{t-1}}, and 0
-#' leaves the lagged levels alone. In levels, a VECX sub-model with
-#' \code{p_exogen = q} therefore holds the regressors of a VARX sub-model with
-#' \code{p_exogen = q + 1}, which is what \code{\link{vec_to_var}} returns.
+#' @param p_exogen an integer vector of the lag order of a sub-model's weakly
+#' exogenous variables in the corresponding VARX sub-model in levels, counted
+#' from the contemporaneous term onwards as in \code{\link{create_varxsubmodel}}
+#' (default is \code{p_exogen = 2}). It must be at least 1. The lagged levels
+#' \eqn{x_{t-1}} enter the error correction term whatever the value, and the
+#' sub-model holds the \code{p_exogen - 1} differences from \eqn{\Delta x_t}
+#' onwards, so 1 uses the lagged levels alone, 2 adds \eqn{\Delta x_t} and 3
+#' adds \eqn{\Delta x_{t-1}}. A VARX\eqn{^*}(p, q) model, whose weakly exogenous
+#' variables reach back to lag q, is therefore specified by
+#' \code{p_endogen = p} and \code{p_exogen = q + 1}, and
+#' \code{\link{vec_to_var}} returns a VARX sub-model with the same
+#' \code{p_exogen}. The exception is \code{p_exogen = 1}, whose lagged levels
+#' take two blocks in levels, the contemporaneous one with a coefficient of zero.
 #' @param global character vector of variables that should enter each sub-model
 #' as global variables.
-#' @param s an integer vector of the number of differences of a sub-model's
-#' global variables, counted in the same way as \code{p_exogen}, so that it is
-#' one smaller than the \code{s} of a VARX sub-model with the same regressors.
-#' If \code{NULL} (default), models do not include global variables.
+#' @param s an integer vector of the lag order of a sub-model's global
+#' variables in the corresponding VARX sub-model in levels, counted in the same
+#' way as \code{p_exogen}. It must be at least 1. If \code{NULL} (default),
+#' models do not include global variables.
 #' @param r an integer vector of the cointegration rank. See 'Details'.
 #' @param const a character specifying whether a constant term enters the error correction
 #' term (\code{"restricted"}) or the non-cointegration term as an \code{"unrestricted"} variable.
@@ -118,7 +125,7 @@
 #'                              submodel = "EA",
 #'                              r = 1,
 #'                              global = "poil",
-#'                              s = 1,
+#'                              s = 2,
 #'                              iterations = 10,
 #'                              burnin = 10)
 #' # Number of iterations and burn-in should be much higher.
@@ -130,7 +137,7 @@ create_vecxsubmodel <- function(object,
                                 endogen = NULL,
                                 p_endogen = 1,
                                 exogen = NULL,
-                                p_exogen = 1,
+                                p_exogen = 2,
                                 global = NULL,
                                 s = NULL,
                                 r = NULL,
@@ -151,6 +158,10 @@ create_vecxsubmodel <- function(object,
   
   if (any(p_endogen < 1)) {
     stop("Argument 'p_endogen' must be at least 1 for VECX models.")
+  }
+  
+  if (any(p_exogen < 1)) {
+    stop("Argument 'p_exogen' must be at least 1 for VECX models.")
   }
   
   tt <- nrow(object[["global"]][["endogen"]])
@@ -235,6 +246,9 @@ create_vecxsubmodel <- function(object,
   if (use_global) {
     if (is.null(s)) {
       stop("If global variables should be used, argument 's' must be specified.") 
+    }
+    if (any(s < 1)) {
+      stop("Argument 's' must be at least 1 for VECX models.")
     }
     pos_global <- which(dimnames(object[["global"]][["exogen"]])[[2]] %in% global)
     vars_global <- dimnames(object[["global"]][["exogen"]])[[2]][pos_global]
@@ -354,28 +368,32 @@ create_vecxsubmodel <- function(object,
     }
   }
   
-  # Lags of differenenced weakly exogenous variables
-  p_exogen_max <- max(p_exogen)
+  # Lags of differenced weakly exogenous variables
+  #
+  # 'p_exogen' is the lag order of the VARX sub-model in levels, counted from
+  # the contemporaneous term onwards, so the VECX sub-model holds one block of
+  # differences less: p_exogen - 1 of them, from the contemporaneous one on.
+  d_exogen_max <- max(p_exogen) - 1
   diff_exogen <- diff(exogen)
-  # A lag order of zero asks for no differences of the weakly exogenous
+  # A lag order of one asks for no differences of the weakly exogenous
   # variables at all, so the contemporaneous block must not be added either.
-  # The offsets used below count this block as n_exogen * p_exogen_max columns,
+  # The offsets used below count this block as n_exogen * d_exogen_max columns,
   # and adding it unconditionally made them address the wrong columns.
-  if (p_exogen_max > 0) {
+  if (d_exogen_max > 0) {
     temp <- cbind(temp, diff_exogen)
-    if (nchar(p_exogen_max) > 2) {
-      i_temp <- rep(0, nchar(p_exogen_max))
+    if (nchar(d_exogen_max) > 2) {
+      i_temp <- rep(0, nchar(d_exogen_max))
     } else {
       i_temp <- rep(0, 2)
     }
     i_temp <- paste0(i_temp, collapse = "")
     temp_name <- c(temp_name, paste0("d.", vars_exogen, ".", i_temp))
   }
-  if (p_exogen_max > 1) {
-    for (i in 1:(p_exogen_max - 1)) {
+  if (d_exogen_max > 1) {
+    for (i in 1:(d_exogen_max - 1)) {
       temp <- cbind(temp, stats::lag(diff_exogen, -i))
-      if (nchar(p_exogen_max) > 2) {
-        i_temp <- paste0(c(rep(0, nchar(p_exogen_max) - nchar(i)), i), collapse = "")
+      if (nchar(d_exogen_max) > 2) {
+        i_temp <- paste0(c(rep(0, nchar(d_exogen_max) - nchar(i)), i), collapse = "")
       } else {
         i_temp <- paste0(c(rep(0, 2 - nchar(i)), i), collapse = "")
       }
@@ -384,26 +402,26 @@ create_vecxsubmodel <- function(object,
   }
   
   if (use_global) {
-    s_max <- max(s)
+    d_global_max <- max(s) - 1
     diff_global <- diff(global)
-    # As for the weakly exogenous variables, s = 0 means that the global
+    # As for the weakly exogenous variables, s = 1 means that the global
     # variables enter the error correction term in levels but contribute no
     # differences to the non-cointegration term.
-    if (s_max > 0) {
+    if (d_global_max > 0) {
       temp <- cbind(temp, diff_global)
-      if (nchar(s_max) > 2) {
-        i_temp <- rep(0, nchar(s_max))
+      if (nchar(d_global_max) > 2) {
+        i_temp <- rep(0, nchar(d_global_max))
       } else {
         i_temp <- rep(0, 2)
       }
       i_temp <- paste0(i_temp, collapse = "")
       temp_name <- c(temp_name, paste0("d.", vars_global, ".", i_temp))
     }
-    if (s_max > 1) {
-      for (i in 1:(s_max - 1)) {
+    if (d_global_max > 1) {
+      for (i in 1:(d_global_max - 1)) {
         temp <- cbind(temp, stats::lag(diff_global, -i))
-        if (nchar(s_max) > 2) {
-          i_temp <- paste0(c(rep(0, nchar(s_max) - nchar(i)), i), collapse = "")
+        if (nchar(d_global_max) > 2) {
+          i_temp <- paste0(c(rep(0, nchar(d_global_max) - nchar(i)), i), collapse = "")
         } else {
           i_temp <- paste0(c(rep(0, 2 - nchar(i)), i), collapse = "")
         }
@@ -411,7 +429,7 @@ create_vecxsubmodel <- function(object,
       } 
     }
   } else {
-    s_max <- 0
+    d_global_max <- 0
   }
   
   temp <- stats::na.omit(temp)
@@ -622,20 +640,23 @@ create_vecxsubmodel <- function(object,
             model_i[["p_endogen"]] <- model_i[["p"]]
           }  
           
-          pos <- c(pos, n_endogen * (p_endogen_max - 1) + seq_len(n_exogen * j))
+          pos <- c(pos, n_endogen * (p_endogen_max - 1) + seq_len(n_exogen * (j - 1)))
           model_i[["p_exogen"]] <- as.integer(j)
           
           if (use_global) {
-            pos <- c(pos, n_endogen * (p_endogen_max - 1) + n_exogen * p_exogen_max + seq_len(n_global * k))
+            pos <- c(pos, n_endogen * (p_endogen_max - 1) + n_exogen * d_exogen_max + seq_len(n_global * (k - 1)))
             model_i[["m_global"]] <- as.integer(n_global)
             model_i[["s_global"]] <- as.integer(k)
           }
           
-          model_i[["m"]] <- model_i[["k_exogen"]] * model_i[["p_exogen"]] + model_i[["m_global"]] * model_i[["s_global"]]
+          # 'm' counts the columns of differences, which is one block less than
+          # the lag orders in levels.
+          model_i[["m"]] <- model_i[["k_exogen"]] * (model_i[["p_exogen"]] - 1L) +
+            model_i[["m_global"]] * max(model_i[["s_global"]] - 1L, 0L)
           model_i[["s"]] <- 1L
           
           if (use_det_ur) {
-            pos <- c(pos, n_endogen * (p_endogen_max - 1) + n_exogen * p_exogen_max + n_global * s_max + 1:length(det_name_ur))
+            pos <- c(pos, n_endogen * (p_endogen_max - 1) + n_exogen * d_exogen_max + n_global * d_global_max + 1:length(det_name_ur))
           }
           
           model_i[["k_beta"]] <- as.integer(n_ect)

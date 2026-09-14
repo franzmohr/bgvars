@@ -14,9 +14,9 @@ vecx_ml_object <- function(tvp = FALSE, scale = FALSE) {
   object <- gvec_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 2,
-                          exogen = c("y", "Dp"), p_exogen = 2,
+                          exogen = c("y", "Dp"), p_exogen = 3,
                           global = if (tvp) NULL else "poil",
-                          s = if (tvp) NULL else 1,
+                          s = if (tvp) NULL else 2,
                           const = "unrestricted", trend = "restricted", r = 1,
                           tvp = tvp, iterations = 20, burnin = 10)
   object <- align_model_obs(object)
