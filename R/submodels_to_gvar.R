@@ -518,13 +518,18 @@ submodels_to_gvar <- function(object, period = NULL) {
       pos_a0_exogen <- n_endogen_i[i] + 1:(k_endogen_i[i] * k_exogen_i[i])
       
       # A0
-      if (object[["submodels"]][[i]][[1]][["model"]][["structural"]]) {
-        stop("implement structural")
-        if (!is.null(object[[i]][["posterior"]][["a"]][["coeffs"]]) & tvp_i[i, "a0"]) {
-          A0 <- matrix(object[[i]][["posterior"]][["a"]][["coeffs"]][[period]][draw, ], k_endogen_i[i]) 
-        } else {
-          A0 <- matrix(object[[i]][["posterior"]][["a"]][["coeffs"]][draw, ], k_endogen_i[i]) 
-        }
+      if (isTRUE(object[["submodels"]][[i]][[1]][["model"]][["structural"]]) & k_endogen_i[i] > 1) {
+        # A structural sub-model carries the k (k - 1) / 2 free elements of its
+        # unit lower triangular A0 as the last coefficients. They are stored
+        # column by column -- (2,1), (3,1), ..., (k,1), (3,2), ... -- which is
+        # the order of which(lower.tri()). The contemporaneous regressors enter
+        # z with a negative sign, so the free elements are the entries of A0 in
+        # A0 y_t = ... + u_t as they are.
+        a_i <- object[["submodels"]][[i]][[1]][["posterior"]][["a"]][["coeffs"]]
+        n_struct <- k_endogen_i[i] * (k_endogen_i[i] - 1) / 2
+        A0 <- diag(1, k_endogen_i[i])
+        A0[lower.tri(A0)] <- a_i[draw, ncol(a_i) - n_struct + 1:n_struct]
+        rm(a_i)
       } else {
         A0 <- diag(1, k_endogen_i[i])
       }

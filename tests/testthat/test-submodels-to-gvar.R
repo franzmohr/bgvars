@@ -324,3 +324,46 @@ test_that("the coefficients of the global model line up with its regressors", {
   expect_lt(residual(matrix(a[1, ], nrow = k)), scale)
   expect_gt(residual(t(matrix(a[1, ], ncol = k))), scale)
 })
+
+test_that("a structural sub-model enters G through its A0", {
+  # Regression test. A structural sub-model stopped submodels_to_gvar() with
+  # "implement structural". Its contemporaneous matrix A0 is unit lower
+  # triangular with the free elements stored last, column by column, and it
+  # multiplies the sub-model's own variables in G.
+  object <- gvar_object(c("US", "JP", "CA"))
+  object <- add_submodels(object, endogen = c("y", "Dp", "r"), p_endogen = 1,
+                          exogen = c("y", "Dp", "r"), p_exogen = 1,
+                          global = "poil", s = 1, deterministic = "const",
+                          iterations = 20, burnin = 10)
+  object[["submodels"]][["US"]] <- create_varxsubmodel(object, submodel = "US",
+    endogen = c("y", "Dp", "r"), p_endogen = 1,
+    exogen = c("y", "Dp", "r"), p_exogen = 1,
+    global = "poil", s = 1, deterministic = "const",
+    structural = TRUE, error = "gamma",
+    iterations = 20, burnin = 10)
+  object <- align_model_obs(object)
+  for (i in names(object[["submodels"]])) {
+    sigma <- if (i == "US") list(shape = 3, rate = 0.0001) else list(df = 3, scale = 0.0001)
+    object[["submodels"]][[i]] <- add_priors(object[["submodels"]][[i]],
+                                             coef = list(v_i = 1), sigma = sigma)
+  }
+  object <- add_initial_values(object)
+  object <- add_posterior_coefficients(object)
+
+  gvar <- submodels_to_gvar(object)
+
+  us <- object[["submodels"]][["US"]][[1]]
+  k_us <- us[["model"]][["k_endogen"]]
+  pos <- match(paste0("US_", us[["model"]][["endogen"]]), gvar[["model"]][["endogen"]])
+  coeffs <- us[["posterior"]][["a"]][["coeffs"]]
+  n_struct <- k_us * (k_us - 1) / 2
+  k <- gvar[["model"]][["k"]]
+
+  for (draw in c(1L, 20L)) {
+    a0 <- diag(1, k_us)
+    a0[lower.tri(a0)] <- coeffs[draw, ncol(coeffs) - n_struct + 1:n_struct]
+    g <- matrix(gvar[["g"]][draw, ], k)
+    expect_equal(g[pos, pos], a0, ignore_attr = TRUE, info = paste("draw", draw))
+  }
+  expect_false(any(is.na(gvar[["posterior"]][["a"]][["coeffs"]])))
+})
