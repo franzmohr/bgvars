@@ -25,6 +25,10 @@
   
   allowed_coef_arguments <- c("v_i", "v_i_det", "coint_var", "const", "minnesota",
                               "max_var", "shape", "rate", "rate_det")
+  # Only an error correction sub-model has loadings to give a rate of their own.
+  if (inherits(object, "vecxsubmodel")) {
+    allowed_coef_arguments <- c(allowed_coef_arguments, "rate_alpha")
+  }
   for (i in names(coef)) {
     if (!i %in% allowed_coef_arguments) {
       stop(paste0("Element '", i, "' in argument 'coef' is not recognised."))
