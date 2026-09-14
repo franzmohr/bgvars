@@ -61,6 +61,7 @@ are calculated as
 \tabular{cl}{
 \eqn{\frac{\kappa_1}{r}} \tab for own lags of endogenous variables, \cr
 \eqn{\frac{\kappa_2}{r}} \tab for other endogenous variables, \cr
+\eqn{\kappa_2} \tab for contemporaneous endogenous variables of a structural model, \cr
 \eqn{\frac{\kappa_3}{1 + r}} \tab for unmodelled exogenous variables, \cr
 \eqn{\kappa_{4}} \tab for deterministic variables.
 }

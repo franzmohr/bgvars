@@ -59,6 +59,7 @@ are calculated as
 \tabular{cl}{
 \eqn{\frac{\kappa_1}{l}} \tab for own lags of differenced endogenous variables, \cr
 \eqn{\frac{\kappa_2}{l}} \tab for other differenced endogenous variables, \cr
+\eqn{\kappa_2} \tab for contemporaneous differenced endogenous variables of a structural model, \cr
 \eqn{\frac{\kappa_3}{1 + l}} \tab for differenced weakly exogenous and global variables, \cr
 \eqn{\kappa_{4}} \tab for unrestricted deterministic terms,
 }

@@ -30,6 +30,7 @@
 #' \tabular{cl}{
 #' \eqn{\frac{\kappa_1}{r}} \tab for own lags of endogenous variables, \cr
 #' \eqn{\frac{\kappa_2}{r}} \tab for other endogenous variables, \cr
+#' \eqn{\kappa_2} \tab for contemporaneous endogenous variables of a structural model, \cr
 #' \eqn{\frac{\kappa_3}{1 + r}} \tab for unmodelled exogenous variables, \cr
 #' \eqn{\kappa_{4}} \tab for deterministic variables.
 #' }
@@ -182,6 +183,14 @@ inclusion_prior.varxsubmodel <- function(object,
       }
       
       inprior[1:(k_endogen * (n_endogen + n_exogen + n_global + n_c))] <- c(incl_matrix)
+
+      # The free elements of A0 of a structural sub-model are the last coefficients.
+      # They belong to the other endogenous variables at lag zero, which is how
+      # the Minnesota prior scales their variance too. They used to keep 'prob'.
+      if (object[["model"]][["structural"]] & k_endogen > 1) {
+        n_struct <- k_endogen * (k_endogen - 1) / 2
+        inprior[ncol(z) - n_struct + 1:n_struct] <- kappa2
+      }
     }
     
     # Exclude deterministics from variables selection algorithm
