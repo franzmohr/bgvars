@@ -23,8 +23,8 @@ The vignette on time varying parameters and stochastic volatility in
 `bvartools` sets out the model equations and what each prior does. This one
 covers what is specific to a global model: how the specification is applied to
 every sub-model at once, what the sub-models look like afterwards, and -- at
-the end -- where the road currently stops, because a global model cannot yet be
-solved from time varying or stochastic volatility sub-models.
+the end -- how a global model is solved from time varying or stochastic
+volatility sub-models, which is one period at a time.
 
 The reason for wanting these models on this data set is the sample. It runs to
 2023Q3 and therefore contains the global financial crisis and the pandemic, two
@@ -173,82 +173,82 @@ summary(model_at)
 #> Variable: y 
 #> 
 #>                 Mean          SD     Naive SD Time-series SD         2.5%
-#> y.l1      0.59179436 0.002110091 4.718307e-05   0.0007845411  0.586787403
-#> Dp.l1    -0.20253346 0.151811363 3.394605e-03   0.0290531981 -0.323505510
-#> r.l1     -0.60712317 0.001070979 2.394783e-05   0.0001758826 -0.609042715
-#> y.s.l00   0.42339524 0.001721875 3.850229e-05   0.0006894381  0.420162870
-#> Dp.s.l00 -0.02660277 0.008824946 1.973318e-04   0.0005251224 -0.033074600
-#> r.s.l00   0.05429907 0.032596003 7.288688e-04   0.0019292602  0.000000000
-#> poil.l00  0.01068105 0.001334381 2.983768e-05   0.0003665882  0.008152758
-#> const    -0.09653209 0.014942968 3.341349e-04   0.0057645766 -0.127221026
+#> y.l1      0.59079088 0.001474337 3.296717e-05   0.0003164516  0.588035558
+#> Dp.l1    -0.14487384 0.157800917 3.528536e-03   0.0188656330 -0.318738827
+#> r.l1     -0.59869491 0.003320280 7.424372e-05   0.0029869397 -0.603604533
+#> y.s.l00   0.42458989 0.001770967 3.960004e-05   0.0006784523  0.421101703
+#> Dp.s.l00 -0.01466780 0.014905907 3.333062e-04   0.0003520708 -0.032524525
+#> r.s.l00   0.03087862 0.036622462 8.189031e-04   0.0011559372  0.000000000
+#> poil.l00  0.01134205 0.001357798 3.036128e-05   0.0003425989  0.008778751
+#> const    -0.10110146 0.015575296 3.482742e-04   0.0065038148 -0.129377710
 #>                  50%       97.5% Incl. prob.  
-#> y.l1      0.59173521  0.59630771      1.0000 *
-#> Dp.l1    -0.31230955  0.00000000      0.6405  
-#> r.l1     -0.60717442 -0.60494572      1.0000 *
-#> y.s.l00   0.42338283  0.42635234      1.0000 *
-#> Dp.s.l00 -0.03013656  0.00000000      0.9110  
-#> r.s.l00   0.07221655  0.07738874      0.7360  
-#> poil.l00  0.01060382  0.01344909      1.0000 *
-#> const    -0.09533536 -0.06893796      1.0000 *
+#> y.l1      0.59078067  0.59404987      1.0000 *
+#> Dp.l1     0.00000000  0.00000000      0.4575  
+#> r.l1     -0.59970281 -0.59247883      1.0000 *
+#> y.s.l00   0.42467017  0.42785581      1.0000 *
+#> Dp.s.l00  0.00000000  0.00000000      0.4935  
+#> r.s.l00   0.00000000  0.07714551      0.4160  
+#> poil.l00  0.01134467  0.01399321      1.0000 *
+#> const    -0.10145473 -0.07187273      1.0000 *
 #> 
 #> Variable: Dp 
 #> 
-#>                   Mean           SD     Naive SD Time-series SD          2.5%
-#> y.l1     -0.0186285554 0.0012003367 2.684035e-05   4.449170e-04 -0.0212771446
-#> Dp.l1     0.3358508077 0.0021845458 4.884793e-05   1.093474e-03  0.3318101504
-#> r.l1     -0.3260834778 0.0016107959 3.601849e-05   4.739222e-04 -0.3290085219
-#> y.s.l00   0.0176334162 0.0011380075 2.544662e-05   4.038693e-04  0.0156831371
-#> Dp.s.l00  0.4940558031 0.0020343687 4.548987e-05   1.105940e-03  0.4896228086
-#> r.s.l00   0.2558338686 0.0015649038 3.499231e-05   8.039328e-04  0.2531790266
-#> poil.l00  0.0000321805 0.0002299307 5.141407e-06   2.294254e-05 -0.0001222355
-#> const     0.0090775831 0.0055543251 1.241985e-04   1.300624e-03 -0.0017494416
-#>                   50%         97.5% Incl. prob.  
-#> y.l1     -0.018590852 -0.0164399758      1.0000 *
-#> Dp.l1     0.335635975  0.3407965921      1.0000 *
-#> r.l1     -0.326074295 -0.3230285824      1.0000 *
-#> y.s.l00   0.017520559  0.0202083138      1.0000 *
-#> Dp.s.l00  0.494439786  0.4972056191      1.0000 *
-#> r.s.l00   0.255632072  0.2589515581      1.0000 *
-#> poil.l00  0.000000000  0.0007549186      0.0895  
-#> const     0.008990867  0.0199584449      1.0000  
+#>                  Mean           SD     Naive SD Time-series SD         2.5%
+#> y.l1     -0.018082766 0.0008530406 1.907457e-05   0.0001627666 -0.019651136
+#> Dp.l1     0.336325555 0.0054012990 1.207767e-04   0.0050372721  0.328642304
+#> r.l1     -0.319557474 0.0020304731 4.540276e-05   0.0008218268 -0.323369147
+#> y.s.l00   0.017583284 0.0012551632 2.806630e-05   0.0006010126  0.015090769
+#> Dp.s.l00  0.496103971 0.0019806558 4.428881e-05   0.0011072086  0.492560339
+#> r.s.l00   0.250775780 0.0021279871 4.758324e-05   0.0005856553  0.244969280
+#> poil.l00  0.001255977 0.0010257625 2.293675e-05   0.0004851103  0.000000000
+#> const     0.001256351 0.0059396863 1.328154e-04   0.0014573916 -0.009922887
+#>                    50%        97.5% Incl. prob.  
+#> y.l1     -0.0181179670 -0.016344700      1.0000 *
+#> Dp.l1     0.3382274096  0.343715346      1.0000 *
+#> r.l1     -0.3197932800 -0.315388536      1.0000 *
+#> y.s.l00   0.0178234794  0.019614943      1.0000 *
+#> Dp.s.l00  0.4959530245  0.499749090      1.0000 *
+#> r.s.l00   0.2509825904  0.254296308      1.0000 *
+#> poil.l00  0.0014087348  0.003125936      0.6965  
+#> const     0.0009992238  0.013039159      1.0000  
 #> 
 #> Variable: r 
 #> 
 #>                   Mean           SD     Naive SD Time-series SD          2.5%
-#> y.l1     -0.0054109841 0.0007293710 1.630923e-05   3.001175e-04 -0.0066532199
-#> Dp.l1     0.0368694987 0.0019508814 4.362303e-05   1.046703e-03  0.0336109767
-#> r.l1      0.3641266379 0.0013350170 2.985189e-05   2.916454e-04  0.3615636527
-#> y.s.l00   0.0052837482 0.0008955179 2.002439e-05   4.362102e-04  0.0036788155
-#> Dp.s.l00 -0.0057252517 0.0051680458 1.155610e-04   8.019037e-04 -0.0139235270
-#> r.s.l00   0.6251950749 0.0018417137 4.118197e-05   8.570666e-04  0.6221452298
-#> poil.l00  0.0004307072 0.0003457561 7.731342e-06   2.838245e-05 -0.0002808666
-#> const    -0.0011115542 0.0050841289 1.136846e-04   2.681787e-03 -0.0107234763
+#> y.l1     -0.0032810060 0.0006370678 1.424527e-05   1.923248e-04 -0.0044751682
+#> Dp.l1     0.0279884894 0.0026385590 5.899997e-05   1.423746e-03  0.0237959316
+#> r.l1      0.3647050740 0.0015277470 3.416146e-05   5.773420e-04  0.3619191830
+#> y.s.l00   0.0044392065 0.0009070563 2.028239e-05   4.225386e-04  0.0029162607
+#> Dp.s.l00 -0.0024499010 0.0030499367 6.819866e-05   1.246869e-04 -0.0078308726
+#> r.s.l00   0.6202479625 0.0021087688 4.715350e-05   9.903309e-04  0.6161021684
+#> poil.l00  0.0002999074 0.0003682829 8.235057e-06   5.180298e-05 -0.0004188689
+#> const    -0.0067460960 0.0045209226 1.010909e-04   2.070617e-03 -0.0163195971
 #>                    50%        97.5% Incl. prob.  
-#> y.l1     -0.0054690030 -0.003948948       1.000 *
-#> Dp.l1     0.0364744988  0.040578940       1.000 *
-#> r.l1      0.3641025707  0.366756372       1.000 *
-#> y.s.l00   0.0052359410  0.007075227       1.000 *
-#> Dp.s.l00 -0.0071462795  0.000000000       0.581  
-#> r.s.l00   0.6248772774  0.629127765       1.000 *
-#> poil.l00  0.0004306195  0.001106149       1.000  
-#> const    -0.0006761784  0.007906557       1.000  
+#> y.l1     -0.0032817477 -0.002026807      1.0000 *
+#> Dp.l1     0.0274701481  0.033986093      1.0000 *
+#> r.l1      0.3645983966  0.367766616      1.0000 *
+#> y.s.l00   0.0043100132  0.006322045      1.0000 *
+#> Dp.s.l00  0.0000000000  0.000000000      0.4085  
+#> r.s.l00   0.6203776491  0.623632706      1.0000 *
+#> poil.l00  0.0002950692  0.001010618      1.0000  
+#> const    -0.0063937342  0.001449102      1.0000  
 #> 
 #> Variance-covariance matrix:
 #> 
 #>                Mean           SD     Naive SD Time-series SD          2.5%
-#> y_y    3.349541e-04 2.633816e-04 5.889391e-06   1.187817e-05  5.955974e-05
-#> y_Dp   7.115693e-06 5.594133e-06 1.250886e-07   2.634512e-07  1.188170e-06
-#> y_r   -1.301893e-06 1.124664e-06 2.514826e-08   6.327986e-08 -4.181726e-06
-#> Dp_Dp  9.459290e-06 4.512483e-06 1.009022e-07   3.540376e-07  4.425609e-06
-#> Dp_r  -2.272977e-08 2.807334e-08 6.277389e-10   2.616105e-09 -8.547476e-08
-#> r_r    6.919266e-08 4.505705e-08 1.007506e-09   3.703102e-09  2.063919e-08
-#>                 50%         97.5%  
-#> y_y    2.690747e-04  1.034300e-03 *
-#> y_Dp   5.709220e-06  2.104316e-05 *
-#> y_r   -9.987968e-07 -2.097002e-07 *
-#> Dp_Dp  8.421318e-06  2.074711e-05 *
-#> Dp_r  -1.814030e-08  2.035510e-08  
-#> r_r    5.765983e-08  1.908763e-07 *
+#> y_y    3.059460e-04 2.014967e-04 4.505604e-06   1.081486e-05  6.840432e-05
+#> y_Dp   7.246559e-06 4.777242e-06 1.068224e-07   2.538819e-07  1.609404e-06
+#> y_r   -5.442419e-07 6.731666e-07 1.505246e-08   1.150375e-07 -2.261781e-06
+#> Dp_Dp  8.944713e-06 4.263047e-06 9.532462e-08   3.064818e-07  4.014252e-06
+#> Dp_r   5.696958e-10 2.864179e-08 6.404499e-10   6.083622e-09 -5.144432e-08
+#> r_r    6.923222e-08 4.949806e-08 1.106810e-09   3.237385e-09  1.814776e-08
+#>                 50%        97.5%  
+#> y_y    2.630828e-04 7.905494e-04 *
+#> y_Dp   6.204455e-06 1.851055e-05 *
+#> y_r   -4.035385e-07 3.726970e-07  
+#> Dp_Dp  7.943404e-06 2.015487e-05 *
+#> Dp_r   1.446983e-10 6.062590e-08  
+#> r_r    5.836705e-08 1.831757e-07 *
 ```
 
 The table describes the last period of the estimation sample; argument `period`
@@ -330,7 +330,7 @@ residual_sd <- function(object) {
 
 round(residual_sd(model_at), 5)
 #>           y      Dp       r
-#> tvp 0.01054 0.00280 0.00057
+#> tvp 0.01060 0.00277 0.00058
 #> ls  0.01223 0.00299 0.00084
 ```
 
@@ -384,21 +384,21 @@ inclusion <- function(object) {
 lapply(object[["submodels"]], function(x) {inclusion(x[[1]])})
 #> $AT
 #>    y.01 Dp.01 r.01 y.s.l00 Dp.s.l00 r.s.l00 poil.l00 const
-#> y     1  0.64    1       1     0.91    0.74     1.00     1
-#> Dp    1  1.00    1       1     1.00    1.00     0.09     1
-#> r     1  1.00    1       1     0.58    1.00     1.00     1
+#> y     1  0.46    1       1     0.49    0.42      1.0     1
+#> Dp    1  1.00    1       1     1.00    1.00      0.7     1
+#> r     1  1.00    1       1     0.41    1.00      1.0     1
 #> 
 #> $DE
 #>    y.01 Dp.01 r.01 y.s.l00 Dp.s.l00 r.s.l00 poil.l00 const
-#> y     1  0.72    1       1        1    1.00      0.6     1
-#> Dp    1  0.00    1       1        1    0.76      1.0     1
-#> r     1  0.98    1       1        1    1.00      1.0     1
+#> y     1  0.44    1       1        1    1.00      0.2     1
+#> Dp    1  0.00    1       1        1    0.53      1.0     1
+#> r     1  1.00    1       1        1    1.00      1.0     1
 #> 
 #> $US
 #>    y.01 Dp.01 r.01 y.s.l00 Dp.s.l00 r.s.l00 poil.l00 const
-#> y     1  1.00    1       1        0       1     0.65     1
-#> Dp    1  1.00    1       1        1       1     0.00     1
-#> r     1  0.85    1       1        1       1     1.00     1
+#> y     1  1.00    0       1        0       1        1     1
+#> Dp    1  1.00    1       1        1       1        0     1
+#> r     1  0.55    1       1        1       1        1     1
 ```
 
 ### Impulse responses of a sub-model
@@ -425,39 +425,103 @@ which is not the same thing as a generalised impulse response of the global
 model: the latter lets a shock travel through the weight matrices and come back.
 That is the step the next section is about.
 
-## What cannot be done yet
+## Solving the global model period by period
 
 `submodels_to_gvar` stacks the sub-models and solves the result for its reduced
-form. It does not accept time varying or stochastic volatility sub-models:
+form. With time varying sub-models, stacking gives
+$G_t y_t = A_{1,t} y_{t-1} + \dots + u_t$, in which every matrix and the
+covariance matrix of $u_t$ belong to a period, so the reduced form needs
+$G_t^{-1}$ for every period of every draw. What comes out of that is not one
+global model but one per period: for this example 176 of them, each held in
+2000 draws.
+
+`submodels_to_gvar` does not produce all of them at once. Argument `period`
+names the period, and only the draws of that period are taken from each
+sub-model -- its coefficients and its error covariance matrix -- before they are
+stacked and solved. Nothing of the other periods is collected or stored. The
+result is an ordinary global model with constant coefficients that describes
+the economy at that date, and everything the vignette on global vector
+autoregressive models does with a solved model applies to it. A model for
+another date takes another call.
+
+`period` counts the periods of the global data, not those of a sub-model, so a
+date is mapped onto it through the time index of the global data. The same
+period also selects the weight matrices, which in this example are calculated
+from a rolling window of three years of trade and so move over time as well.
 
 
 ``` r
-submodels_to_gvar(object)
-#> Error in `submodels_to_gvar()`:
-#> ! TVP functionality not implemented yet.
-#> Feel free to send a feature request.
+times <- stats::time(object[["global"]][["endogen"]])
+dates <- c(1990, 2005, 2020)
+periods <- sapply(dates, function(x) {which.min(abs(times - x))})
+
+gvar <- lapply(periods, function(x) {submodels_to_gvar(object, period = x)})
+names(gvar) <- dates
 ```
 
-The obstacle is not only bookkeeping. Stacking gives
-$G_t y_t = A_{1,t} y_{t-1} + \dots + u_t$, and the reduced form needs
-$G_t^{-1}$ for every period of every draw. The solved global model of this
-example would be one such inverse for 176 periods and 2000 draws, and the
-coefficients that come out of it are a matrix per period per draw rather than a
-vector per draw. Generalised impulse responses of a global model with time
-varying parameters are a well defined object, but they are one per period, and
-the representation the rest of the package works on does not hold them yet.
+Each element is a global model of its own, and the three differ in their
+contemporaneous matrices, their coefficients and their error covariance
+matrices.
 
-Until it does, a global model is solved from sub-models with constant
-coefficients and a constant error covariance matrix, as in the vignette on
-global vector autoregressive models, and time varying sub-models are used for
-what this vignette shows: the paths of the coefficients and of the volatilities
-of each country separately.
 
-Estimating them is not subject to that limit. `write_to_hdf5` exports time
-varying and stochastic volatility sub-models like any other, BayesTS estimates
-them, and `choose_best_model_from_hdf5` ranks them, by WAIC or LOOIC, against
-each other and against constant coefficient sub-models. It is only the step
-from the estimated sub-models to a solved global model that is closed.
+``` r
+sapply(gvar, function(x) {x[["model"]][["k"]]})
+#> 1990 2005 2020 
+#>    9    9    9
+```
+
+The coefficients and volatilities of a sub-model exist only for its estimation
+sample, which starts later than the global data because the lags need
+observations of their own. A period before that is refused rather than filled
+in:
+
+
+``` r
+submodels_to_gvar(object, period = 1)
+#> Error in `.submodel_at_period()`:
+#> ! Sub-model AT has time varying parameters or stochastic volatility, which are only available for its estimation sample from 1979.5 to 2023.5, so the model cannot be solved at 1979.25.
+```
+
+### Generalised impulse responses at different dates
+
+Generalised impulse responses are then obtained for each solved model in turn.
+
+
+``` r
+girf <- lapply(gvar, irf, impulse = "US_r", response = "AT_y",
+               n_ahead = 12, type = "gir", shock = "sd")
+
+medians <- sapply(girf, function(x) {x[, 2]})
+matplot(0:12, medians, type = "l", lty = 1, lwd = 2,
+        col = grDevices::hcl.colors(length(dates), "Zissou 1"),
+        xlab = "Quarter", ylab = "",
+        main = "Austria: output response to the US interest rate")
+abline(h = 0, col = "grey")
+legend("topright", legend = dates, lty = 1, lwd = 2, bty = "n",
+       col = grDevices::hcl.colors(length(dates), "Zissou 1"))
+```
+
+<div class="figure" style="text-align: center">
+<img src="figures/TVP-SV-GVAR-girf-1.png" alt="plot of chunk girf"  />
+<p class="caption">plot of chunk girf</p>
+</div>
+
+The figure shows the posterior medians; `plot(girf[["2005"]])` draws one of
+them with its credible band. Two things change between the lines, and they
+should be kept apart when reading them. `shock = "sd"` scales the shock to one
+standard deviation of the US interest rate residual *in that period*, and under
+stochastic volatility that standard deviation is itself a function of the date.
+A difference between the lines is therefore partly a difference in the size of
+the shock and only partly a difference in how it is transmitted -- through the
+coefficients of the sub-models and through the weight matrices of that period.
+A shock of fixed size, given as a number in `shock`, isolates the second part.
+
+Estimating the sub-models outside R changes nothing about this.
+`write_to_hdf5` exports time varying and stochastic volatility sub-models like
+any other, BayesTS estimates them, `choose_best_model_from_hdf5` ranks them, by
+WAIC or LOOIC, against each other and against constant coefficient sub-models,
+and `read_gvar_from_folder` brings them back to be solved period by period in
+the same way.
 
 ## References
 

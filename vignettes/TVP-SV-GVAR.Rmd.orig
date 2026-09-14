@@ -29,8 +29,8 @@ The vignette on time varying parameters and stochastic volatility in
 `bvartools` sets out the model equations and what each prior does. This one
 covers what is specific to a global model: how the specification is applied to
 every sub-model at once, what the sub-models look like afterwards, and -- at
-the end -- where the road currently stops, because a global model cannot yet be
-solved from time varying or stochastic volatility sub-models.
+the end -- how a global model is solved from time varying or stochastic
+volatility sub-models, which is one period at a time.
 
 The reason for wanting these models on this data set is the sample. It runs to
 2023Q3 and therefore contains the global financial crisis and the pandemic, two
@@ -287,35 +287,90 @@ which is not the same thing as a generalised impulse response of the global
 model: the latter lets a shock travel through the weight matrices and come back.
 That is the step the next section is about.
 
-## What cannot be done yet
+## Solving the global model period by period
 
 `submodels_to_gvar` stacks the sub-models and solves the result for its reduced
-form. It does not accept time varying or stochastic volatility sub-models:
+form. With time varying sub-models, stacking gives
+$G_t y_t = A_{1,t} y_{t-1} + \dots + u_t$, in which every matrix and the
+covariance matrix of $u_t$ belong to a period, so the reduced form needs
+$G_t^{-1}$ for every period of every draw. What comes out of that is not one
+global model but one per period: for this example 176 of them, each held in
+2000 draws.
 
-```{r, error=TRUE}
-submodels_to_gvar(object)
+`submodels_to_gvar` does not produce all of them at once. Argument `period`
+names the period, and only the draws of that period are taken from each
+sub-model -- its coefficients and its error covariance matrix -- before they are
+stacked and solved. Nothing of the other periods is collected or stored. The
+result is an ordinary global model with constant coefficients that describes
+the economy at that date, and everything the vignette on global vector
+autoregressive models does with a solved model applies to it. A model for
+another date takes another call.
+
+`period` counts the periods of the global data, not those of a sub-model, so a
+date is mapped onto it through the time index of the global data. The same
+period also selects the weight matrices, which in this example are calculated
+from a rolling window of three years of trade and so move over time as well.
+
+```{r solve, message=FALSE, results='hide'}
+times <- stats::time(object[["global"]][["endogen"]])
+dates <- c(1990, 2005, 2020)
+periods <- sapply(dates, function(x) {which.min(abs(times - x))})
+
+gvar <- lapply(periods, function(x) {submodels_to_gvar(object, period = x)})
+names(gvar) <- dates
 ```
 
-The obstacle is not only bookkeeping. Stacking gives
-$G_t y_t = A_{1,t} y_{t-1} + \dots + u_t$, and the reduced form needs
-$G_t^{-1}$ for every period of every draw. The solved global model of this
-example would be one such inverse for 176 periods and 2000 draws, and the
-coefficients that come out of it are a matrix per period per draw rather than a
-vector per draw. Generalised impulse responses of a global model with time
-varying parameters are a well defined object, but they are one per period, and
-the representation the rest of the package works on does not hold them yet.
+Each element is a global model of its own, and the three differ in their
+contemporaneous matrices, their coefficients and their error covariance
+matrices.
 
-Until it does, a global model is solved from sub-models with constant
-coefficients and a constant error covariance matrix, as in the vignette on
-global vector autoregressive models, and time varying sub-models are used for
-what this vignette shows: the paths of the coefficients and of the volatilities
-of each country separately.
+```{r}
+sapply(gvar, function(x) {x[["model"]][["k"]]})
+```
 
-Estimating them is not subject to that limit. `write_to_hdf5` exports time
-varying and stochastic volatility sub-models like any other, BayesTS estimates
-them, and `choose_best_model_from_hdf5` ranks them, by WAIC or LOOIC, against
-each other and against constant coefficient sub-models. It is only the step
-from the estimated sub-models to a solved global model that is closed.
+The coefficients and volatilities of a sub-model exist only for its estimation
+sample, which starts later than the global data because the lags need
+observations of their own. A period before that is refused rather than filled
+in:
+
+```{r, error=TRUE}
+submodels_to_gvar(object, period = 1)
+```
+
+### Generalised impulse responses at different dates
+
+Generalised impulse responses are then obtained for each solved model in turn.
+
+```{r girf, fig.align='center', fig.height=4, fig.width=5.5}
+girf <- lapply(gvar, irf, impulse = "US_r", response = "AT_y",
+               n_ahead = 12, type = "gir", shock = "sd")
+
+medians <- sapply(girf, function(x) {x[, 2]})
+matplot(0:12, medians, type = "l", lty = 1, lwd = 2,
+        col = grDevices::hcl.colors(length(dates), "Zissou 1"),
+        xlab = "Quarter", ylab = "",
+        main = "Austria: output response to the US interest rate")
+abline(h = 0, col = "grey")
+legend("topright", legend = dates, lty = 1, lwd = 2, bty = "n",
+       col = grDevices::hcl.colors(length(dates), "Zissou 1"))
+```
+
+The figure shows the posterior medians; `plot(girf[["2005"]])` draws one of
+them with its credible band. Two things change between the lines, and they
+should be kept apart when reading them. `shock = "sd"` scales the shock to one
+standard deviation of the US interest rate residual *in that period*, and under
+stochastic volatility that standard deviation is itself a function of the date.
+A difference between the lines is therefore partly a difference in the size of
+the shock and only partly a difference in how it is transmitted -- through the
+coefficients of the sub-models and through the weight matrices of that period.
+A shock of fixed size, given as a number in `shock`, isolates the second part.
+
+Estimating the sub-models outside R changes nothing about this.
+`write_to_hdf5` exports time varying and stochastic volatility sub-models like
+any other, BayesTS estimates them, `choose_best_model_from_hdf5` ranks them, by
+WAIC or LOOIC, against each other and against constant coefficient sub-models,
+and `read_gvar_from_folder` brings them back to be solved period by period in
+the same way.
 
 ## References
 
