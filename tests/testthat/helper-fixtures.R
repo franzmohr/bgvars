@@ -58,14 +58,14 @@ gvec_object <- function(submodels = c("US", "JP", "CA")) {
 
 # A fully estimated 'gvarmodel' object. Deliberately tiny: two endogenous
 # variables, no lags of weakly exogenous variables and 50 draws.
-gvar_estimated <- function(iterations = 50, burnin = 10, p_endogen = 1) {
+gvar_estimated <- function(iterations = 50, burnin = 10, p_endogen = 1, thin = 1) {
   object <- gvar_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = p_endogen,
                           exogen = c("y", "Dp"), p_exogen = 1,
                           global = "poil", s = 1,
                           deterministic = "const",
-                          iterations = iterations, burnin = burnin)
+                          iterations = iterations, burnin = burnin, thin = thin)
   object <- add_priors(object,
                        coef = list(v_i = 1),
                        sigma = list(df = 3, scale = 1e-8))
@@ -76,13 +76,13 @@ gvar_estimated <- function(iterations = 50, burnin = 10, p_endogen = 1) {
 # A fully estimated 'gvecmodel' object.
 #
 # Note that no global variables are used.
-gvec_estimated <- function(iterations = 50, burnin = 10, r = 1) {
+gvec_estimated <- function(iterations = 50, burnin = 10, r = 1, thin = 1) {
   object <- gvec_object()
   object <- add_submodels(object,
                           endogen = c("y", "Dp"), p_endogen = 1,
                           exogen = c("y", "Dp"), p_exogen = 2,
                           const = "unrestricted", trend = "restricted", r = r,
-                          iterations = iterations, burnin = burnin)
+                          iterations = iterations, burnin = burnin, thin = thin)
   object <- add_priors(object,
                        coef = list(v_i = 0),
                        coint = list(v_i = 0, p_tau_i = 1),
