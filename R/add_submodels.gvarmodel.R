@@ -36,6 +36,10 @@
 #' @param burnin an integer of MCMC draws used to initialize the sampler
 #' (defaults to 2000). These draws do not enter the computation of posterior
 #' moments, forecasts etc.
+#' @param thin an integer thinning interval of the sampler (defaults to 1). After
+#' the burn-in the sampler keeps the last of every \code{thin} draws, so it runs
+#' \code{burnin + iterations * thin} draws and still keeps \code{iterations}.
+#' See \code{\link{create_varxsubmodel}}.
 #' @param ... further arguments passed to or from other methods.
 #'
 #' @examples
@@ -84,6 +88,7 @@ add_submodels.gvarmodel <- function(object,
                                     varsel = "none",
                                     iterations = 10000,
                                     burnin = 2000,
+                                    thin = 1,
                                     ...){
   
   submodels <- unique(object[["global"]][["index"]][, "submodel"])
@@ -97,7 +102,8 @@ add_submodels.gvarmodel <- function(object,
                                                       seasonal = seasonal,
                                                       structural = structural,
                                                       tvp = tvp, error = error, varsel = varsel,
-                                                      iterations = iterations, burnin = burnin)
+                                                      iterations = iterations, burnin = burnin,
+                                                      thin = thin)
   }
   
   
