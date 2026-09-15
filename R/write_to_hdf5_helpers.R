@@ -124,6 +124,10 @@
         error = field(specs, "error", "character"),
         iterations = field(specs, "iterations", "integer"),
         burnin = field(specs, "burnin", "integer"),
+        # A model that keeps every draw carries no 'thin', so that is one rather
+        # than missing: NA would read like an export from before the manifest
+        # recorded thinning.
+        thin = if (is.null(specs[["thin"]])) 1L else field(specs, "thin", "integer"),
         stringsAsFactors = FALSE
       )
     }

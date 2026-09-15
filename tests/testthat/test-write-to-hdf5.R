@@ -96,6 +96,8 @@ test_that("the manifest describes every sub-model file that was written", {
   expect_true(all(manifest[, "type"] == "VARX"))
   expect_setequal(manifest[manifest[, "submodel"] == "US", "p_endogen"], 1:2)
   expect_true(all(manifest[, "iterations"] == 20))
+  # A model that keeps every draw is recorded with a thinning interval of one.
+  expect_true(all(manifest[, "thin"] == 1L))
   # A VARX has no cointegration rank.
   expect_true(all(is.na(manifest[, "rank"])))
 })
@@ -116,6 +118,24 @@ test_that("the manifest records the cointegration rank of a GVEC model", {
   expect_true(all(manifest[, "type"] == "VECX"))
   expect_setequal(manifest[manifest[, "submodel"] == "US", "rank"], 0:1)
   expect_equal(hdf5r::h5attr(h5, "rclass"), class(object))
+})
+
+test_that("the manifest records the thinning interval of the sampler", {
+  skip_if_not_installed("hdf5r")
+
+  object <- gvec_estimated(iterations = 10, burnin = 5, thin = 3)
+
+  folder <- export_folder("bgvars-thin-export")
+  on.exit(unlink(folder, recursive = TRUE), add = TRUE)
+  write_to_hdf5(object, folder = folder)
+
+  h5 <- hdf5r::h5file(file.path(folder, "model.h5"), mode = "r")
+  on.exit(h5$close_all(), add = TRUE)
+  manifest <- h5[["submodels"]]$read()
+
+  expect_true(all(manifest[, "thin"] == 3L))
+  # 'iterations' stays the number of draws kept.
+  expect_true(all(manifest[, "iterations"] == 10L))
 })
 
 test_that("a sub-model file carries the model, its data and its priors", {
