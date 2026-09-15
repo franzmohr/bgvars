@@ -20,7 +20,8 @@ create_varxsubmodel(
   error = "wishart",
   varsel = "none",
   iterations = 10000,
-  burnin = 2000
+  burnin = 2000,
+  thin = 1
 )
 }
 \arguments{
@@ -76,6 +77,13 @@ to 10000).}
 \item{burnin}{an integer of MCMC draws used to initialize the sampler
 (defaults to 2000). These draws do not enter the computation of posterior
 moments, forecasts etc.}
+
+\item{thin}{an integer thinning interval of the sampler (defaults to 1). After
+the burn-in the sampler keeps the last of every \code{thin} draws, so it runs
+\code{burnin + iterations * thin} draws and still keeps \code{iterations}.
+Unlike \code{\link[bvartools]{thin}}, which thins draws already made, the
+draws that are not kept are never held in memory, which is what lets long
+chains of time varying sub-models fit into it.}
 }
 \value{
 An object of class 'modellist', which contains at least one element

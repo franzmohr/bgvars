@@ -39,7 +39,13 @@
 #' @param burnin an integer of MCMC draws used to initialize the sampler
 #' (defaults to 2000). These draws do not enter the computation of posterior
 #' moments, forecasts etc.
-#' 
+#' @param thin an integer thinning interval of the sampler (defaults to 1). After
+#' the burn-in the sampler keeps the last of every \code{thin} draws, so it runs
+#' \code{burnin + iterations * thin} draws and still keeps \code{iterations}.
+#' Unlike \code{\link[bvartools]{thin}}, which thins draws already made, the
+#' draws that are not kept are never held in memory, which is what lets long
+#' chains of time varying sub-models fit into it.
+#'
 #' @details
 #' 
 #' If an integer vector is provided as argument \code{p_endogen}, \code{p_exogen}
@@ -123,7 +129,8 @@ create_varxsubmodel <- function(object,
                                 error = "wishart",
                                 varsel = "none",
                                 iterations = 10000,
-                                burnin = 2000){
+                                burnin = 2000,
+                                thin = 1){
   
   if (length(submodel) > 1) {
     stop("Argument 'submodel' may only contain one element.")
@@ -444,6 +451,9 @@ create_varxsubmodel <- function(object,
   # Iterations and burnin ----
   model[["iterations"]] <- as.integer(iterations)
   model[["burnin"]] <- as.integer(burnin)
+  # Carried only when it thins, as bvartools does for its own models, whose
+  # samplers and labels of the kept draws read it from here.
+  model[["thin"]] <- .check_sampler_thin(thin)
   
   # Endogenous variables y
   y <- stats::ts(as.matrix(temp[, 1:n_endogen]), class = c("mts", "ts", "matrix"))

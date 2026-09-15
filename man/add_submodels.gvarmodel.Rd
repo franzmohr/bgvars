@@ -20,6 +20,7 @@
   varsel = "none",
   iterations = 10000,
   burnin = 2000,
+  thin = 1,
   ...
 )
 }
@@ -72,6 +73,11 @@ to 10000).}
 \item{burnin}{an integer of MCMC draws used to initialize the sampler
 (defaults to 2000). These draws do not enter the computation of posterior
 moments, forecasts etc.}
+
+\item{thin}{an integer thinning interval of the sampler (defaults to 1). After
+the burn-in the sampler keeps the last of every \code{thin} draws, so it runs
+\code{burnin + iterations * thin} draws and still keeps \code{iterations}.
+See \code{\link{create_varxsubmodel}}.}
 
 \item{...}{further arguments passed to or from other methods.}
 }
