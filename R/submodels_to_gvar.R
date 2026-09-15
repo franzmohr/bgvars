@@ -337,6 +337,25 @@ submodels_to_gvar <- function(object, period = NULL) {
          "Feel free to send a feature request.")
   }
   
+  # Labels of the draws. Row i of every sub-model is stacked into draw i of the
+  # global model, so the rows have to stand for the same draws of their chains.
+  # Sub-models thinned by different intervals, or kept from different stretches
+  # of their chains, would otherwise be combined without notice when they happen
+  # to keep as many draws.
+  mcpar_i <- lapply(object[["submodels"]], function(x) {
+    labels <- attr(x[[1]][["posterior"]][["u_sigma_inv"]][["coeffs"]], "mcpar")
+    if (is.null(labels)) c(1, draws, 1) else as.numeric(labels)
+  })
+  mcpar <- mcpar_i[[1]]
+  if (!all(vapply(mcpar_i, function(x) isTRUE(all.equal(x, mcpar)), logical(1)))) {
+    stop("The posterior draws of the sub-models are labelled differently, so a ",
+         "row does not stand for the same draw in all of them: ",
+         paste0(names(mcpar_i), " from ", vapply(mcpar_i, `[`, numeric(1), 1),
+                " to ", vapply(mcpar_i, `[`, numeric(1), 2), " by ",
+                vapply(mcpar_i, `[`, numeric(1), 3), collapse = ", "),
+         ". Thin the sub-models alike before solving the global model.")
+  }
+
   # Number of observations
   tt_i <- unlist(lapply(object[["submodels"]],
                         function(x){nrow(x[[1]][["data"]][["train"]][["y"]])}))
@@ -375,6 +394,11 @@ submodels_to_gvar <- function(object, period = NULL) {
   model[["structural"]] <- FALSE
   model[["iterations"]] <- as.integer(draws)
   model[["burnin"]] <- 0L
+  # Carried only when the sub-models were thinned, as bvartools does, so that
+  # what the methods of bvartools derive from the draws is labelled alike.
+  if (mcpar[3] > 1) {
+    model[["thin"]] <- as.integer(mcpar[3])
+  }
   # The name every 'bvartools' method that works on draws dispatches on. It
   # describes the three lines above rather than how any sub-model was
   # estimated: the solved global model has constant coefficients, a full error
@@ -681,15 +705,19 @@ submodels_to_gvar <- function(object, period = NULL) {
     u_sigma_inv[draw, ] <- t(g_i) %*% omega %*% g_i
   }
 
-  # Posterior
-  coeffs <- coda::mcmc(cbind(posterior[["a"]], posterior[["b"]], posterior[["c"]]))
-  u_sigma_inv <- coda::mcmc(u_sigma_inv)
+  # Posterior. The draws keep the labels of the sub-models they were stacked
+  # from.
+  as_draws <- function(x) {
+    coda::mcmc(x, start = mcpar[1], end = mcpar[2], thin = mcpar[3])
+  }
+  coeffs <- as_draws(cbind(posterior[["a"]], posterior[["b"]], posterior[["c"]]))
+  u_sigma_inv <- as_draws(u_sigma_inv)
 
   result <- list("model" = model,
                  "data" = data,
                  "posterior" = list("a" = list("coeffs" = coeffs),
                                     "u_sigma_inv" = list("coeffs" = u_sigma_inv)),
-                 "g" = coda::mcmc(posterior[["a0"]]))
+                 "g" = as_draws(posterior[["a0"]]))
 
   class(result) <- list("bvarmodel", "list")
   return(result)
@@ -719,6 +747,16 @@ submodels_to_gvar <- function(object, period = NULL) {
     return(model)
   }
 
+  # The block of a period keeps the labels of the draws it is cut from, so that
+  # a thinned chain still says which draws it kept.
+  keep_labels <- function(block, draws) {
+    labels <- attr(draws, "mcpar")
+    if (is.null(labels)) {
+      return(coda::mcmc(block))
+    }
+    coda::mcmc(block, start = labels[1], end = labels[2], thin = labels[3])
+  }
+
   tsp_y <- stats::tsp(y)
   pos <- round((time - tsp_y[1]) * tsp_y[3]) + 1
   if (pos < 1 || pos > tt) {
@@ -734,18 +772,18 @@ submodels_to_gvar <- function(object, period = NULL) {
       stop("The coefficient draws of sub-model ", submodel, " do not divide ",
            "into ", tt, " periods.")
     }
-    model[["posterior"]][["a"]] <- list("coeffs" = coda::mcmc(a[, (pos - 1) * n_a + 1:n_a, drop = FALSE]))
+    model[["posterior"]][["a"]] <- list("coeffs" = keep_labels(a[, (pos - 1) * n_a + 1:n_a, drop = FALSE], a))
     beta <- model[["posterior"]][["beta"]][["coeffs"]]
     if (!is.null(beta)) {
       n_beta <- ncol(beta) / tt
-      model[["posterior"]][["beta"]] <- list("coeffs" = coda::mcmc(beta[, (pos - 1) * n_beta + 1:n_beta, drop = FALSE]))
+      model[["posterior"]][["beta"]] <- list("coeffs" = keep_labels(beta[, (pos - 1) * n_beta + 1:n_beta, drop = FALSE], beta))
     }
     model[["posterior"]][["psi"]] <- NULL
     model[["model"]][["tvp"]] <- FALSE
   }
 
   if (sv) {
-    model[["posterior"]][["u_sigma_inv"]] <- list("coeffs" = coda::mcmc(u_sigma_inv[, (pos - 1) * kk + 1:kk, drop = FALSE]))
+    model[["posterior"]][["u_sigma_inv"]] <- list("coeffs" = keep_labels(u_sigma_inv[, (pos - 1) * kk + 1:kk, drop = FALSE], u_sigma_inv))
     model[["posterior"]][["u_omega_inv"]] <- NULL
     model[["model"]][["error"]] <- sub("sv", "gamma", model[["model"]][["error"]], fixed = TRUE)
   }
