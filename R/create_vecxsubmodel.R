@@ -60,7 +60,13 @@
 #' @param burnin an integer of MCMC draws used to initialize the sampler
 #' (defaults to 2000). These draws do not enter the computation of posterior
 #' moments, forecasts etc.
-#' 
+#' @param thin an integer thinning interval of the sampler (defaults to 1). After
+#' the burn-in the sampler keeps the last of every \code{thin} draws, so it runs
+#' \code{burnin + iterations * thin} draws and still keeps \code{iterations}.
+#' Unlike \code{\link[bvartools]{thin}}, which thins draws already made, the
+#' draws that are not kept are never held in memory, which is what lets long
+#' chains of time varying sub-models fit into it.
+#'
 #' @details
 #' 
 #' If an integer vector is provided as argument \code{p_endogen}, \code{p_exogen},
@@ -150,8 +156,9 @@ create_vecxsubmodel <- function(object,
                                 varsel = "none",
                                 algorithm = NULL,
                                 iterations = 10000,
-                                burnin = 2000){
-  
+                                burnin = 2000,
+                                thin = 1){
+
   if (length(submodel) > 1) {
     stop("Argument 'submodel' may only contain one element.")
   }
@@ -586,6 +593,9 @@ create_vecxsubmodel <- function(object,
   # Iterations and burnin ----
   model[["iterations"]] <- as.integer(iterations)
   model[["burnin"]] <- as.integer(burnin)
+  # Carried only when it thins, as bvartools does for its own models, whose
+  # samplers and labels of the kept draws read it from here.
+  model[["thin"]] <- .check_sampler_thin(thin)
   
   
   ect <- stats::ts(as.matrix(ect), class = c("mts", "ts", "matrix"))
@@ -702,7 +712,21 @@ create_vecxsubmodel <- function(object,
   }
   
   
-  class(result) <- c("modellist", "list") 
-  
+  class(result) <- c("modellist", "list")
+
   return(result)
+}
+
+# The thinning interval a sub-model's sampler keeps one draw in, validated as
+# bvartools validates it for its own models: NULL for one, which is how a model
+# that keeps every draw says so, and an integer otherwise.
+.check_sampler_thin <- function(thin) {
+  if (!is.numeric(thin) || length(thin) != 1 || is.na(thin) ||
+      thin < 1 || thin != round(thin)) {
+    stop("Argument 'thin' must be a single positive integer.")
+  }
+  if (thin == 1) {
+    return(NULL)
+  }
+  as.integer(thin)
 }
