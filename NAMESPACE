@@ -10,6 +10,8 @@ S3method(add_priors,gvarmodel)
 S3method(add_priors,gvecmodel)
 S3method(add_priors,varxsubmodel)
 S3method(add_priors,vecxsubmodel)
+S3method(add_seed,gvarmodel)
+S3method(add_seed,gvecmodel)
 S3method(add_submodels,gvarmodel)
 S3method(add_submodels,gvecmodel)
 S3method(align_model_obs,gvarmodel)
@@ -54,6 +56,7 @@ importFrom(bvartools,
   add_posterior_forecasts,
   add_posterior_loglik,
   add_priors,
+  add_seed,
   align_model_obs,
   choose_best_model,
   get_model_specifications,

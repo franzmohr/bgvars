@@ -7,6 +7,7 @@
 #' @importFrom bvartools add_posterior_forecasts
 #' @importFrom bvartools add_posterior_loglik
 #' @importFrom bvartools add_priors
+#' @importFrom bvartools add_seed
 #' @importFrom bvartools align_model_obs
 #' @importFrom bvartools choose_best_model
 #' @importFrom bvartools get_model_specifications

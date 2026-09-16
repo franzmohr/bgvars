@@ -87,6 +87,10 @@ test_that("posterior simulation leaves the model set-up untouched", {
   object <- add_posterior_coefficients(object)
   after <- object[["submodels"]][["US"]][[1]]
 
+  # add_initial_values() adds the seed of the simulation to the specification,
+  # and nothing else changes it.
+  expect_type(after[["model"]][["seed"]], "integer")
+  after[["model"]][["seed"]] <- NULL
   expect_equal(after[["model"]], before[["model"]])
   expect_equal(after[["data"]], before[["data"]])
 })
