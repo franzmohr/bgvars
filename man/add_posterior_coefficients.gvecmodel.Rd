@@ -4,7 +4,7 @@
 \alias{add_posterior_coefficients.gvecmodel}
 \title{Posterior Simulation of Model Coefficients}
 \usage{
-\method{add_posterior_coefficients}{gvecmodel}(object, ...)
+\method{add_posterior_coefficients}{gvecmodel}(object, ..., cores = 1)
 }
 \arguments{
 \item{object}{an object of class 'gvecmodel', usually, a result of a
@@ -12,6 +12,12 @@ call to \code{\link{create_gvecmodel}} in combination with
 \code{\link[bvartools]{add_priors}} and \code{\link[bvartools]{add_initial_values}}.}
 
 \item{...}{further arguments passed to or from other methods.}
+
+\item{cores}{the number of worker processes the models are simulated on.
+With more than one, all models of all sub-models are shared out over one
+cluster, as \code{\link[bvartools]{add_posterior_coefficients}} does for a
+'modellist'. The draws do not depend on the number of workers, since every
+model draws with its own seed (see \code{\link[=add_seed.gvarmodel]{add_seed}}).}
 }
 \value{
 A list of class 'gvecmodel'.

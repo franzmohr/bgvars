@@ -33,29 +33,9 @@ add_seed.gvecmodel <- function(object, seed, ...) {
   .add_seed_to_submodels(object, seed, ...)
 }
 
-# The models of all sub-models as one 'modellist', so that bvartools numbers and
-# checks the seeds, and then back where they came from, with the classes of the
-# sub-model lists left as they were.
+# All models at once, so that bvartools numbers and checks the seeds.
 .add_seed_to_submodels <- function(object, seed, ...) {
-  submodels <- object[["submodels"]]
-  sizes <- vapply(submodels, length, integer(1))
-
-  flat <- unlist(lapply(submodels, unclass), recursive = FALSE, use.names = FALSE)
-  if (is.null(flat)) {
-    flat <- list()
-  }
-  class(flat) <- c("modellist", "list")
-  flat <- bvartools::add_seed(flat, seed, ...)
-
-  before <- cumsum(sizes) - sizes
-  for (s in seq_along(submodels)) {
-    models <- submodels[[s]]
-    for (p in seq_len(sizes[s])) {
-      models[[p]] <- flat[[before[s] + p]]
-    }
-    submodels[[s]] <- models
-  }
-
-  object[["submodels"]] <- submodels
-  object
+  flat <- .submodel_models(object)
+  models <- bvartools::add_seed(flat[["models"]], seed, ...)
+  .set_submodel_models(object, models, flat[["sizes"]])
 }

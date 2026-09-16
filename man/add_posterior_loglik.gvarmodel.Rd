@@ -4,12 +4,17 @@
 \alias{add_posterior_loglik.gvarmodel}
 \title{Add Log-Likelihood}
 \usage{
-\method{add_posterior_loglik}{gvarmodel}(object, ...)
+\method{add_posterior_loglik}{gvarmodel}(object, ..., cores = 1)
 }
 \arguments{
 \item{object}{an object of class 'gvarmodel'.}
 
 \item{...}{further arguments passed to or from other methods.}
+
+\item{cores}{the number of worker processes the log-likelihoods are
+computed on. With more than one, all models of all sub-models are shared out
+over one cluster, as \code{\link[bvartools]{add_posterior_loglik}} does for
+a 'modellist'.}
 }
 \value{
 A list of class 'gvarmodel'.
