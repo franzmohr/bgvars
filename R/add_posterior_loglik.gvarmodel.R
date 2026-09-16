@@ -5,17 +5,17 @@
 #'
 #' @param object an object of class 'gvarmodel'.
 #' @param ... further arguments passed to or from other methods.
+#' @param cores the number of worker processes the log-likelihoods are
+#' computed on. With more than one, all models of all sub-models are shared out
+#' over one cluster, as \code{\link[bvartools]{add_posterior_loglik}} does for
+#' a 'modellist'.
 #' 
 #' @return A list of class 'gvarmodel'.
 #' 
 #' 
 #' @export
 #' @method add_posterior_loglik gvarmodel
-add_posterior_loglik.gvarmodel <- function(object, ...){
+add_posterior_loglik.gvarmodel <- function(object, ..., cores = 1){
   
-  for (i in 1:length(object[["submodels"]])) {
-    object[["submodels"]][[i]] <- add_posterior_loglik(object[["submodels"]][[i]], ...)
-  }
-  
-  return(object)
+  .apply_to_submodel_models(object, add_posterior_loglik, ..., cores = cores)
 }

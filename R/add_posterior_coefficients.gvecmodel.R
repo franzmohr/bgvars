@@ -7,6 +7,11 @@
 #' call to \code{\link{create_gvecmodel}} in combination with
 #' \code{\link[bvartools]{add_priors}} and \code{\link[bvartools]{add_initial_values}}.
 #' @param ... further arguments passed to or from other methods.
+#' @param cores the number of worker processes the models are simulated on.
+#' With more than one, all models of all sub-models are shared out over one
+#' cluster, as \code{\link[bvartools]{add_posterior_coefficients}} does for a
+#' 'modellist'. The draws do not depend on the number of workers, since every
+#' model draws with its own seed (see \code{\link[=add_seed.gvarmodel]{add_seed}}).
 #'
 #' @details
 #' Every sub-model is simulated on the error correction term it carries. The
@@ -30,7 +35,7 @@
 #'
 #' @export
 #' @method add_posterior_coefficients gvecmodel
-add_posterior_coefficients.gvecmodel <- function(object, ...){
+add_posterior_coefficients.gvecmodel <- function(object, ..., cores = 1){
 
   # The argument used to switch an implicit scaling on and off. Passed on
   # through '...' it would be ignored by the samplers without a word, and a
@@ -42,12 +47,5 @@ add_posterior_coefficients.gvecmodel <- function(object, ...){
          "to simulate on scaled error correction terms.")
   }
 
-  object[["submodels"]] <- lapply(object[["submodels"]], function(models) {
-    model_class <- class(models)
-    models <- lapply(models, add_posterior_coefficients, ...)
-    class(models) <- model_class
-    models
-  })
-
-  return(object)
+  .apply_to_submodel_models(object, add_posterior_coefficients, ..., cores = cores)
 }

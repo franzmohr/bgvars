@@ -6,15 +6,17 @@
 #' call to \code{\link{create_gvarmodel}} in combination with
 #' \code{\link[bvartools]{add_priors}} and \code{\link[bvartools]{add_initial_values}}.
 #' @param ... further arguments passed to or from other methods.
+#' @param cores the number of worker processes the models are simulated on.
+#' With more than one, all models of all sub-models are shared out over one
+#' cluster, as \code{\link[bvartools]{add_posterior_coefficients}} does for a
+#' 'modellist'. The draws do not depend on the number of workers, since every
+#' model draws with its own seed (see \code{\link[=add_seed.gvarmodel]{add_seed}}).
 #' 
 #' @return A list of class 'gvarmodel'.
 #' 
 #' 
 #' @export
 #' @method add_posterior_coefficients gvarmodel
-add_posterior_coefficients.gvarmodel <- function(object, ...){
-  
-  object[["submodels"]] <- lapply(object[["submodels"]], add_posterior_coefficients, ...)
-  
-  return(object)
+add_posterior_coefficients.gvarmodel <- function(object, ..., cores = 1){
+  .apply_to_submodel_models(object, add_posterior_coefficients, ..., cores = cores)
 }
