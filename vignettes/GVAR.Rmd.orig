@@ -107,23 +107,16 @@ object <- add_initial_values(object)
 
 ### Posterior simulation
 
-#### Use `bvartools`' functions
+The draws are what makes a global model large. A sub-model with time varying
+coefficients keeps a path per draw, a few hundred megabytes at a realistic
+chain, so a model of thirty of them needs tens of gigabytes if its draws are
+held in one session. They need not be: the sub-models of a global model are
+independent of one another given the weight matrices, and the package works
+through the export in a folder, one model at a time.
 
-The sub-models can be estimated inside R. `add_posterior_loglik` adds the draws
-of the log-likelihood, from which the selection criteria below are calculated.
-
-```{r, eval = TRUE, message=FALSE, results='hide'}
-object <- add_posterior_coefficients(object)
-object <- add_posterior_loglik(object)
-```
-
-#### BayesTS
-
-Given the weight matrices, the sub-models of a global model are independent of
-one another, which makes it possible to estimate them outside R.
-`write_to_hdf5` exports the model to a folder, one HDF5 file per sub-model
-beside a `model.h5` holding the global data, the weight matrices and a table
-describing every sub-model file.
+`write_to_hdf5` writes the model -- global data, weight matrices, a table
+describing every sub-model file, and one HDF5 file per model, priors and
+starting values included.
 
 ```{r export, eval = TRUE}
 folder <- file.path(tempdir(), "gvar")
@@ -132,16 +125,87 @@ dir.create(folder, showWarnings = FALSE)
 write_to_hdf5(object, folder = folder, overwrite = TRUE)
 ```
 
-[BayesTS](https://github.com/franzmohr/BayesTS) is then pointed at the folder of
+`open_export` returns a handle to that folder. It carries the table, not the
+models.
+
+```{r open-export, eval = TRUE}
+export <- open_export(folder)
+
+export
+```
+
+The steps of the estimation are the same functions as for a model in memory.
+Each of them reads a model, changes it, writes it back and drops it, so what a
+step needs is one model per worker rather than the whole global model.
+
+```{r estimate-export, eval = TRUE, message=FALSE, results='hide'}
+export <- add_seed(export, 20260919)
+export <- add_posterior_coefficients(export, cores = 2)
+export <- add_posterior_loglik(export, cores = 2)
+```
+
+The models are numbered through in the order of the table, and each is drawn
+with a seed of its own, so the draws do not depend on how many workers the step
+ran on.
+
+Anything the package has no method for is a call to `map_submodels`, which is
+what those methods are:
+
+```{r map-submodels, eval = FALSE}
+export <- map_submodels(export, function(model) {
+  # ... whatever one model needs ...
+  model
+}, cores = 2)
+```
+
+#### Building a folder in batches
+
+A folder can also be filled in several goes, which is what a run does when even
+the unestimated sub-models are more than it wants to hold, or when a country is
+added to a model that is already estimated. `append = TRUE` writes the
+sub-models of an object into the folder beside the ones already there: their
+files are added, or replaced where the folder holds them already, and their rows
+are merged into the table, while the global data and the weight matrices stay as
+the first write left them.
+
+```{r append, eval = FALSE}
+submodels <- names(object[["submodels"]])
+batches <- split(submodels, rep(1:2, length.out = length(submodels)))
+
+for (i in seq_along(batches)) {
+  batch <- object
+  batch[["submodels"]] <- object[["submodels"]][batches[[i]]]
+  write_to_hdf5(batch, folder = folder, overwrite = i == 1, append = i > 1)
+  rm(batch)
+}
+```
+
+#### Estimating in memory
+
+A model small enough to hold can be estimated as an object, which is the same
+code without the folder.
+
+```{r estimate-memory, eval = FALSE}
+object <- add_posterior_coefficients(object)
+object <- add_posterior_loglik(object)
+```
+
+#### BayesTS
+
+The files of the folder are also what an external sampler works on.
+[BayesTS](https://github.com/franzmohr/BayesTS) is pointed at the folder of
 sub-models and writes the posterior draws back into the files it read.
 
 ```{bash, eval = FALSE}
 bayests posterior /path/to/gvar/submodels
 ```
 
-Either route leads to the same place: a folder of sub-model files that hold
-posterior draws. The export above was written after the sub-models were
-estimated in R, so the rest of this vignette works on it directly.
+`bvartools::bayests_posterior()` wraps the same executable as a
+`posterior_function`, so a folder can be estimated with it through
+`add_posterior_coefficients` above.
+
+Every route leads to the same place: a folder of sub-model files that hold
+posterior draws, which is what the rest of this vignette works on.
 
 ### Model selection
 

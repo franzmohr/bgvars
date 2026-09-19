@@ -9,6 +9,7 @@
   folder,
   overwrite = FALSE,
   mc.cores = .default_cores(),
+  append = FALSE,
   ...
 )
 }
@@ -29,6 +30,17 @@ Sub-models are written to separate files, so nothing is shared between the
 workers. In contrast to the rest of the package this uses a socket cluster,
 which also runs in parallel under Windows.}
 
+\item{append}{logical. If \code{TRUE}, the sub-models of \code{object} are
+written into an export that is already in \code{folder}: their files are
+added, or replaced where the folder holds them already, and their rows are
+merged into the manifest. The global data, the index and the weight matrices
+of the export are left as they are, since every batch of one global model
+describes the same ones. This is what lets a run that cannot hold all of its
+sub-models at once estimate them in batches, writing and freeing each batch
+before the next: the time varying models of a global model with many
+sub-models need tens of gigabytes together and a few per batch. Defaults to
+\code{FALSE}, which writes a fresh export.}
+
 \item{...}{further arguments passed to or from other methods.}
 }
 \value{
@@ -39,7 +51,12 @@ Exports the content of an object of class 'gvecmodel' to a dedicated folder.
 }
 \details{
 The export has the same shape as the one produced for an object of class
-'gvarmodel'. See \code{\link{write_to_hdf5.gvarmodel}}.
+'gvarmodel', and so is the way to write it: a global model is estimated one
+batch of sub-models at a time, each batch written with \code{append = TRUE}
+and dropped before the next, which keeps in memory what one batch needs
+rather than what the whole model does. See
+\code{\link{write_to_hdf5.gvarmodel}} for the loop and for what reads the
+folder afterwards.
 }
 \examples{
 

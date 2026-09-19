@@ -87,7 +87,12 @@
 # This is what the file names used to carry. Everything here is read back off
 # the model's own specification, so the manifest cannot disagree with the file
 # it points at.
-.submodel_manifest <- function(object) {
+# One row of the manifest: what a model's specification says about it, beside
+# the sub-model it belongs to and the file it is written to. The same row is
+# built when a model is written and when map_submodels() has changed one on
+# disk, so the two cannot describe a model differently.
+.manifest_row <- function(specs, submodel, file) {
+
   field <- function(specs, name, mode) {
     value <- specs[[name]]
     if (is.null(value) || length(value) != 1) {
@@ -96,40 +101,45 @@
     as.vector(value, mode = mode)
   }
 
+  data.frame(
+    submodel = submodel,
+    file = file,
+    algorithm = field(specs, "algorithm", "character"),
+    type = field(specs, "type", "character"),
+    k = field(specs, "k", "integer"),
+    p_endogen = field(specs, "p_endogen", "integer"),
+    k_exogen = field(specs, "k_exogen", "integer"),
+    p_exogen = field(specs, "p_exogen", "integer"),
+    m_global = field(specs, "m_global", "integer"),
+    s_global = field(specs, "s_global", "integer"),
+    n = field(specs, "n", "integer"),
+    # VEC models only. NA for a VARX, which has no cointegration rank.
+    rank = field(specs, "rank", "integer"),
+    varsel = field(specs, "varsel", "character"),
+    structural = field(specs, "structural", "logical"),
+    tvp = field(specs, "tvp", "logical"),
+    error = field(specs, "error", "character"),
+    iterations = field(specs, "iterations", "integer"),
+    burnin = field(specs, "burnin", "integer"),
+    # A model that keeps every draw carries no 'thin', so that is one rather
+    # than missing: NA would read like an export from before the manifest
+    # recorded thinning.
+    thin = if (is.null(specs[["thin"]])) 1L else field(specs, "thin", "integer"),
+    stringsAsFactors = FALSE
+  )
+}
+
+.submodel_manifest <- function(object) {
+
   rows <- list()
 
   for (submodel in names(object[["submodels"]])) {
     models <- object[["submodels"]][[submodel]]
 
     for (i in seq_along(models)) {
-      specs <- models[[i]][["model"]]
-
-      rows[[length(rows) + 1]] <- data.frame(
-        submodel = submodel,
-        file = .submodel_file(i = i, submodel = submodel, n = length(models)),
-        algorithm = field(specs, "algorithm", "character"),
-        type = field(specs, "type", "character"),
-        k = field(specs, "k", "integer"),
-        p_endogen = field(specs, "p_endogen", "integer"),
-        k_exogen = field(specs, "k_exogen", "integer"),
-        p_exogen = field(specs, "p_exogen", "integer"),
-        m_global = field(specs, "m_global", "integer"),
-        s_global = field(specs, "s_global", "integer"),
-        n = field(specs, "n", "integer"),
-        # VEC models only. NA for a VARX, which has no cointegration rank.
-        rank = field(specs, "rank", "integer"),
-        varsel = field(specs, "varsel", "character"),
-        structural = field(specs, "structural", "logical"),
-        tvp = field(specs, "tvp", "logical"),
-        error = field(specs, "error", "character"),
-        iterations = field(specs, "iterations", "integer"),
-        burnin = field(specs, "burnin", "integer"),
-        # A model that keeps every draw carries no 'thin', so that is one rather
-        # than missing: NA would read like an export from before the manifest
-        # recorded thinning.
-        thin = if (is.null(specs[["thin"]])) 1L else field(specs, "thin", "integer"),
-        stringsAsFactors = FALSE
-      )
+      rows[[length(rows) + 1]] <- .manifest_row(
+        models[[i]][["model"]], submodel,
+        .submodel_file(i = i, submodel = submodel, n = length(models)))
     }
   }
 
@@ -141,6 +151,42 @@
   rownames(result) <- NULL
 
   return(result)
+}
+
+# The manifest of an append: the rows on disk, without the sub-models the batch
+# brings, followed by the rows of the batch.
+#
+# A manifest read back from HDF5 comes as a data frame of the same columns, but
+# hdf5r does not promise the storage types it read them into, so the kept rows
+# are coerced to the types of the batch before the two are stacked.
+.merged_manifest <- function(model_file, manifest) {
+
+  if (!model_file$exists("submodels")) {
+    return(manifest)
+  }
+
+  existing <- as.data.frame(model_file[["submodels"]]$read(), stringsAsFactors = FALSE)
+  if (is.null(manifest)) {
+    return(existing)
+  }
+
+  missing <- setdiff(names(manifest), names(existing))
+  if (length(missing) > 0) {
+    stop("The export in this folder has no column ", paste(missing, collapse = ", "),
+         " in its manifest, so it was written by another version of the package ",
+         "and cannot be appended to.")
+  }
+
+  kept <- existing[!existing[["submodel"]] %in% manifest[["submodel"]],
+                   names(manifest), drop = FALSE]
+  for (column in names(manifest)) {
+    mode(kept[[column]]) <- mode(manifest[[column]])
+  }
+
+  result <- rbind(kept, manifest)
+  rownames(result) <- NULL
+
+  result
 }
 
 # Path of one sub-model's file, relative to the export folder.
@@ -196,7 +242,7 @@
 }
 
 .write_gvar_to_hdf5 <- function(object, folder, overwrite = FALSE,
-                                mc.cores = .default_cores()) {
+                                mc.cores = .default_cores(), append = FALSE) {
 
   if (!dir.exists(folder)) {
     stop(paste0("Folder ", folder, " does not exist."))
@@ -209,12 +255,18 @@
   # twice into the same folder -- costs nothing and leaves the first export
   # intact. bvartools::write_to_hdf5 refuses an existing file as well, and
   # finding that out on sub-model 57 of 132 is what the check up here avoids.
-  for (path in c(filename_model, path_submodels)) {
-    if (file.exists(path)) {
-      if (!overwrite) {
-        stop(paste0(path, " already exists. Use 'overwrite = TRUE' to replace it."))
+  if (append) {
+    if (!file.exists(filename_model)) {
+      stop(paste0(filename_model, " does not exist, so there is no export to append to."))
+    }
+  } else {
+    for (path in c(filename_model, path_submodels)) {
+      if (file.exists(path)) {
+        if (!overwrite) {
+          stop(paste0(path, " already exists. Use 'overwrite = TRUE' to replace it."))
+        }
+        unlink(path, recursive = TRUE)
       }
-      unlink(path, recursive = TRUE)
     }
   }
 
@@ -229,26 +281,44 @@
   # paths that do not reach that point.
   on.exit(if (model_file$is_valid) model_file$close_all(), add = TRUE)
 
-  .write_attr(model_file, "rclass", class(object))
-
-  group_global <- model_file$create_group("global")
-  for (i in c("endogen", "exogen", "deterministic")) {
-    if (!is.null(object[["global"]][[i]])) {
-      .write_series(group_global, i, object[["global"]][[i]])
-    }
-  }
-  group_global[["index"]] <- object[["global"]][["index"]]
-
-  if (!is.null(object[["weights"]])) {
-    group_weights <- model_file$create_group("weights")
-    for (i in names(object[["weights"]])) {
-      .write_compressed(group_weights, i, object[["weights"]][[i]])
-    }
-  }
-
   manifest <- .submodel_manifest(object)
-  if (!is.null(manifest)) {
-    model_file[["submodels"]] <- manifest
+
+  if (append) {
+
+    # The global data, the index and the weight matrices describe the global
+    # model rather than the batch, and every batch of one model agrees on them,
+    # so an append leaves them as the first write left them and touches the
+    # manifest alone.
+    manifest <- .merged_manifest(model_file, manifest)
+    if (!is.null(manifest)) {
+      if (model_file$exists("submodels")) {
+        model_file$link_delete("submodels")
+      }
+      model_file[["submodels"]] <- manifest
+    }
+
+  } else {
+
+    .write_attr(model_file, "rclass", class(object))
+
+    group_global <- model_file$create_group("global")
+    for (i in c("endogen", "exogen", "deterministic")) {
+      if (!is.null(object[["global"]][[i]])) {
+        .write_series(group_global, i, object[["global"]][[i]])
+      }
+    }
+    group_global[["index"]] <- object[["global"]][["index"]]
+
+    if (!is.null(object[["weights"]])) {
+      group_weights <- model_file$create_group("weights")
+      for (i in names(object[["weights"]])) {
+        .write_compressed(group_weights, i, object[["weights"]][[i]])
+      }
+    }
+
+    if (!is.null(manifest)) {
+      model_file[["submodels"]] <- manifest
+    }
   }
 
   model_file$close_all()
@@ -258,9 +328,17 @@
   # One file per model, named by position rather than by specification: the
   # manifest above says which model each file holds.
   if (!is.null(manifest)) {
-    dir.create(path_submodels)
+    dir.create(path_submodels, showWarnings = FALSE)
     for (submodel in names(object[["submodels"]])) {
-      dir.create(file.path(path_submodels, submodel))
+      # A sub-model the export already holds is replaced as a whole: its files
+      # are numbered by position, and a batch with fewer models than the one on
+      # disk would otherwise leave the surplus behind for the manifest to
+      # point at.
+      path <- file.path(path_submodels, submodel)
+      if (dir.exists(path)) {
+        unlink(path, recursive = TRUE)
+      }
+      dir.create(path)
     }
 
     # One task per sub-model, carrying only the models it writes and where they
