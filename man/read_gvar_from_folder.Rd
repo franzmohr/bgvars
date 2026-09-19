@@ -4,7 +4,7 @@
 \alias{read_gvar_from_folder}
 \title{Import a Global Model from a Folder}
 \usage{
-read_gvar_from_folder(folder, submodels = NULL)
+read_gvar_from_folder(folder, submodels = NULL, draws = NULL)
 }
 \arguments{
 \item{folder}{path to a folder holding an export, that is, a \code{model.h5}
@@ -14,6 +14,12 @@ and a \code{submodels} directory beside it.}
 \code{position}, naming the sub-models to read back and, for each, which of
 the models exported under that name to take. If \code{NULL} (default), every
 sub-model in the export is read.}
+
+\item{draws}{the draws to read, as their positions in the chain, passed to
+\code{\link[bvartools]{read_model_from_hdf5}}. Defaults to \code{NULL},
+every draw. An integer vector reads those draws of every sub-model, which is
+what lets a caller work through a long chain in pieces rather than hold it
+whole; \code{\link{submodels_to_gvar}} for an export does that.}
 }
 \value{
 An object of class 'gvarmodel' or 'gvecmodel'.
