@@ -89,7 +89,21 @@
 #'
 #' The result is the one the same models in memory give, draw for draw. The
 #' global model's own draws are held whole, which is what every method that
-#' works on them expects.
+#' works on them expects. They are the smaller half -- one square matrix per lag
+#' and draw, against a coefficient path per period and draw in every time
+#' varying sub-model -- but for a large global model they are still worth
+#' putting away: written with \code{\link[bvartools]{write_to_hdf5}} and opened
+#' with \code{\link[bvartools]{open_model}}, the impulse responses and variance
+#' decompositions of \pkg{bvartools} read them in pieces as well.
+#'
+#' \preformatted{
+#' solved <- submodels_to_gvar(export)
+#' write_to_hdf5(solved, filename = file)
+#' rm(solved)
+#'
+#' stored <- open_model(file)
+#' irf(stored, impulse = "US_r", response = "DE_y", n_ahead = 20, type = "gir")
+#' }
 #'
 #' @return An object of class 'bvarmodel', which can be analysed with the
 #' functionality of \pkg{bvartools} -- impulse responses, forecast error
