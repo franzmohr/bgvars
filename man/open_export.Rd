@@ -94,6 +94,7 @@ export
 \seealso{
 Other export:
 \code{\link{export_steps}},
-\code{\link[=map_submodels]{map_submodels()}}
+\code{\link[=map_submodels]{map_submodels()}},
+\code{\link[=submodel_directories]{submodel_directories()}}
 }
 \concept{export}

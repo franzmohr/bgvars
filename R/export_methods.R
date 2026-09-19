@@ -30,6 +30,12 @@
 #' not depend on how many workers a step runs on, nor on whether the models were
 #' estimated in one run or in several.
 #'
+#' A step takes \code{submodels}, which \code{\link{map_submodels}} understands:
+#' a character vector of the sub-models it is applied to, the rest of the export
+#' being left as it is. An estimation of many expensive models is run sub-model
+#' by sub-model that way, and one that was interrupted is picked up where it
+#' stopped.
+#'
 #' @return The object in \code{object}, with its manifest brought up to date.
 #'
 #' @examples
