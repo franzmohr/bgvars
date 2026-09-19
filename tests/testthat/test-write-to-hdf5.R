@@ -254,3 +254,95 @@ test_that("an export leaves nothing open in the files it wrote", {
     expect_equal(open_in_h5_file(path), 0, info = i)
   }
 })
+
+# --- Appending one batch of sub-models at a time -------------------------------
+#
+# A global model is written batch by batch, which is what keeps a run that
+# cannot hold every sub-model's draws from having to.
+
+append_object <- function() {
+  object <- gvar_object()
+  object <- add_submodels(object, endogen = c("y", "Dp"), p_endogen = 1,
+                          exogen = c("y", "Dp"), p_exogen = 1,
+                          deterministic = "const", iterations = 20, burnin = 5)
+  object <- add_priors(object, coef = list(v_i = 1),
+                       sigma = list(df = 3, scale = 1e-8))
+  add_seed(add_initial_values(object), 31)
+}
+
+batch_of <- function(object, submodels) {
+  object[["submodels"]] <- object[["submodels"]][submodels]
+  object
+}
+
+test_that("sub-models written in batches give the export a single write gives", {
+  object <- add_posterior_coefficients(append_object())
+  submodels <- names(object[["submodels"]])
+  expect_gte(length(submodels), 3)
+
+  whole <- file.path(tempdir(), "bgvars-append-whole")
+  batched <- file.path(tempdir(), "bgvars-append-batched")
+  for (folder in c(whole, batched)) {
+    unlink(folder, recursive = TRUE)
+    dir.create(folder, recursive = TRUE)
+  }
+
+  write_to_hdf5(object, folder = whole, overwrite = TRUE, mc.cores = 1)
+  first <- submodels[1]
+  rest <- submodels[-1]
+  write_to_hdf5(batch_of(object, first), folder = batched, overwrite = TRUE, mc.cores = 1)
+  write_to_hdf5(batch_of(object, rest), folder = batched, append = TRUE, mc.cores = 1)
+
+  manifest_of <- function(folder) {
+    h5 <- hdf5r::h5file(file.path(folder, "model.h5"), mode = "r")
+    on.exit(h5$close_all(), add = TRUE)
+    as.data.frame(h5[["submodels"]]$read(), stringsAsFactors = FALSE)
+  }
+  one <- manifest_of(whole)
+  many <- manifest_of(batched)
+  expect_setequal(many[["submodel"]], one[["submodel"]])
+  expect_identical(nrow(many), nrow(one))
+  expect_equal(many[order(many[["submodel"]]), ], one[order(one[["submodel"]]), ],
+               ignore_attr = TRUE)
+
+  # The draws of every sub-model survive the batching.
+  back <- read_gvar_from_folder(batched)
+  for (submodel in submodels) {
+    expect_equal(back[["submodels"]][[submodel]][[1]][["posterior"]][["a"]][["coeffs"]],
+                 object[["submodels"]][[submodel]][[1]][["posterior"]][["a"]][["coeffs"]])
+  }
+  # The global data and the weights come from the first batch and describe the
+  # whole model.
+  expect_equal(back[["global"]][["index"]], object[["global"]][["index"]])
+  expect_equal(names(back[["weights"]]), names(object[["weights"]]))
+})
+
+test_that("appending a sub-model that is there replaces it", {
+  object <- add_posterior_coefficients(append_object())
+  submodels <- names(object[["submodels"]])
+  folder <- file.path(tempdir(), "bgvars-append-replace")
+  unlink(folder, recursive = TRUE)
+  dir.create(folder, recursive = TRUE)
+
+  write_to_hdf5(object, folder = folder, overwrite = TRUE, mc.cores = 1)
+
+  changed <- batch_of(object, submodels[1])
+  coeffs <- changed[["submodels"]][[1]][[1]][["posterior"]][["a"]][["coeffs"]]
+  changed[["submodels"]][[1]][[1]][["posterior"]][["a"]][["coeffs"]][] <- coeffs * 0 + 1
+  write_to_hdf5(changed, folder = folder, append = TRUE, mc.cores = 1)
+
+  back <- read_gvar_from_folder(folder)
+  expect_length(back[["submodels"]], length(submodels))
+  expect_true(all(unclass(back[["submodels"]][[submodels[1]]][[1]][["posterior"]][["a"]][["coeffs"]]) == 1))
+  expect_equal(back[["submodels"]][[submodels[2]]][[1]][["posterior"]][["a"]][["coeffs"]],
+               object[["submodels"]][[submodels[2]]][[1]][["posterior"]][["a"]][["coeffs"]])
+})
+
+test_that("appending to a folder without an export is refused", {
+  object <- add_posterior_coefficients(append_object())
+  folder <- file.path(tempdir(), "bgvars-append-empty")
+  unlink(folder, recursive = TRUE)
+  dir.create(folder, recursive = TRUE)
+  expect_error(write_to_hdf5(object, folder = folder, append = TRUE, mc.cores = 1),
+               "no export to append to")
+})
