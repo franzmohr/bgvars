@@ -150,3 +150,67 @@ test_that("a model on disk is left alone when a step fails", {
   expect_equal(after[["data"]][["train"]][["y"]], before[["data"]][["train"]][["y"]])
   expect_false(file.exists(paste0(file, ".writing")))
 })
+
+# --- Solving from the export ------------------------------------------------------
+#
+# A global model stacked from pieces of the chain has to be the model stacked
+# from the whole of it, draw for draw.
+
+solved_pair <- function(type, chunk) {
+  object <- export_model(type)
+  export <- written_export(object, paste0("solve-", type, "-", chunk))
+
+  in_memory <- export_priors(object, type)
+  in_memory <- add_seed(add_initial_values(in_memory), 4321)
+  in_memory <- add_posterior_coefficients(in_memory)
+
+  on_disk <- add_seed(add_initial_values(export_priors(export, type)), 4321)
+  on_disk <- add_posterior_coefficients(on_disk)
+
+  positions <- if (type == "gvec") {
+    manifest <- on_disk[["manifest"]]
+    do.call(rbind, lapply(unique(manifest[["submodel"]]), function(submodel) {
+      data.frame(submodel = submodel, position = 1L)
+    }))
+  } else {
+    NULL
+  }
+  if (type == "gvec") {
+    # One model per sub-model, as stacking requires.
+    in_memory[["submodels"]] <- lapply(in_memory[["submodels"]], function(models) {
+      models[1]
+    })
+  }
+
+  list(memory = suppressMessages(submodels_to_gvar(in_memory)),
+       disk = suppressMessages(submodels_to_gvar(on_disk, submodels = positions,
+                                                 chunk = chunk)))
+}
+
+test_that("a global model solved from pieces is the one solved whole", {
+  for (type in c("gvar", "gvec")) {
+    for (chunk in c(7, 1000)) {
+      pair <- solved_pair(type, chunk)
+      expect_equal(pair[["disk"]][["posterior"]][["a"]][["coeffs"]],
+                   pair[["memory"]][["posterior"]][["a"]][["coeffs"]],
+                   info = paste(type, chunk))
+      expect_equal(pair[["disk"]][["posterior"]][["u_sigma_inv"]][["coeffs"]],
+                   pair[["memory"]][["posterior"]][["u_sigma_inv"]][["coeffs"]],
+                   info = paste(type, chunk))
+      expect_equal(pair[["disk"]][["g"]], pair[["memory"]][["g"]],
+                   info = paste(type, chunk))
+      expect_equal(pair[["disk"]][["data"]], pair[["memory"]][["data"]],
+                   info = paste(type, chunk))
+      expect_identical(pair[["disk"]][["model"]], pair[["memory"]][["model"]],
+                       info = paste(type, chunk))
+      expect_s3_class(pair[["disk"]], "bvarmodel")
+    }
+  }
+})
+
+test_that("an export with several models per sub-model says which to name", {
+  object <- export_model("gvec")
+  export <- written_export(object, "solve-ambiguous")
+  export <- add_posterior_coefficients(add_initial_values(export_priors(export, "gvec")))
+  expect_error(submodels_to_gvar(export), "more than one model")
+})

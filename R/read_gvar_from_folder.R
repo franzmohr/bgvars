@@ -10,6 +10,11 @@
 #' \code{position}, naming the sub-models to read back and, for each, which of
 #' the models exported under that name to take. If \code{NULL} (default), every
 #' sub-model in the export is read.
+#' @param draws the draws to read, as their positions in the chain, passed to
+#' \code{\link[bvartools]{read_model_from_hdf5}}. Defaults to \code{NULL},
+#' every draw. An integer vector reads those draws of every sub-model, which is
+#' what lets a caller work through a long chain in pieces rather than hold it
+#' whole; \code{\link{submodels_to_gvar}} for an export does that.
 #'
 #' @details
 #'
@@ -73,7 +78,7 @@
 #' object <- read_gvar_from_folder(folder)
 #'
 #' @export
-read_gvar_from_folder <- function(folder, submodels = NULL) {
+read_gvar_from_folder <- function(folder, submodels = NULL, draws = NULL) {
 
   if (!dir.exists(folder)) {
     stop(paste0("Folder ", folder, " does not exist."))
@@ -140,7 +145,7 @@ read_gvar_from_folder <- function(folder, submodels = NULL) {
       manifest <- .select_manifest_rows(manifest, submodels)
     }
     
-    result[["submodels"]] <- .read_submodels(folder, manifest)
+    result[["submodels"]] <- .read_submodels(folder, manifest, draws)
   }
 
   class(result) <- result_class
@@ -160,7 +165,7 @@ read_gvar_from_folder <- function(folder, submodels = NULL) {
 }
 
 # One 'modellist' per sub-model, in the order the manifest lists them.
-.read_submodels <- function(folder, manifest) {
+.read_submodels <- function(folder, manifest, draws = NULL) {
 
   # A group column is not written today -- every sub-model file holds one model
   # at its root -- but reading it when it is there keeps this working if that
@@ -191,10 +196,10 @@ read_gvar_from_folder <- function(folder, submodels = NULL) {
       # layout written here -- one model at the root of its file -- reads back
       # with a bvartools that predates the group argument.
       models[[i]] <- if (groups[rows[i]] == "") {
-        bvartools::read_model_from_hdf5(filename = filename)
+        bvartools::read_model_from_hdf5(filename = filename, draws = draws)
       } else {
         bvartools::read_model_from_hdf5(filename = filename,
-                                        group = groups[rows[i]])
+                                        group = groups[rows[i]], draws = draws)
       }
     }
 

@@ -4,9 +4,17 @@
 #' model.
 #'
 #' @param object an object of class 'gvarmodel' or 'gvecmodel' containing
-#' exactly one estimated model per sub-model. Use the \code{submodels} argument
-#' of \code{\link{read_gvar_from_folder}} to reduce an object with multiple
-#' candidate models per sub-model to one.
+#' exactly one estimated model per sub-model, or one of class 'gvarexport', the
+#' handle of an export. Use the \code{submodels} argument of
+#' \code{\link{read_gvar_from_folder}}, or of this function for an export, to
+#' reduce a model with several candidates per sub-model to one.
+#' @param submodels for an export; a data frame with the columns
+#' \code{submodel} and \code{position}, naming which model to take per
+#' sub-model, as \code{\link{read_gvar_from_folder}} takes it. Not needed where
+#' the export holds one model per sub-model.
+#' @param chunk for an export; how many draws are read and stacked at a time.
+#' Defaults to 100.
+#' @param ... arguments passed to the method.
 #' @param period integer of the period of the global data, at which the model
 #' should be solved. Defaults to the last period of the estimation sample. It
 #' selects the weight matrices, if they vary over time, and the coefficients and
@@ -67,6 +75,21 @@
 #' \code{VarNormalWishart} as the algorithm its draws came from. That is what
 #' the methods of \pkg{bvartools} that work on draws dispatch on, forecasting
 #' included.
+#'
+#' @section Solving from an export:
+#'
+#' Stacking the sub-models is the one step of the package that needs every
+#' sub-model at once, and it needs them one draw at a time: a draw of the global
+#' model is built from that draw of every sub-model and from nothing else. Given
+#' the handle of an export, the function reads the draws in pieces of
+#' \code{chunk}, stacks each piece and puts the pieces end to end, so what it
+#' holds of the sub-models is one piece rather than every chain. For a global
+#' model of time varying sub-models that is the difference between a few
+#' gigabytes and tens of them.
+#'
+#' The result is the one the same models in memory give, draw for draw. The
+#' global model's own draws are held whole, which is what every method that
+#' works on them expects.
 #'
 #' @return An object of class 'bvarmodel', which can be analysed with the
 #' functionality of \pkg{bvartools} -- impulse responses, forecast error
@@ -149,7 +172,34 @@
 #' gvec <- submodels_to_gvar(object)
 #'
 #' @export
-submodels_to_gvar <- function(object, period = NULL) {
+submodels_to_gvar <- function(object, ...) {
+  UseMethod("submodels_to_gvar")
+}
+
+#' @rdname submodels_to_gvar
+#' @export
+#' @method submodels_to_gvar gvarmodel
+submodels_to_gvar.gvarmodel <- function(object, period = NULL, ...) {
+  .combine_submodels(object, period = period)
+}
+
+#' @rdname submodels_to_gvar
+#' @export
+#' @method submodels_to_gvar gvecmodel
+submodels_to_gvar.gvecmodel <- function(object, period = NULL, ...) {
+  .combine_submodels(object, period = period)
+}
+
+#' @rdname submodels_to_gvar
+#' @export
+#' @method submodels_to_gvar gvarexport
+submodels_to_gvar.gvarexport <- function(object, period = NULL, submodels = NULL,
+                                         chunk = 100, ...) {
+  .solve_export(object, period = period, submodels = submodels, chunk = chunk)
+}
+
+# The global model from the sub-models of an object that holds their draws.
+.combine_submodels <- function(object, period = NULL) {
 
   if (is.null(object[["submodels"]])) {
     stop("Argument 'object' does not contain sub-models.")

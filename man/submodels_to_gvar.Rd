@@ -2,21 +2,41 @@
 % Please edit documentation in R/submodels_to_gvar.R
 \name{submodels_to_gvar}
 \alias{submodels_to_gvar}
+\alias{submodels_to_gvar.gvarmodel}
+\alias{submodels_to_gvar.gvecmodel}
+\alias{submodels_to_gvar.gvarexport}
 \title{Generate Global Model from Sub-Models}
 \usage{
-submodels_to_gvar(object, period = NULL)
+submodels_to_gvar(object, ...)
+
+\method{submodels_to_gvar}{gvarmodel}(object, period = NULL, ...)
+
+\method{submodels_to_gvar}{gvecmodel}(object, period = NULL, ...)
+
+\method{submodels_to_gvar}{gvarexport}(object, period = NULL, submodels = NULL, chunk = 100, ...)
 }
 \arguments{
 \item{object}{an object of class 'gvarmodel' or 'gvecmodel' containing
-exactly one estimated model per sub-model. Use the \code{submodels} argument
-of \code{\link{read_gvar_from_folder}} to reduce an object with multiple
-candidate models per sub-model to one.}
+exactly one estimated model per sub-model, or one of class 'gvarexport', the
+handle of an export. Use the \code{submodels} argument of
+\code{\link{read_gvar_from_folder}}, or of this function for an export, to
+reduce a model with several candidates per sub-model to one.}
+
+\item{...}{arguments passed to the method.}
 
 \item{period}{integer of the period of the global data, at which the model
 should be solved. Defaults to the last period of the estimation sample. It
 selects the weight matrices, if they vary over time, and the coefficients and
 error covariance matrices of sub-models with time varying parameters or
 stochastic volatility, which must then lie within the estimation sample.}
+
+\item{submodels}{for an export; a data frame with the columns
+\code{submodel} and \code{position}, naming which model to take per
+sub-model, as \code{\link{read_gvar_from_folder}} takes it. Not needed where
+the export holds one model per sub-model.}
+
+\item{chunk}{for an export; how many draws are read and stacked at a time.
+Defaults to 100.}
 }
 \value{
 An object of class 'bvarmodel', which can be analysed with the
@@ -85,6 +105,23 @@ structural form whatever the sub-models had, so the returned object names
 the methods of \pkg{bvartools} that work on draws dispatch on, forecasting
 included.
 }
+\section{Solving from an export}{
+
+
+Stacking the sub-models is the one step of the package that needs every
+sub-model at once, and it needs them one draw at a time: a draw of the global
+model is built from that draw of every sub-model and from nothing else. Given
+the handle of an export, the function reads the draws in pieces of
+\code{chunk}, stacks each piece and puts the pieces end to end, so what it
+holds of the sub-models is one piece rather than every chain. For a global
+model of time varying sub-models that is the difference between a few
+gigabytes and tens of them.
+
+The result is the one the same models in memory give, draw for draw. The
+global model's own draws are held whole, which is what every method that
+works on them expects.
+}
+
 \examples{
 
 # Load data
