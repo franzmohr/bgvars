@@ -62,6 +62,7 @@ export(open_export)
 export(read_gvar_from_folder)
 export(read_submodel_from_folder)
 export(select_list_elements)
+export(submodel_directories)
 export(submodels_to_gvar)
 exportPattern("^[[:alpha:]]+")
 importFrom(bvartools,

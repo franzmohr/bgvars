@@ -4,7 +4,7 @@
 \alias{map_submodels}
 \title{Apply a Function to the Models of an Export}
 \usage{
-map_submodels(object, f, ..., cores = 1, export = NULL)
+map_submodels(object, f, ..., submodels = NULL, cores = 1, export = NULL)
 }
 \arguments{
 \item{object}{an object of class 'gvarexport', from
@@ -16,6 +16,10 @@ the position of the model in the manifest is passed to it, which is what
 numbers seeds and what lets a caller tell the models apart.}
 
 \item{...}{further arguments passed to \code{f}.}
+
+\item{submodels}{character vector of the sub-models the step is applied to,
+or \code{NULL}, the default, for all of them. The models of the other
+sub-models are left untouched, and so are their rows of the manifest.}
 
 \item{cores}{the number of worker processes the models are handled on.
 Defaults to one. With more than one the models are spread over a socket
@@ -51,6 +55,17 @@ The methods of the estimation steps for an export call this, so a pipeline
 rarely calls it directly. It is what to use for a step the package has no
 method for.
 
+A step over a subset is a step over the whole export applied to part of it,
+not a step over a smaller export: the position a model has in the whole
+manifest is what is passed as \code{index} and what numbers its seed, so a
+run taken sub-model by sub-model draws what a run over all of them draws.
+That is what makes a long estimation resumable -- the sub-models that are
+already done are passed over rather than read and written again -- and it is
+how a specification too large to estimate in one sitting is estimated in
+several. The estimation steps for an export pass \code{submodels} on, so
+\code{add_posterior_coefficients(export, submodels = "AT")} simulates the
+models of one country.
+
 With more than one core, \code{f} is sent to the workers as it stands, and
 the workers load the installed packages. A function that calls something a
 package does not export, or something only a newer version of it has, fails
@@ -82,10 +97,14 @@ export <- map_submodels(export, function(model) {
   add_priors(model, coef = list(v_i = 1), sigma = list(df = 3, scale = 1e-8))
 })
 
+# One sub-model at a time, which is how a long estimation is resumed
+export <- map_submodels(export, add_initial_values, submodels = "AT")
+
 }
 \seealso{
 Other export:
 \code{\link{export_steps}},
-\code{\link[=open_export]{open_export()}}
+\code{\link[=open_export]{open_export()}},
+\code{\link[=submodel_directories]{submodel_directories()}}
 }
 \concept{export}

@@ -214,3 +214,92 @@ test_that("an export with several models per sub-model says which to name", {
   export <- add_posterior_coefficients(add_initial_values(export_priors(export, "gvec")))
   expect_error(submodels_to_gvar(export), "more than one model")
 })
+
+test_that("a step over one sub-model at a time is the step over all of them", {
+  skip_on_cran()
+
+  object <- export_model("gvar")
+  whole <- written_export(object, "subset-whole")
+  piecewise <- written_export(object, "subset-piecewise")
+
+  estimate <- function(export, submodels) {
+    export <- add_priors(export, coef = list(v_i = 1),
+                         sigma = list(df = 3, scale = 1e-8),
+                         submodels = submodels)
+    export <- add_initial_values(export, submodels = submodels)
+    export <- add_seed(export, 99, submodels = submodels)
+    add_posterior_coefficients(export, submodels = submodels)
+  }
+
+  whole <- estimate(whole, NULL)
+  for (submodel in unique(piecewise[["manifest"]][, "submodel"])) {
+    piecewise <- estimate(piecewise, submodel)
+  }
+
+  first <- read_gvar_from_folder(whole[["folder"]])
+  second <- read_gvar_from_folder(piecewise[["folder"]])
+  for (submodel in names(first[["submodels"]])) {
+    expect_equal(draws_of(second, submodel, 1), draws_of(first, submodel, 1),
+                 info = submodel)
+  }
+  expect_equal(open_export(piecewise[["folder"]])[["manifest"]],
+               open_export(whole[["folder"]])[["manifest"]])
+})
+
+test_that("a step leaves the sub-models it was not asked for alone", {
+
+  object <- export_model("gvar")
+  export <- written_export(object, "subset-untouched")
+  submodels <- unique(export[["manifest"]][, "submodel"])
+
+  before <- vapply(export[["manifest"]][, "file"], function(file) {
+    file.info(file.path(export[["folder"]], file))[["mtime"]]
+  }, numeric(1))
+
+  Sys.sleep(1)
+  export <- add_priors(export, coef = list(v_i = 1),
+                       sigma = list(df = 3, scale = 1e-8),
+                       submodels = submodels[1])
+
+  after <- vapply(export[["manifest"]][, "file"], function(file) {
+    file.info(file.path(export[["folder"]], file))[["mtime"]]
+  }, numeric(1))
+
+  touched <- export[["manifest"]][, "submodel"] == submodels[1]
+  expect_true(all(after[touched] > before[touched]))
+  expect_equal(after[!touched], before[!touched])
+
+  # The models of the other sub-models have no priors, so they cannot be
+  # estimated, while the one that was asked for can.
+  models <- read_gvar_from_folder(export[["folder"]])
+  expect_false(is.null(models[["submodels"]][[submodels[1]]][[1]][["priors"]]))
+  expect_null(models[["submodels"]][[submodels[2]]][[1]][["priors"]])
+
+  expect_error(map_submodels(export, add_initial_values, submodels = "XX"),
+               "does not contain the sub-model")
+})
+
+
+test_that("an export names the directory of each of its sub-models", {
+
+  object <- export_model("gvec")
+  export <- written_export(object, "directories")
+  submodels <- unique(export[["manifest"]][, "submodel"])
+
+  directories <- submodel_directories(export)
+  expect_identical(names(directories), submodels)
+  expect_true(all(dir.exists(directories)))
+  for (submodel in submodels) {
+    files <- list.files(directories[[submodel]], pattern = "[.]h5$")
+    expect_equal(length(files),
+                 sum(export[["manifest"]][, "submodel"] == submodel),
+                 info = submodel)
+  }
+
+  one <- submodel_directories(export, submodels = submodels[1])
+  expect_identical(one, directories[submodels[1]])
+
+  expect_error(submodel_directories(export, submodels = "XX"),
+               "does not contain the sub-model")
+  expect_error(submodel_directories(unclass(export)), "must be of class")
+})

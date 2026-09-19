@@ -11,6 +11,9 @@
 #' the position of the model in the manifest is passed to it, which is what
 #' numbers seeds and what lets a caller tell the models apart.
 #' @param ... further arguments passed to \code{f}.
+#' @param submodels character vector of the sub-models the step is applied to,
+#' or \code{NULL}, the default, for all of them. The models of the other
+#' sub-models are left untouched, and so are their rows of the manifest.
 #' @param cores the number of worker processes the models are handled on.
 #' Defaults to one. With more than one the models are spread over a socket
 #' cluster; every model has its own file, so the workers share nothing.
@@ -34,6 +37,17 @@
 #' The methods of the estimation steps for an export call this, so a pipeline
 #' rarely calls it directly. It is what to use for a step the package has no
 #' method for.
+#'
+#' A step over a subset is a step over the whole export applied to part of it,
+#' not a step over a smaller export: the position a model has in the whole
+#' manifest is what is passed as \code{index} and what numbers its seed, so a
+#' run taken sub-model by sub-model draws what a run over all of them draws.
+#' That is what makes a long estimation resumable -- the sub-models that are
+#' already done are passed over rather than read and written again -- and it is
+#' how a specification too large to estimate in one sitting is estimated in
+#' several. The estimation steps for an export pass \code{submodels} on, so
+#' \code{add_posterior_coefficients(export, submodels = "AT")} simulates the
+#' models of one country.
 #'
 #' With more than one core, \code{f} is sent to the workers as it stands, and
 #' the workers load the installed packages. A function that calls something a
@@ -69,9 +83,13 @@
 #'   add_priors(model, coef = list(v_i = 1), sigma = list(df = 3, scale = 1e-8))
 #' })
 #'
+#' # One sub-model at a time, which is how a long estimation is resumed
+#' export <- map_submodels(export, add_initial_values, submodels = "AT")
+#'
 #' @family export
 #' @export
-map_submodels <- function(object, f, ..., cores = 1, export = NULL) {
+map_submodels <- function(object, f, ..., submodels = NULL, cores = 1,
+                          export = NULL) {
 
   if (!inherits(object, "gvarexport")) {
     stop("Argument 'object' must be of class 'gvarexport'. Use open_export().")
@@ -79,13 +97,28 @@ map_submodels <- function(object, f, ..., cores = 1, export = NULL) {
   f <- match.fun(f)
 
   manifest <- object[["manifest"]]
+  # The rows the step is applied to. Their positions in the whole manifest are
+  # kept, since that is what a model's seed is numbered by.
+  rows <- seq_len(nrow(manifest))
+  if (!is.null(submodels)) {
+    unknown <- setdiff(submodels, manifest[, "submodel"])
+    if (length(unknown) > 0) {
+      stop("This export does not contain the sub-model(s) ",
+           paste0(unknown, collapse = ", "), ".")
+    }
+    rows <- which(manifest[, "submodel"] %in% submodels)
+  }
+  if (length(rows) == 0) {
+    return(invisible(object))
+  }
+
   # Everything a model needs travels in its own task -- the function and the
   # arguments included -- so that nothing is passed alongside the tasks and the
   # worker function takes one argument. Sending arguments through
   # parallel::parLapplyLB() next to them makes the call depend on how that
   # function forwards its dots.
   arguments <- list(...)
-  tasks <- lapply(seq_len(nrow(manifest)), function(i) {
+  tasks <- lapply(rows, function(i) {
     list(file = file.path(object[["folder"]], manifest[i, "file"]), index = i,
          f = f, arguments = arguments)
   })
@@ -105,8 +138,9 @@ map_submodels <- function(object, f, ..., cores = 1, export = NULL) {
     parallel::parLapplyLB(cluster, tasks, .map_one_model)
   }
 
-  for (i in seq_along(specs)) {
-    manifest[i, ] <- .manifest_row(specs[[i]], manifest[i, "submodel"],
+  for (j in seq_along(specs)) {
+    i <- rows[j]
+    manifest[i, ] <- .manifest_row(specs[[j]], manifest[i, "submodel"],
                                    manifest[i, "file"])
   }
   object[["manifest"]] <- manifest
