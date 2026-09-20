@@ -13,3 +13,4 @@ Rplots\.pdf$
 ^CITATION\.cff$
 ^\.zenodo\.json$
 ^\.claude$
+^tools$
