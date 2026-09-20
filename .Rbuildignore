@@ -9,3 +9,4 @@
 ^vignettes/.*\.orig$
 ^vignettes/precompile\.R$
 Rplots\.pdf$
+^CLAUDE\.md$
