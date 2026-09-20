@@ -10,7 +10,8 @@ open_export(folder)
 \method{print}{gvarexport}(x, ...)
 }
 \arguments{
-\item{folder}{path to a folder written by \code{\link{write_to_hdf5}}.}
+\item{folder}{path to a folder written by
+\code{\link[bvartools]{write_to_hdf5}}.}
 
 \item{x}{an object of class 'gvarexport'.}
 
@@ -35,7 +36,7 @@ beside a \code{model.h5} with the global data, the weight matrices and the
 manifest, and every step of the estimation touches one model at a time.
 
 A handle carries the manifest and the path, not the models. The methods of
-\code{\link{map_submodels}} -- \code{\link{add_priors}},
+\code{\link{map_submodels}} -- \code{\link[bvartools]{add_priors}},
 \code{add_initial_values}, \code{add_seed},
 \code{add_posterior_coefficients}, \code{add_posterior_loglik},
 \code{thin} and the two error correction transformations -- read a model,

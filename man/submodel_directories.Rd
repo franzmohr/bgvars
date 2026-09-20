@@ -22,9 +22,10 @@ The directory each sub-model of an exported global model lies in, which is
 what an external program that works on the files is pointed at.
 }
 \details{
-\code{\link{write_to_hdf5}} gives every sub-model a directory of its own and
-every model of it a file in that directory, so a sub-model's directory is a
-natural unit of work: it holds the models of one country and nothing else.
+\code{\link[bvartools]{write_to_hdf5}} gives every sub-model a directory of
+its own and every model of it a file in that directory, so a sub-model's
+directory is a natural unit of work: it holds the models of one country and
+nothing else.
 
 What this is for is handing those directories to something that does the work
 on the files rather than in the session. The posterior is the largest thing a
@@ -36,8 +37,8 @@ copy the draws into R and out again for nothing. With
 run(submodel_directories(export), jobs = 6)}
 which starts six BayesTS processes, each working through one country's models
 where they lie. The draws are the same as those of
-\code{\link{add_posterior_coefficients}}, since a model is drawn with the seed
-in its file.
+\code{\link[bvartools]{add_posterior_coefficients}}, since a model is drawn
+with the seed in its file.
 
 Note that the parallelism is in the processes rather than in a cluster of R
 workers. An idle R worker is not cheap -- on Windows a fresh one commits about

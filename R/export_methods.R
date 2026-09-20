@@ -6,6 +6,8 @@
 #'
 #' @param object an object of class 'gvarexport', from
 #' \code{\link{open_export}}.
+#' @param x the same, for the method of \code{thin}, whose generic calls its
+#' first argument \code{x}.
 #' @param seed an integer, the seed of the first model. The models are numbered
 #' through in the order of the manifest, as they are for a global model in
 #' memory.
@@ -19,8 +21,8 @@
 #' The methods do what their counterparts for a 'gvarmodel' or a 'gvecmodel' do,
 #' model by model, and they take the same arguments. Everything that concerns
 #' the global model as a whole -- the global data, the index and the weight
-#' matrices -- is written once by \code{\link{write_to_hdf5}} and is not touched
-#' again.
+#' matrices -- is written once by \code{\link[bvartools]{write_to_hdf5}} and is
+#' not touched again.
 #'
 #' \code{scale_error_correction} and \code{rescale_error_correction} carry the
 #' starting values of \eqn{\beta} along with the transformation, as the method
@@ -118,8 +120,8 @@ add_posterior_loglik.gvarexport <- function(object, ..., cores = 1) {
 #' @rdname export_steps
 #' @export
 #' @method thin gvarexport
-thin.gvarexport <- function(object, ..., cores = 1) {
-  map_submodels(object, function(model, ...) thin(model, ...), ..., cores = cores)
+thin.gvarexport <- function(x, ..., cores = 1) {
+  map_submodels(x, function(model, ...) thin(model, ...), ..., cores = cores)
 }
 
 #' @rdname export_steps
