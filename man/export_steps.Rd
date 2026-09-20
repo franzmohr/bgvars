@@ -22,7 +22,7 @@
 
 \method{add_posterior_loglik}{gvarexport}(object, ..., cores = 1)
 
-\method{thin}{gvarexport}(object, ..., cores = 1)
+\method{thin}{gvarexport}(x, ..., cores = 1)
 
 \method{scale_error_correction}{gvarexport}(object, ..., cores = 1)
 
@@ -43,6 +43,9 @@ memory.}
 \item{export}{character vector of names of objects the workers need, for
 instance the sampler that \code{posterior_function} refers to. See
 \code{\link{map_submodels}}.}
+
+\item{x}{the same, for the method of \code{thin}, whose generic calls its
+first argument \code{x}.}
 }
 \value{
 The object in \code{object}, with its manifest brought up to date.
@@ -56,8 +59,8 @@ writes it back and drops it, so a step costs one model per worker.
 The methods do what their counterparts for a 'gvarmodel' or a 'gvecmodel' do,
 model by model, and they take the same arguments. Everything that concerns
 the global model as a whole -- the global data, the index and the weight
-matrices -- is written once by \code{\link{write_to_hdf5}} and is not touched
-again.
+matrices -- is written once by \code{\link[bvartools]{write_to_hdf5}} and is
+not touched again.
 
 \code{scale_error_correction} and \code{rescale_error_correction} carry the
 starting values of \eqn{\beta} along with the transformation, as the method

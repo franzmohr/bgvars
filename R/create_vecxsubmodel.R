@@ -63,7 +63,7 @@
 #' @param thin an integer thinning interval of the sampler (defaults to 1). After
 #' the burn-in the sampler keeps the last of every \code{thin} draws, so it runs
 #' \code{burnin + iterations * thin} draws and still keeps \code{iterations}.
-#' Unlike \code{\link[bvartools]{thin}}, which thins draws already made, the
+#' Unlike \code{\link[coda]{thin}}, which thins draws already made, the
 #' draws that are not kept are never held in memory, which is what lets long
 #' chains of time varying sub-models fit into it.
 #'
