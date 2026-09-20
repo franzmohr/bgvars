@@ -21,6 +21,8 @@
   tvp = FALSE,
   varsel = "none",
   algorithm = NULL,
+  delta_beta = 1,
+  delta_sigma = 1,
   iterations = 10000,
   burnin = 2000,
   thin = 1,
@@ -86,6 +88,13 @@ that should be employed. Default is \code{"none"}. See 'Details'.}
 \item{algorithm}{algorithm that should be used for posterior simulation. If \code{NULL}
 (default), standard algorithms will be used. See 'Details' for available
 non-standard options.}
+
+\item{delta_beta, delta_sigma}{numeric discount factors in \eqn{(0, 1]} of the
+discounted model, the first governing the coefficients and the second the
+error covariance. Both default to 1, at which the quantity they govern does
+not move. Ignored unless \code{algorithm = "discount"}, and a vector in
+either produces one sub-model per value. See
+\code{\link{create_vecxsubmodel}}.}
 
 \item{iterations}{an integer of MCMC draws excluding burn-in draws (defaults
 to 10000).}

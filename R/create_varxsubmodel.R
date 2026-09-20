@@ -34,6 +34,15 @@
 #' of the covariance matrix of the error term. Default is \code{"wishart"}. See 'Details'.
 #' @param varsel character specifying the type of variable selection algorithm
 #' that should be employed. Default is \code{"none"}. See 'Details'.
+#' @param algorithm algorithm that should be used for posterior simulation. If
+#' \code{NULL} (default), the algorithm is named by \code{tvp} and
+#' \code{error}. The one non-standard option is \code{"discount"}. See
+#' 'Details'.
+#' @param delta_beta,delta_sigma numeric discount factors in \eqn{(0, 1]} of the
+#' discounted model, the first governing the coefficients and the second the
+#' error covariance. Both default to 1, at which the quantity they govern does
+#' not move. Ignored unless \code{algorithm = "discount"}, and a vector in
+#' either produces one sub-model per value. See 'Details'.
 #' @param iterations an integer of MCMC draws excluding burn-in draws (defaults
 #' to 10000).
 #' @param burnin an integer of MCMC draws used to initialize the sampler
@@ -76,6 +85,19 @@
 #'  \item{\code{"bvs"}: Bayesian variable selection as proposed in Korobilis (2013).}
 #'  \item{\code{"ssvs"}: Stochastic search variable selection as proposed in George et al. (2008).}
 #' }
+#'
+#' The one specification for argument \code{algorithm} is \code{"discount"},
+#' the discounted time varying parameter model of West & Harrison (1997,
+#' ch. 16) with the discounted Wishart of Uhlig (1997), estimated by
+#' \code{VarTvpDiscount}. It is not a sampler: its posterior is closed form --
+#' one pass over the sample, no chain -- so \code{burnin} must be 0 and
+#' \code{thin} 1, \code{error} must be \code{"wishart"}, and neither variable
+#' selection nor a structural model is available. What it buys is speed and an
+#' exact marginal likelihood, the sum of \code{/posterior/loglik}, so a grid
+#' over the lag orders or the two discounts is compared without a chain being
+#' run for any of it. It is estimated by BayesTS on its file and by nothing
+#' else; \code{\link[bvartools]{is_discount_model}} says which algorithms these
+#' are.
 #' 
 #' @return An object of class 'modellist', which contains at least one element
 #' of class 'varxsubmodel'.
@@ -128,6 +150,9 @@ create_varxsubmodel <- function(object,
                                 tvp = FALSE,
                                 error = "wishart",
                                 varsel = "none",
+                                algorithm = NULL,
+                                delta_beta = 1,
+                                delta_sigma = 1,
                                 iterations = 10000,
                                 burnin = 2000,
                                 thin = 1){
@@ -271,7 +296,22 @@ create_varxsubmodel <- function(object,
     algo <- paste0(algo, "Stochvol")
   }
   algo <- paste0("Var", algo)
-  
+
+  # The one algorithm outside the naming grammar that a sub-model can use. See
+  # create_vecxsubmodel() for what it is and what it refuses.
+  if (!is.null(algorithm)) {
+    if (!identical(algorithm, "discount")) {
+      stop("Specified algorithm not recognized.")
+    }
+    algo <- "VarTvpDiscount"
+    bvartools::check_discount_specification(
+      k = n_endogen, error = error, varsel = varsel, structural = structural,
+      burnin = burnin, thin = thin, delta_beta = delta_beta,
+      delta_sigma = delta_sigma)
+    tvp <- TRUE
+  }
+  use_discount <- identical(algo, "VarTvpDiscount")
+
   model <- NULL
   model[["type"]] <- ifelse(n_endogen == 1, "ARX", "VARX")
   model[["algorithm"]] <- algo
@@ -476,13 +516,28 @@ create_varxsubmodel <- function(object,
     s <- 99
   }
   
+  # A grid over the two discounts, for the one algorithm that has them.
+  if (use_discount) {
+    grid_beta <- as.numeric(delta_beta)
+    grid_sigma <- as.numeric(delta_sigma)
+  } else {
+    grid_beta <- NA_real_
+    grid_sigma <- NA_real_
+  }
+
   result <- NULL
   for (i in p_endogen) { # for each lag p_endogen
     for (j in p_exogen) { # for each lag p_exogen
       for (k in s) {
+       for (d_beta in grid_beta) {
+        for (d_sigma in grid_sigma) {
         
         pos <- NULL
         model_i <- model
+        if (use_discount) {
+          model_i[["delta_beta"]] <- d_beta
+          model_i[["delta_sigma"]] <- d_sigma
+        }
         
         if (i >= 1) {
           pos <- c(pos, n_endogen + 1:(n_endogen * i))
@@ -535,6 +590,8 @@ create_varxsubmodel <- function(object,
         class(result_i) <- c("varxsubmodel", "bvarmodel", "list")
         
         result <- c(result, list(result_i)) 
+        }
+       }
       }
     }
   }

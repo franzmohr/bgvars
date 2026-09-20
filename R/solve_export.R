@@ -32,6 +32,14 @@
          "read_gvar_from_folder() does.")
   }
 
+  # Before a file is read: the manifest records the algorithm, and a closed form
+  # has no draws to stack. .combine_submodels() would say the same on the first
+  # chunk, after reading it.
+  algorithm <- .discount_submodel_algorithm(manifest[, "algorithm"])
+  if (!is.null(algorithm)) {
+    .refuse_discount_submodel(algorithm)
+  }
+
   chain <- .export_chain(object[["folder"]], manifest)
   pieces <- split(seq_len(chain[["draws"]]),
                   ceiling(seq_len(chain[["draws"]]) / chunk))

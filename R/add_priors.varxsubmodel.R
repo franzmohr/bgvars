@@ -188,6 +188,13 @@ add_priors.varxsubmodel <- function(object,
                                     varsel = NULL,
                                     ...){
   
+  # The discounted model takes a matrix normal prior over the coefficient matrix
+  # rather than a normal one over its vectorisation. A sub-model's prior is the
+  # same object as a bvarmodel's, so the method there builds it.
+  if (bvartools::is_discount_model(object)) {
+    return(NextMethod())
+  }
+
   # Input checks
   ## Coefficient priors ----
   if (!is.null(coef)) {

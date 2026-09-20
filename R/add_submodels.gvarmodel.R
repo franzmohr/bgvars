@@ -29,6 +29,16 @@
 #' @param tvp logical indicating whether the model parameters are time varying.
 #' @param error character specifying the model that should be used for the estimation
 #' of the covariance matrix of the error term. Default is \code{"wishart"}. See 'Details'.
+#' @param algorithm algorithm that should be used for posterior simulation. If
+#' \code{NULL} (default), the algorithm is named by \code{tvp} and
+#' \code{error}. The one non-standard option is \code{"discount"}. See
+#' \code{\link{create_varxsubmodel}}.
+#' @param delta_beta,delta_sigma numeric discount factors in \eqn{(0, 1]} of the
+#' discounted model, the first governing the coefficients and the second the
+#' error covariance. Both default to 1, at which the quantity they govern does
+#' not move. Ignored unless \code{algorithm = "discount"}, and a vector in
+#' either produces one sub-model per value. See
+#' \code{\link{create_varxsubmodel}}.
 #' @param varsel character specifying the type of variable selection algorithm
 #' that should be employed. Default is \code{"none"}. See 'Details'.
 #' @param iterations an integer of MCMC draws excluding burn-in draws (defaults
@@ -86,6 +96,9 @@ add_submodels.gvarmodel <- function(object,
                                     tvp = FALSE,
                                     error = "wishart",
                                     varsel = "none",
+                                    algorithm = NULL,
+                                    delta_beta = 1,
+                                    delta_sigma = 1,
                                     iterations = 10000,
                                     burnin = 2000,
                                     thin = 1,
@@ -102,6 +115,9 @@ add_submodels.gvarmodel <- function(object,
                                                       seasonal = seasonal,
                                                       structural = structural,
                                                       tvp = tvp, error = error, varsel = varsel,
+                                                      algorithm = algorithm,
+                                                      delta_beta = delta_beta,
+                                                      delta_sigma = delta_sigma,
                                                       iterations = iterations, burnin = burnin,
                                                       thin = thin)
   }
