@@ -52,6 +52,11 @@
 #' of the covariance matrix of the error term. Default is \code{"wishart"}. See 'Details'.
 #' @param varsel character specifying the type of variable selection algorithm
 #' that should be employed. Default is \code{"none"}. See 'Details'.
+#' @param delta_beta,delta_sigma numeric discount factors in \eqn{(0, 1]} of the
+#' discounted model, the first governing the coefficients and the second the
+#' error covariance. Both default to 1, at which the quantity they govern does
+#' not move. Ignored unless \code{algorithm = "discount"}, and a vector in
+#' either produces one sub-model per value. See 'Details'.
 #' @param algorithm algorithm that should be used for posterior simulation. If \code{NULL}
 #' (default), standard algorithms will be used. See 'Details' for available
 #' non-standard options.
@@ -101,7 +106,27 @@
 #' Available specifications for argument \code{algorithm} are:
 #' \itemize{
 #'    \item{\code{"KLGS2010"}: Algorithm proposed in Koop, León-González & Strachan (2010).}
+#'    \item{\code{"discount"}: The discounted time varying parameter model of
+#'    West & Harrison (1997, ch. 16) with the discounted Wishart of Uhlig
+#'    (1997), estimated by \code{VecTvpDiscount}.}
 #' }
+#'
+#' The discounted model is not a sampler. Its posterior is closed form -- one
+#' pass over the sample, no chain -- so \code{burnin} must be 0 and \code{thin}
+#' 1, \code{error} must be \code{"wishart"}, and neither variable selection nor
+#' a structural model is available. It conditions on a fixed cointegration
+#' matrix, which \code{\link[bvartools]{add_initial_values}} takes from
+#' Johansen's estimate, so what drifts is the adjustment to the long-run
+#' relations and not the relations themselves. What it buys is speed and an
+#' exact marginal likelihood: the sum of \code{/posterior/loglik} is the log
+#' marginal likelihood of the sub-model given its rank, its cointegration
+#' matrix, its lag orders and the two discounts, so a grid over any of them is
+#' compared without a chain being run for any of it.
+#'
+#' A sub-model of that algorithm is estimated by BayesTS on its file, as every
+#' sub-model of an export is, and by nothing else: there is no R implementation
+#' of the filter. \code{\link[bvartools]{is_discount_model}} says which
+#' algorithms these are.
 #' 
 #' @return An object of class 'modellist', which contains at least one element
 #' of class 'vecxsubmodel'.
@@ -155,6 +180,8 @@ create_vecxsubmodel <- function(object,
                                 error = "wishart",
                                 varsel = "none",
                                 algorithm = NULL,
+                                delta_beta = 1,
+                                delta_sigma = 1,
                                 iterations = 10000,
                                 burnin = 2000,
                                 thin = 1){
@@ -309,6 +336,26 @@ create_vecxsubmodel <- function(object,
     algo <- paste0(algo, "Stochvol")
   }
   algo <- paste0("Vec", algo)
+
+  # The one algorithm outside the naming grammar that a sub-model can use. The
+  # specification is refused by bvartools, which raises what BayesTS would raise
+  # against the written file -- and raises it once for a grid of sub-models
+  # rather than once per file.
+  if (!is.null(algorithm)) {
+    if (!identical(algorithm, "discount")) {
+      stop("Specified algorithm not recognized.")
+    }
+    algo <- "VecTvpDiscount"
+    bvartools::check_discount_specification(
+      k = n_endogen, error = error, varsel = varsel, structural = structural,
+      burnin = burnin, thin = thin, delta_beta = delta_beta,
+      delta_sigma = delta_sigma)
+    # The coefficients of this model drift, which is what `tvp` says. How far
+    # they drift is what `delta_beta` says, and it is a model in its own right
+    # at one, where they do not move at all.
+    tvp <- TRUE
+  }
+  use_discount <- identical(algo, "VecTvpDiscount")
   
   model <- NULL
   model[["type"]] <- ifelse(n_endogen == 1, "ECX", "VECX")
@@ -632,14 +679,31 @@ create_vecxsubmodel <- function(object,
     s <- 99
   }
   
+  # A grid over the two discounts, for the one algorithm that has them. Every
+  # other algorithm gets the single specification it always had, so the two
+  # inner loops run once and change nothing.
+  if (use_discount) {
+    grid_beta <- as.numeric(delta_beta)
+    grid_sigma <- as.numeric(delta_sigma)
+  } else {
+    grid_beta <- NA_real_
+    grid_sigma <- NA_real_
+  }
+
   result <- NULL
   for (i in p_endogen) { # for each lag p_endogen
     for (j in p_exogen) { # for each lag p_exogen
       for (k in s) {
         for (rank in r) {
+         for (d_beta in grid_beta) {
+          for (d_sigma in grid_sigma) {
           
           pos <- NULL
           model_i <- model
+          if (use_discount) {
+            model_i[["delta_beta"]] <- d_beta
+            model_i[["delta_sigma"]] <- d_sigma
+          }
           
           # Build the matrix of regressors from object x
           if (i > 1) {
@@ -691,6 +755,13 @@ create_vecxsubmodel <- function(object,
             z <- cbind(z, y_A0)
           }
           dimnames(z) <- NULL
+
+          # Not kept for a discounted sub-model, which reads the compact
+          # regressors: BayesTS refuses the SUR matrix, and it is nine tenths
+          # of the sub-model's size.
+          if (use_discount) {
+            z <- NULL
+          }
           
           # Create individual model
           result_i <- list("model" = model_i,
@@ -706,6 +777,8 @@ create_vecxsubmodel <- function(object,
           class(result_i) <- c("vecxsubmodel", "bvecmodel", "list")
           
           result <- c(result, list(result_i))
+          }
+         }
         }
       }
     }

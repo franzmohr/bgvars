@@ -125,6 +125,12 @@
     # than missing: NA would read like an export from before the manifest
     # recorded thinning.
     thin = if (is.null(specs[["thin"]])) 1L else field(specs, "thin", "integer"),
+    # The discounted models only. One is the value at which the quantity a
+    # discount governs does not move, so a sub-model that carries neither is
+    # recorded as one rather than as missing -- which is what every other
+    # algorithm is: coefficients and an error covariance that are what they are.
+    delta_beta = if (is.null(specs[["delta_beta"]])) 1 else field(specs, "delta_beta", "numeric"),
+    delta_sigma = if (is.null(specs[["delta_sigma"]])) 1 else field(specs, "delta_sigma", "numeric"),
     stringsAsFactors = FALSE
   )
 }

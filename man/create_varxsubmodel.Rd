@@ -19,6 +19,9 @@ create_varxsubmodel(
   tvp = FALSE,
   error = "wishart",
   varsel = "none",
+  algorithm = NULL,
+  delta_beta = 1,
+  delta_sigma = 1,
   iterations = 10000,
   burnin = 2000,
   thin = 1
@@ -71,6 +74,17 @@ of the covariance matrix of the error term. Default is \code{"wishart"}. See 'De
 \item{varsel}{character specifying the type of variable selection algorithm
 that should be employed. Default is \code{"none"}. See 'Details'.}
 
+\item{algorithm}{algorithm that should be used for posterior simulation. If
+\code{NULL} (default), the algorithm is named by \code{tvp} and
+\code{error}. The one non-standard option is \code{"discount"}. See
+'Details'.}
+
+\item{delta_beta, delta_sigma}{numeric discount factors in \eqn{(0, 1]} of the
+discounted model, the first governing the coefficients and the second the
+error covariance. Both default to 1, at which the quantity they govern does
+not move. Ignored unless \code{algorithm = "discount"}, and a vector in
+either produces one sub-model per value. See 'Details'.}
+
 \item{iterations}{an integer of MCMC draws excluding burn-in draws (defaults
 to 10000).}
 
@@ -121,6 +135,19 @@ Available specifications for argument \code{varsel} are:
  \item{\code{"bvs"}: Bayesian variable selection as proposed in Korobilis (2013).}
  \item{\code{"ssvs"}: Stochastic search variable selection as proposed in George et al. (2008).}
 }
+
+The one specification for argument \code{algorithm} is \code{"discount"},
+the discounted time varying parameter model of West & Harrison (1997,
+ch. 16) with the discounted Wishart of Uhlig (1997), estimated by
+\code{VarTvpDiscount}. It is not a sampler: its posterior is closed form --
+one pass over the sample, no chain -- so \code{burnin} must be 0 and
+\code{thin} 1, \code{error} must be \code{"wishart"}, and neither variable
+selection nor a structural model is available. What it buys is speed and an
+exact marginal likelihood, the sum of \code{/posterior/loglik}, so a grid
+over the lag orders or the two discounts is compared without a chain being
+run for any of it. It is estimated by BayesTS on its file and by nothing
+else; \code{\link[bvartools]{is_discount_model}} says which algorithms these
+are.
 }
 \examples{
 

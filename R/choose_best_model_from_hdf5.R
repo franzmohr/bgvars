@@ -64,6 +64,7 @@ choose_best_model_from_hdf5 <- function(folder, criterion) {
 
   # Evaluated at the posterior mean, which the inputs read by
   # .read_selection_data_from_hdf5 cannot provide.
+  # LML is not among them: it is read off the file, not evaluated at anything.
   point_criterion <- criterion %in% c("AIC", "BIC", "HQ")
 
   submodel <- unique(manifest[, "submodel"])
@@ -197,7 +198,12 @@ choose_best_model_from_hdf5 <- function(folder, criterion) {
   # wanted for.
   group <- h5[["model"]]
   handles <- c(handles, group)
-  used_attrs <- c("k", "p", "m", "s", "n", "rank", "h", "structural", "rclass")
+  # 'algorithm' is here for the discounted models alone, whose criterion is the
+  # exact log marginal likelihood their file carries rather than anything
+  # estimated from a chain: selection_criteria() tells them apart by name, and
+  # without it a discounted model would be scored as though it were a sampler.
+  used_attrs <- c("k", "p", "m", "s", "n", "rank", "h", "structural", "rclass",
+                  "algorithm")
   model <- list()
   for (attr_name in intersect(used_attrs, hdf5r::h5attr_names(group))) {
     model[[attr_name]] <- hdf5r::h5attr(group, attr_name)
@@ -230,7 +236,12 @@ choose_best_model_from_hdf5 <- function(folder, criterion) {
   if (.hdf5_path_exists(h5, "posterior/loglik")) {
     dataset <- h5[["posterior/loglik"]]
     handles <- c(handles, dataset)
-    object[["posterior"]][["loglik"]] <- dataset$read()
+    # Shaped from what the file says rather than from what hdf5r hands back: a
+    # dataset with one row comes back as a plain vector, dimensions dropped, and
+    # the criteria would then read one draw over the sample as one column of
+    # many draws. A discounted model's log-likelihood is exactly one row.
+    object[["posterior"]][["loglik"]] <-
+      matrix(dataset$read(), nrow = dataset$dims[1], ncol = dataset$dims[2])
   }
   if (.hdf5_path_exists(h5, "posterior/forecast_errors")) {
     dataset <- h5[["posterior/forecast_errors"]]

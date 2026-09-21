@@ -212,11 +212,54 @@ submodels_to_gvar.gvarexport <- function(object, period = NULL, submodels = NULL
   .solve_export(object, period = period, submodels = submodels, chunk = chunk)
 }
 
+# What to say when a sub-model has a posterior but no draws.
+#
+# The discounted models write a closed form -- a mean, a scale and a covariance
+# per period -- and deliberately no /posterior/a/coeffs: joining one i.i.d. draw
+# per period would look like a sampled coefficient path and is not one, the
+# smoothed posterior being dependent across periods. A global model is built by
+# stacking one draw of every sub-model at a time, so there is nothing here to
+# stack.
+#
+# Drawing from the closed form is what a host that wants draws does, and it is
+# BayesTS's to do: the arithmetic is in VarTvpDiscountEstimator::draw_period(),
+# and reimplementing it here would put the same posterior in two places.
+.refuse_discount_submodel <- function(algorithm) {
+
+  stop("Sub-models estimated with ", algorithm, " carry a closed-form posterior ",
+       "rather than draws -- a mean, a scale and a covariance per period, and no ",
+       "/posterior/a/coeffs -- so there is nothing to stack into a global model. ",
+       "They are for comparing specifications by the exact log marginal ",
+       "likelihood their files carry; use a sampling algorithm for the model the ",
+       "impulse responses are taken from.")
+}
+
+# The algorithm of a sub-model that is one of the discounted models, or NULL.
+.discount_submodel_algorithm <- function(specifications) {
+
+  algorithms <- unique(stats::na.omit(specifications))
+  discounted <- algorithms[vapply(algorithms, bvartools::is_discount_model,
+                                  logical(1))]
+  if (length(discounted) == 0) {
+    return(NULL)
+  }
+
+  paste(discounted, collapse = " and ")
+}
+
 # The global model from the sub-models of an object that holds their draws.
 .combine_submodels <- function(object, period = NULL) {
 
   if (is.null(object[["submodels"]])) {
     stop("Argument 'object' does not contain sub-models.")
+  }
+
+  algorithm <- .discount_submodel_algorithm(unlist(lapply(
+    object[["submodels"]], function(models) {
+      lapply(models, function(model) model[["model"]][["algorithm"]])
+    })))
+  if (!is.null(algorithm)) {
+    .refuse_discount_submodel(algorithm)
   }
 
   index <- object[["global"]][["index"]]

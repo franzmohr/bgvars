@@ -22,6 +22,8 @@ create_vecxsubmodel(
   error = "wishart",
   varsel = "none",
   algorithm = NULL,
+  delta_beta = 1,
+  delta_sigma = 1,
   iterations = 10000,
   burnin = 2000,
   thin = 1
@@ -98,6 +100,12 @@ that should be employed. Default is \code{"none"}. See 'Details'.}
 (default), standard algorithms will be used. See 'Details' for available
 non-standard options.}
 
+\item{delta_beta, delta_sigma}{numeric discount factors in \eqn{(0, 1]} of the
+discounted model, the first governing the coefficients and the second the
+error covariance. Both default to 1, at which the quantity they govern does
+not move. Ignored unless \code{algorithm = "discount"}, and a vector in
+either produces one sub-model per value. See 'Details'.}
+
 \item{iterations}{an integer of MCMC draws excluding burn-in draws (defaults
 to 10000).}
 
@@ -152,7 +160,27 @@ Available specifications for argument \code{varsel} are:
 Available specifications for argument \code{algorithm} are:
 \itemize{
    \item{\code{"KLGS2010"}: Algorithm proposed in Koop, León-González & Strachan (2010).}
+   \item{\code{"discount"}: The discounted time varying parameter model of
+   West & Harrison (1997, ch. 16) with the discounted Wishart of Uhlig
+   (1997), estimated by \code{VecTvpDiscount}.}
 }
+
+The discounted model is not a sampler. Its posterior is closed form -- one
+pass over the sample, no chain -- so \code{burnin} must be 0 and \code{thin}
+1, \code{error} must be \code{"wishart"}, and neither variable selection nor
+a structural model is available. It conditions on a fixed cointegration
+matrix, which \code{\link[bvartools]{add_initial_values}} takes from
+Johansen's estimate, so what drifts is the adjustment to the long-run
+relations and not the relations themselves. What it buys is speed and an
+exact marginal likelihood: the sum of \code{/posterior/loglik} is the log
+marginal likelihood of the sub-model given its rank, its cointegration
+matrix, its lag orders and the two discounts, so a grid over any of them is
+compared without a chain being run for any of it.
+
+A sub-model of that algorithm is estimated by BayesTS on its file, as every
+sub-model of an export is, and by nothing else: there is no R implementation
+of the filter. \code{\link[bvartools]{is_discount_model}} says which
+algorithms these are.
 }
 \examples{
 

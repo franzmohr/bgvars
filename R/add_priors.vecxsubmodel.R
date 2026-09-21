@@ -222,6 +222,16 @@ add_priors.vecxsubmodel <- function(object,
                                     varsel = NULL,
                                     ...){
   
+  # The discounted model takes a matrix normal prior over the coefficient matrix
+  # rather than a normal one over its vectorisation, and no cointegration space
+  # prior at all: it conditions on a fixed space rather than drawing one. A
+  # sub-model's prior is the same object as a bvecmodel's, so the method there
+  # builds it, and this one gets out of the way before `coint`, which is never
+  # given for it, is forced.
+  if (bvartools::is_discount_model(object)) {
+    return(NextMethod())
+  }
+
   # Input checks ----
   
   ## coefficients ----
