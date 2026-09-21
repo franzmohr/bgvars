@@ -755,6 +755,13 @@ create_vecxsubmodel <- function(object,
             z <- cbind(z, y_A0)
           }
           dimnames(z) <- NULL
+
+          # Not kept for a discounted sub-model, which reads the compact
+          # regressors: BayesTS refuses the SUR matrix, and it is nine tenths
+          # of the sub-model's size.
+          if (use_discount) {
+            z <- NULL
+          }
           
           # Create individual model
           result_i <- list("model" = model_i,

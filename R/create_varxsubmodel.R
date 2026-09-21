@@ -576,6 +576,11 @@ create_varxsubmodel <- function(object,
           z <- cbind(z, y_A0)
         }
         dimnames(z) <- NULL
+
+      # Not kept for a discounted sub-model; see create_vecxsubmodel().
+      if (use_discount) {
+        z <- NULL
+      }
         
         # Create individual model
         result_i <- list("model" = model_i,

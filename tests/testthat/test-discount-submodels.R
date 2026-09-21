@@ -126,3 +126,13 @@ test_that("a closed form cannot be stacked into a global model", {
   # From the manifest, before a file is read.
   expect_error(submodels_to_gvar(open_export(folder)), "closed-form posterior")
 })
+
+
+test_that("a discounted sub-model carries no SUR matrix", {
+
+  object <- discount_gvec(r = 0:1)
+  for (model in object[["submodels"]][["US"]]) {
+    expect_null(model[["data"]][["train"]][["z"]])
+    expect_false(is.null(model[["data"]][["train"]][["x"]]))
+  }
+})
