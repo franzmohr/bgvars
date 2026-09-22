@@ -223,3 +223,71 @@ test_that("a time varying ML prior of a sub-model is checked", {
                                              list(rho = 0.999, p_tau_i = "ml", weight = 0.1)))
   expect_error(scale_error_correction(centred), "before 'add_priors'")
 })
+
+# G, the matrix the loadings' prior is scaled by, is the error covariance in
+# every model but the constant VEC with stochastic volatility, where it is fixed
+# for the run. 'coint$g_i' gives its inverse; bvartools builds it and BayesTS
+# reads it from /priors/beta/g_inv, so what has to hold for a sub-model is that
+# it arrives there, sized by the endogenous variables rather than by the error
+# correction term.
+vecx_sv_object <- function(tvp = FALSE) {
+  object <- add_submodels(gvec_object(),
+                          endogen = c("y", "Dp"), p_endogen = 2,
+                          exogen = c("y", "Dp"), p_exogen = 2,
+                          const = "unrestricted", r = 1,
+                          tvp = tvp, error = "sv", iterations = 20, burnin = 10)
+  align_model_obs(object)
+}
+
+vecx_sv_priors <- function(object, coint) {
+  coef <- list(v_i = 1, v_i_det = 0.1)
+  if (isTRUE(first_submodel(object)[["model"]][["tvp"]])) {
+    coef <- c(coef, list(shape = 3, rate = 1e-4))
+  }
+  add_priors(object, coef = coef, coint = coint,
+             sigma = list(shape = 3, rate = 0.01, mu = 0, v_i = 0.01,
+                          state_variance = 0.05, offset = 1e-8))
+}
+
+test_that("coint$g_i sets the G of a sub-model with stochastic volatility", {
+  object <- vecx_sv_object()
+  for (g_i in list(2, c(2, 3), "ml")) {
+    coint <- list(v_i = 0, p_tau_i = 1, g_i = g_i)
+    priors <- vecx_sv_priors(object, coint)
+    for (i in seq_along(object[["submodels"]])) {
+      model <- object[["submodels"]][[i]][[1]]
+      g_inv <- priors[["submodels"]][[i]][[1]][["priors"]][["beta"]][["g_inv"]]
+      expect_identical(priors[["submodels"]][[i]][[1]][["priors"]][["beta"]],
+                       bvartools::cointspace_prior(model, coint))
+      expect_identical(dim(g_inv), rep(model[["model"]][["k"]], 2))
+    }
+  }
+
+  # Left out, G comes from the starting values and nothing is stored.
+  priors <- vecx_sv_priors(object, list(v_i = 0, p_tau_i = 1))
+  expect_null(first_submodel(priors)[["priors"]][["beta"]][["g_inv"]])
+})
+
+test_that("coint$g_i is refused where G is the error covariance", {
+  expect_error(vecx_sv_priors(vecx_sv_object(tvp = TRUE), list(rho = 0.999, g_i = "ml")),
+               "coint[$]g_i")
+  expect_error(vecx_ml_priors(vecx_ml_object(), list(v_i = 0, p_tau_i = 1, g_i = 2)),
+               "coint[$]g_i")
+})
+
+test_that("coint$g_i is written to the sub-model's file", {
+  skip_if_not_installed("hdf5r")
+  object <- vecx_sv_priors(vecx_sv_object(), list(v_i = 0, p_tau_i = 1, g_i = "ml"))
+  object <- add_initial_values(object)
+  folder <- tempfile("g-i-export")
+  dir.create(folder)
+  on.exit(unlink(folder, recursive = TRUE), add = TRUE)
+  write_to_hdf5(object, folder)
+
+  file <- file.path(folder, "submodels", names(object[["submodels"]])[1], "001.h5")
+  h5 <- hdf5r::H5File$new(file, mode = "r")
+  on.exit(h5$close_all(), add = TRUE, after = FALSE)
+  expect_equal(as.matrix(h5[["priors/beta/g_inv"]]$read()),
+               first_submodel(object)[["priors"]][["beta"]][["g_inv"]],
+               ignore_attr = TRUE)
+})
