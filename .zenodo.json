@@ -1,31 +1,25 @@
 {
   "upload_type": "software",
+  "access_right": "open",
   "title": "bgvars: Bayesian Inference of Global Vector Autoregressive and Global Vector Error Correction Models",
-  "description": "<p>An R package that assists in the set-up and inference of Bayesian global vector autoregressive (BGVAR) and global vector error correction (BGVEC) models. It covers the preparation of country-specific data and weight matrices, the specification and estimation of country sub-models, their combination into a solved global model, and the evaluation of the result by means of forecasts, generalised impulse responses and forecast error variance decompositions.</p>",
+  "version": "0.1.0",
+  "description": "<p>An R package that assists in the set-up and inference of Bayesian global vector autoregressive (BGVAR) and global vector error correction (BGVEC) models. It provides functions for the construction of country models from regional data and weight matrices, prior specification, posterior simulation of the sub-models, their combination into a global model, and impulse response analysis and forecast error variance decomposition of the result. Sub-models can be estimated in batches and stored as HDF5 files, so that a global model larger than memory can be worked through one sub-model at a time.</p>",
+  "license": "GPL-3.0-or-later",
   "creators": [
     {
       "name": "Mohr, Franz X.",
+      "affiliation": "Austrian Financial Market Authority",
       "orcid": "0009-0003-8890-7781"
     }
   ],
-  "license": "gpl-3.0-or-later",
-  "access_right": "open",
-  "language": "eng",
   "keywords": [
-    "R",
     "Bayesian inference",
+    "global vector autoregression",
+    "global vector error correction",
     "econometrics",
     "time series",
-    "global vector autoregression",
-    "GVAR",
-    "vector error correction",
-    "macroeconomics"
-  ],
-  "related_identifiers": [
-    {
-      "identifier": "https://github.com/franzmohr/bgvars",
-      "relation": "isSupplementTo",
-      "scheme": "url"
-    }
+    "Markov chain Monte Carlo",
+    "Gibbs sampling",
+    "R"
   ]
 }
