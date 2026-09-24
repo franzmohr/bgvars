@@ -302,9 +302,7 @@ add_priors.varxsubmodel <- function(object,
         use_bvs_error <- TRUE 
       }
     }
-    if (coef[["v_i"]] == 0 | (coef[["v_i_det"]] == 0 & !varsel[["exclude_det"]])) {
-      warning("Using BVS with an uninformative prior is not recommended.")
-    }
+    .add_priors_warn_bvs_flat(coef, minnesota, varsel[["exclude_det"]])
   }
   
   if (use_ssvs & use_bvs) {

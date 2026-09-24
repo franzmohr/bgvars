@@ -177,3 +177,21 @@
     }
   }
 }
+
+# Warns when BVS is combined with a flat prior on the coefficients. A Minnesota
+# prior is never flat, and it may come without v_i, which is why it is checked
+# first. Without one, the precision of the deterministic terms is v_i_det, or
+# v_i when that is not given -- the fallback the prior itself uses.
+.add_priors_warn_bvs_flat <- function(coef, minnesota, exclude_det) {
+  if (minnesota) {
+    return(invisible(NULL))
+  }
+  v_i_det <- coef[["v_i_det"]]
+  if (is.null(v_i_det)) {
+    v_i_det <- coef[["v_i"]]
+  }
+  if (coef[["v_i"]] == 0 || (v_i_det == 0 && !exclude_det)) {
+    warning("Using BVS with an uninformative prior is not recommended.")
+  }
+  invisible(NULL)
+}
