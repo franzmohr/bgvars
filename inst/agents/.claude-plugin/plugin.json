@@ -1,0 +1,11 @@
+{
+  "name": "bgvars",
+  "description": "Write correct bgvars code: Bayesian global VAR and VEC models in R, from trade weights and country sub-models to estimation through HDF5 exports, the solved global model and generalised impulse responses.",
+  "author": {
+    "name": "Franz X. Mohr"
+  },
+  "homepage": "https://github.com/franzmohr/bgvars/tree/main/inst/agents",
+  "repository": "https://github.com/franzmohr/bgvars",
+  "license": "GPL-3.0-or-later",
+  "keywords": ["r", "bayesian", "gvar", "gvec", "global-var", "time-series", "mcmc"]
+}
