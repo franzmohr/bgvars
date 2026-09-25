@@ -162,7 +162,7 @@ the lists to every sub-model. Nothing has a default.
 
 | Sub-model | `coef` | `sigma` | `coint` |
 | --- | --- | --- | --- |
-| constant, Wishart | `v_i` (or `minnesota`), optional `v_i_det`, `const`, `max_var` | `df`, `scale` | VECX: `v_i`, `p_tau_i` |
+| constant, Wishart | `v_i` (or `minnesota`), optional `v_i_det`, `const` | `df`, `scale` | VECX: `v_i`, `p_tau_i` |
 | `error = "gamma"` | as above | `shape`, `rate` | as above |
 | `error = "sv"`, `"sv+covar"` | as above | `shape`, `rate`, `mu`, `v_i`, `state_variance`, `offset` | as above, optionally `g_i` for the loadings' prior |
 | `tvp = TRUE` | add `shape`, `rate`, optional `rate_det`; VECX also `rate_alpha` for the loadings | as above | VECX: `rho` for time varying cointegration |
