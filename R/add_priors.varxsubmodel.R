@@ -4,93 +4,114 @@
 #' function \code{\link{create_varxsubmodel}}.
 #'
 #' @param object a list of class 'varxsubmodel'.
-#' @param coef a named list of prior specifications for the coefficients of the
-#' models. For the default specification, all prior means are set to zero and the diagonal elements of
-#' the inverse prior variance-covariance matrix are set to 1 for coefficients corresponding to non-deterministic
-#' and structural terms. For deterministic coefficients the prior variances are set to 10 via \code{v_i_det = 0.1}.
-#' The variances need to be specified as precisions, i.e. as inverses of the variances.
-#' For further specification choices for TVP or the Minnesota prior see 'Details'.
-#' @param sigma a named list of prior specifications for the error variance-covariance matrix.
-#' For the default specification of an inverse Wishart distribution
-#' the prior degrees of freedom are set to the number of endogenous variables and
-#' the prior variances to 1. See 'Details'.
-#' @param varsel optional; a named list of prior specifications for the variable
-#' selection algorithm. See 'Details'.
+#' @param coef a named list of prior specifications for the coefficients. It has
+#' no default and must be given. It requires either \code{v_i}, the prior precision
+#' of the coefficients, or \code{minnesota}; models with time varying parameters also
+#' require \code{shape} and \code{rate}. Prior variances are given as precisions,
+#' i.e. as their inverses. See 'Details'.
+#' @param sigma a named list of prior specifications for the error term. It has no
+#' default and must be given. Which elements it requires depends on the error
+#' specification of the model; see 'Details'.
+#' @param varsel a named list of prior specifications for the variable selection
+#' algorithm. Required if the model was created with \code{varsel = "bvs"} or
+#' \code{"ssvs"}, and refused if it was created with \code{varsel = "none"}.
+#' See 'Details'.
 #' @param ... further arguments passed to or from other methods.
-#' 
-#' @details The arguments of the function require named lists. Possible
-#' specifications are described in the following. Note that it is important to specify the
-#' priors in the correct list. Otherwise, the provided specification will be disregarded
-#' and default values will be used.
-#' 
+#'
+#' @details The method has no default prior. Each argument is a named list, and
+#' every value the prior needs must be given in the list it belongs to. Which
+#' elements are required depends on how the sub-model was specified in
+#' \code{\link{create_varxsubmodel}}: whether its parameters are time varying,
+#' which error specification it has and which variable selection algorithm it
+#' uses. A missing required element raises an error, and so does an element of
+#' \code{coef} that the method does not recognise. The check is strict because a
+#' misspelt or misplaced element, such as a shape parameter of the error term put
+#' into \code{coef}, would otherwise leave the prior different from the one
+#' intended without any sign of it.
+#'
 #' Argument \code{coef} can contain the following elements:
 #' \describe{
-#'   \item{\code{v_i}}{a numeric specifying the prior precision of the coefficients. Default is 1.
-#'   Will be ignored if \code{minnesota} is specified.}
+#'   \item{\code{v_i}}{a non-negative numeric specifying the prior precision of the
+#'   coefficients. A value of 0 gives a flat prior. Required unless \code{minnesota} is
+#'   given, and required in any case if the error covariances are estimated (error
+#'   \code{"gamma+covar"} or \code{"sv+covar"}), where it is also the prior precision
+#'   of the covariance coefficients.}
 #'   \item{\code{v_i_det}}{a numeric specifying the prior precision of coefficients
-#'   corresponding to deterministic terms. Default is 0.1. Will be ignored if \code{minnesota} is specified.}
+#'   corresponding to deterministic terms. If it is not given, \code{v_i} is used.}
 #'   \item{\code{coint_var}}{a logical specifying whether the prior mean of the first own lag of an
 #'   endogenous variable should be set to 1, which is commonly used for cointegrated
-#'   VAR models. Default is \code{FALSE}.}
+#'   VAR models. If it is not given, the prior means of all lags are zero.}
 #'   \item{\code{const}}{a numeric or character specifying the prior mean of coefficients, which correspond
 #'   to the intercept. If a numeric is provided, all prior means are set to this value.
 #'   If \code{coef$const = "mean"}, the mean of the respective endogenous variable is used as prior mean.
 #'   If \code{coef$const = "first"}, the first values of the respective endogenous variable is used as prior mean.
-#'   This can be useful for trend estimation when using a TVP model.}
-#'   \item{\code{minnesota}}{a named list containing for parameters for the calculation of
-#'   the Minnesota prior, where the element names must be \code{kappa1}, \code{kappa2}, \code{kappa3} and \code{kappa4}.
+#'   This can be useful for trend estimation when using a TVP model. If it is not given,
+#'   the prior mean is zero.}
+#'   \item{\code{minnesota}}{a named list containing the parameters for the calculation of
+#'   the Minnesota prior, where the element names must be \code{kappa1}, \code{kappa2}, \code{kappa3} and \code{kappa4},
+#'   of which \code{kappa1}, \code{kappa2} and \code{kappa4} are required.
 #'   For the endogenous variable \eqn{i} the prior variance of the \eqn{l}th lag of regressor \eqn{j} is obtained as
-#'   \deqn{ \frac{\kappa_{1}}{l^2} \textrm{ for own lags of endogenous variables,}} 
+#'   \deqn{ \frac{\kappa_{1}}{l^2} \textrm{ for own lags of endogenous variables,}}
 #'   \deqn{ \frac{\kappa_{1} \kappa_{2}}{l^2} \frac{\sigma_{i}^2}{\sigma_{j}^2} \textrm{ for endogenous variables other than own lags,}}
 #'   \deqn{ \frac{\kappa_{1} \kappa_{3}}{(l+1)^2} \frac{\sigma_{i}^2}{\sigma_{j}^2} \textrm{ for exogenous variables,}}
 #'   \deqn{ \kappa_{1} \kappa_{4} \sigma_{i}^2 \textrm{ for deterministic terms,}}
 #'   where \eqn{\sigma_{i}} is the residual standard deviation of variable \eqn{i} of an unrestricted
 #'   LS estimate. For exogenous variables \eqn{\sigma_{i}} is the sample standard deviation.}
-#'   \item{\code{max_var}}{a numeric specifying the maximum prior variance that is allowed for
-#'   non-deterministic coefficients. This argument can be used to overwrite prior variances that are
-#'   based on LS estimates, but should not exceed a certain threshold. This can
-#'   be useful when using the BVS algorithm.}
+#'   \item{\code{max_var}}{accepted, but not used by this method.}
 #'   \item{\code{shape}}{a numeric specifying the prior shape parameter of the error term of the
-#'   state equation. Only used for models with time varying parameters. Default is 3.}
+#'   state equation. Required for models with time varying parameters and not used otherwise.}
 #'   \item{\code{rate}}{a numeric specifying the prior rate parameter of the error term of the
-#'   state equation. Only used for models with time varying parameters. Default is 0.0001.}
+#'   state equation. Required for models with time varying parameters and not used otherwise.}
 #'   \item{\code{rate_det}}{a numeric specifying the prior rate parameter of the error term of the
-#'   state equation for coefficients, which correspond to deterministic terms.
-#'   Only used for models with time varying parameters. Default is 0.01.}
+#'   state equation for coefficients, which correspond to deterministic terms. If it is not given,
+#'   \code{rate} is used. Only used for models with time varying parameters.}
 #' }
-#' If \code{minnesota} is specified, \code{v_i} and \code{v_i_det} are ignored.
-#' 
-#' Argument \code{sigma} can contain the following elements:
+#' If \code{minnesota} is given, the prior precisions of the coefficients are taken from it
+#' and \code{v_i} and \code{v_i_det} do not enter them. The prior means are still set by
+#' \code{coint_var} and \code{const}.
+#'
+#' Argument \code{sigma} must contain the elements that the error specification of
+#' the model requires:
+#' \itemize{
+#'   \item error \code{"wishart"}: \code{df} and \code{scale}. A Wishart prior is refused
+#'   for structural models, which need a gamma prior or stochastic volatility;
+#'   \item error \code{"gamma"} or \code{"gamma+covar"}: \code{shape} and \code{rate};
+#'   \item error \code{"sv"} or \code{"sv+covar"}: \code{mu}, \code{v_i}, \code{shape},
+#'   \code{rate}, \code{state_variance} and \code{offset}.
+#' }
+#' Elements that the error specification does not use are ignored. The elements have
+#' the following meaning:
 #' \describe{
-#'   \item{\code{df}}{an integer or character specifying the prior degrees of freedom of the error term. Only
-#'   used, if the prior is inverse Wishart.
-#'   Default is \code{"k"}, which indicates the amount of endogenous variables in the respective model.
-#'   \code{"k + 3"} can be used to set the prior to the amount of endogenous variables plus 3. If an integer
-#'   is provided, the degrees of freedom are set to this value in all models.}
-#'   \item{\code{scale}}{a numeric specifying the prior error variance of endogenous variables.
-#'   Default is 1.}
-#'   \item{\code{shape}}{a numeric or character specifying the prior shape parameter of the error term. Only
-#'   used, if the prior is inverse gamma or if time varying volatilities are estimated.
-#'   For models with constant volatility the default is \code{"k"}, which indicates the amount of endogenous
-#'   variables of the model. \code{"k + 3"} can be used to set the prior to the amount of
-#'   endogenous variables plus 3. If a numeric is provided, the shape parameters are set to this value in all
-#'   models. For models with stochastic volatility this prior refers to the error variance of the state
-#'   equation.}
-#'   \item{\code{rate}}{a numeric specifying the prior rate parameter of the error term. Only used, if the
-#'   prior is inverse gamma or if time varying volatilities are estimated. For models with stochastic
-#'   volatility this prior refers to the error variance of the state equation.}
-#'   \item{\code{mu}}{numeric of the prior mean of the initial state of the log-volatilities.
-#'   Only used for models with time varying volatility.}
-#'   \item{\code{v_i}}{numeric of the prior precision of the initial state of the log-volatilities.
-#'   Only used for models with time varying volatility.}
-#'   \item{\code{state_variance}}{numeric of the initial draw for the variance of the log-volatilities.
-#'   Only used for models with time varying volatility.}
-#'   \item{\code{offset}}{numeric of the constant, which is added before taking the log of the squared errors.
-#'   Only used for models with time varying volatility.}
+#'   \item{\code{df}}{a non-negative number or a character specifying the prior degrees of
+#'   freedom of the inverse Wishart prior. A character is evaluated with \code{k} standing
+#'   for the number of endogenous variables of the model, so that \code{"k"} or
+#'   \code{"k + 3"} adapts to each sub-model, whereas a number sets the same degrees of
+#'   freedom in all of them.}
+#'   \item{\code{scale}}{a positive numeric specifying the prior error variance of the
+#'   endogenous variables in the inverse Wishart prior.}
+#'   \item{\code{shape}}{a non-negative numeric or a character specifying the prior shape
+#'   parameter of the error term. A character is evaluated with \code{k} as for \code{df}.
+#'   For models with stochastic volatility this prior refers to the error variance of the
+#'   state equation.}
+#'   \item{\code{rate}}{a positive numeric specifying the prior rate parameter of the error
+#'   term. For models with stochastic volatility this prior refers to the error variance of
+#'   the state equation.}
+#'   \item{\code{mu}}{numeric of the prior mean of the initial state of the log-volatilities.}
+#'   \item{\code{v_i}}{numeric of the prior precision of the initial state of the log-volatilities.}
+#'   \item{\code{state_variance}}{numeric of the initial draw for the variance of the log-volatilities.}
+#'   \item{\code{offset}}{numeric of the constant, which is added before taking the log of the squared errors.}
 #' }
-#' For structural models only a gamma prior or stochastic volatility specification is allowed.
-#' 
-#' Argument \code{varsel} can contain the following elements:
+#'
+#' For a sub-model with discounted parameters the prior is built by
+#' \code{\link[bvartools]{add_priors.bvarmodel}}. It requires \code{coef$v_i},
+#' \code{sigma$df} and \code{sigma$scale}, accepts only \code{v_i}, \code{v_i_det},
+#' \code{v_i_alpha} and \code{const} in \code{coef} and only \code{df} and
+#' \code{scale} in \code{sigma}, raises an error on any other element, and refuses
+#' \code{varsel}.
+#'
+#' Argument \code{varsel} can contain the following elements, of which BVS requires
+#' \code{inprior} and SSVS requires \code{inprior} and either \code{tau} or
+#' \code{semiautomatic}:
 #' \describe{
 #'   \item{\code{inprior}}{a numeric between 0 and 1 specifying the prior probability
 #'   of a variable to be included in the model.}
@@ -109,7 +130,6 @@
 #'   of restricted (\eqn{\tau_0}) and unrestricted (\eqn{\tau_1}) variables, respectively.
 #'   This is the semiautomatic approach described in George et al. (2008). Only used for SSVS.}
 #' }
-#' In the case of SSVS, either \code{tau} or \code{semiautomatic} must be specified.
 #' 
 #' If \code{varsel$minnesota} is specified, prior
 #' inclusion probabilities are calculated in a Minnesota-like fashion as
@@ -282,9 +302,7 @@ add_priors.varxsubmodel <- function(object,
         use_bvs_error <- TRUE 
       }
     }
-    if (coef[["v_i"]] == 0 | (coef[["v_i_det"]] == 0 & !varsel[["exclude_det"]])) {
-      warning("Using BVS with an uninformative prior is not recommended.")
-    }
+    .add_priors_warn_bvs_flat(coef, minnesota, varsel[["exclude_det"]])
   }
   
   if (use_ssvs & use_bvs) {
