@@ -7,6 +7,13 @@
 #' and a \code{submodels} directory beside it.
 #' @param criterion selection criterion used to choose the best model using
 #' \code{\link[bvartools]{selection_criteria}}.
+#' @param plugin the point at which \code{"AIC"}, \code{"BIC"} and \code{"HQ"}
+#' are evaluated, passed to \code{\link[bvartools]{selection_criteria}}.
+#' \code{"mean"}, the default, uses the posterior mean and reads every model
+#' file in full. \code{"best"} uses the draw with the highest log-likelihood,
+#' which the light read already provides, so the point criteria then cost no
+#' more than \code{"WAIC"} does. It is comparable only across models whose
+#' chains are of the same length.
 #'
 #' @details
 #' For the criteria that are calculated from the draws of the log-likelihood
@@ -21,7 +28,10 @@
 #' \code{"AIC"}, \code{"BIC"} and \code{"HQ"} are evaluated at the posterior mean
 #' of the parameters, see \code{\link[bvartools]{selection_criteria}}, which
 #' needs the draws of the coefficients and the data. For them each model file is
-#' read in full, one at a time, which takes longer.
+#' read in full, one at a time, which takes longer. With
+#' \code{plugin = "best"} they are evaluated at the draw with the highest
+#' log-likelihood instead, which the light read already provides, and no model
+#' file is read in full.
 #'
 #' A model file that holds neither draws of the log-likelihood nor forecast
 #' errors -- a model an external sampler has not estimated, or failed on -- is
@@ -33,7 +43,9 @@
 #' for each sub-model.
 #'
 #' @export
-choose_best_model_from_hdf5 <- function(folder, criterion) {
+choose_best_model_from_hdf5 <- function(folder, criterion, plugin = c("mean", "best")) {
+
+  plugin <- match.arg(plugin)
 
   if (!dir.exists(folder)) {
     stop(paste0("Folder ", folder, " does not exist."))
@@ -65,7 +77,12 @@ choose_best_model_from_hdf5 <- function(folder, criterion) {
   # Evaluated at the posterior mean, which the inputs read by
   # .read_selection_data_from_hdf5 cannot provide.
   # LML is not among them: it is read off the file, not evaluated at anything.
-  point_criterion <- criterion %in% c("AIC", "BIC", "HQ")
+  #
+  # With plugin = "best" the deviance is taken at the draw with the highest
+  # log-likelihood, which the draws of the log-likelihood already hold, so even
+  # AIC, BIC and HQ need nothing beyond what the light read provides and the
+  # whole file is left alone.
+  point_criterion <- criterion %in% c("AIC", "BIC", "HQ") && plugin == "mean"
 
   submodel <- unique(manifest[, "submodel"])
 
@@ -93,7 +110,7 @@ choose_best_model_from_hdf5 <- function(folder, criterion) {
         object <- bvartools::read_model_from_hdf5(filename = filename)
       }
 
-      sc[[j]] <- .selection_criteria_from_hdf5(object, point_criterion)
+      sc[[j]] <- .selection_criteria_from_hdf5(object, point_criterion, plugin)
     }
 
     if (length(skipped) > 0) {
@@ -126,14 +143,14 @@ choose_best_model_from_hdf5 <- function(folder, criterion) {
 # such a model is read for -- a point criterion reads the whole file instead --
 # so that warning, and only that one, is muffled. Once per file it would
 # otherwise bury any warning that matters.
-.selection_criteria_from_hdf5 <- function(object, point_criterion) {
+.selection_criteria_from_hdf5 <- function(object, point_criterion, plugin = "mean") {
 
   if (point_criterion) {
-    return(bvartools::selection_criteria(object))
+    return(bvartools::selection_criteria(object, plugin = plugin))
   }
 
   withCallingHandlers(
-    bvartools::selection_criteria(object),
+    bvartools::selection_criteria(object, plugin = plugin),
     warning = function(w) {
       if (grepl("could not be evaluated at the posterior mean", conditionMessage(w),
                 fixed = TRUE)) {
