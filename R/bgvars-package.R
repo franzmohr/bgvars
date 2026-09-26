@@ -10,6 +10,7 @@
 #' @importFrom bvartools add_seed
 #' @importFrom bvartools align_model_obs
 #' @importFrom bvartools choose_best_model
+#' @importFrom bvartools expected_model_size
 #' @importFrom bvartools get_model_specifications
 #' @importFrom bvartools inclusion_prior
 #' @importFrom bvartools irf
