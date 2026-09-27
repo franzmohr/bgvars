@@ -67,6 +67,12 @@
   solved[["posterior"]][["u_sigma_inv"]][["coeffs"]] <-
     as_draws(solved[["posterior"]][["u_sigma_inv"]][["coeffs"]])
   solved[["g"]] <- as_draws(solved[["g"]])
+  if (!is.null(solved[["posterior"]][["beta"]])) {
+    relations <- attr(solved[["posterior"]][["beta"]][["coeffs"]], "relations")
+    labelled <- as_draws(solved[["posterior"]][["beta"]][["coeffs"]])
+    attr(labelled, "relations") <- relations
+    solved[["posterior"]][["beta"]][["coeffs"]] <- labelled
+  }
   solved[["model"]][["iterations"]] <- as.integer(chain[["draws"]])
 
   solved
@@ -111,6 +117,17 @@
   first[["posterior"]][["a"]][["coeffs"]] <- rows("a")
   first[["posterior"]][["u_sigma_inv"]][["coeffs"]] <- rows("u_sigma_inv")
   first[["g"]] <- rbind(unclass(first[["g"]]), unclass(second[["g"]]))
+
+  # The cointegrating vectors of a solved GVEC are draws like the rest and have
+  # to grow with them. Left out, the model would carry the vectors of the first
+  # piece against the coefficients of every piece, which is not a shape anything
+  # checks: it fails later, wherever the two are indexed by the same draw.
+  if (!is.null(first[["posterior"]][["beta"]])) {
+    relations <- attr(first[["posterior"]][["beta"]][["coeffs"]], "relations")
+    stacked <- rows("beta")
+    attr(stacked, "relations") <- relations
+    first[["posterior"]][["beta"]][["coeffs"]] <- stacked
+  }
 
   first
 }

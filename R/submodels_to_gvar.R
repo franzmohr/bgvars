@@ -855,8 +855,12 @@ submodels_to_gvar.gvarexport <- function(object, period = NULL, submodels = NULL
   if (!is.null(beta_global)) {
     labelled <- as_draws(beta_global)
     # coda::mcmc() keeps only what it knows about, so the names of the relations
-    # are put back on the object the caller sees.
+    # are put back on the object the caller sees. The count travels in
+    # model$rank rather than as an attribute: an attribute would survive on a
+    # model solved in one piece and be lost on one solved in several, where the
+    # pieces are rbound, and the two would then differ by a stray attribute.
     attr(labelled, "relations") <- attr(beta_global, "relations")
+    attr(labelled, "rank") <- NULL
     result[["posterior"]][["beta"]] <- list("coeffs" = labelled)
     result[["model"]][["rank"]] <- attr(beta_global, "rank")
     # Prepended, so that every method written for the level VAR keeps working
