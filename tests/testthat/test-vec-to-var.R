@@ -64,13 +64,34 @@ test_that("solving a GVEC model is solving its level representation", {
   class(levels) <- c("gvarmodel", "list")
 
   direct <- submodels_to_gvar(object)
-  expect_equal(direct, submodels_to_gvar(levels))
+  from_levels <- submodels_to_gvar(levels)
+
+  # The level algebra is the same, and everything the level form can express
+  # agrees. What the error correction form carries in addition is its
+  # cointegrating vectors, which vec_to_var() drops and which therefore cannot
+  # come back from a sub-model already in levels.
+  level_part <- function(x) {
+    x[["posterior"]][["beta"]] <- NULL
+    x[["model"]][["rank"]] <- NULL
+    class(x) <- list("bvarmodel", "list")
+    x
+  }
+  expect_equal(level_part(direct), level_part(from_levels))
+  expect_s3_class(direct, "gvecsolved")
+  expect_false(inherits(from_levels, "gvecsolved"))
+  expect_null(from_levels[["posterior"]][["beta"]])
 
   # A model whose sub-models come in both forms, as a selection among VARX and
-  # VECX candidates leaves it, is solved as well, and to the same model.
+  # VECX candidates leaves it, is solved as well, and to the same level model.
+  # It carries the relations of the sub-models that were still in error
+  # correction form and says so in 'rank', which is what the count of common
+  # stochastic trends, k - rank, is taken against.
   mixed <- object
   mixed[["submodels"]][["JP"]] <- levels[["submodels"]][["JP"]]
-  expect_equal(submodels_to_gvar(mixed), direct)
+  solved_mixed <- submodels_to_gvar(mixed)
+  expect_equal(level_part(solved_mixed), level_part(direct))
+  expect_identical(solved_mixed[["model"]][["rank"]],
+                   direct[["model"]][["rank"]] - 1L)
 })
 
 test_that("a restricted trend becomes a deterministic term of the global model", {

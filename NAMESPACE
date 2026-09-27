@@ -31,6 +31,7 @@ S3method(inclusion_prior,varxsubmodel)
 S3method(inclusion_prior,vecxsubmodel)
 S3method(minnesota_prior,varxsubmodel)
 S3method(minnesota_prior,vecxsubmodel)
+S3method(persistence_profiles,gvecsolved)
 S3method(print,gvarexport)
 S3method(print,gvarmodel)
 S3method(print,gvecmodel)
@@ -82,6 +83,7 @@ importFrom(bvartools,
   inclusion_prior,
   irf,
   minnesota_prior,
+  persistence_profiles,
   rescale_error_correction,
   scale_error_correction,
   selection_criteria,
