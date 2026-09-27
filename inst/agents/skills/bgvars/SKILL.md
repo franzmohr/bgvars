@@ -1,6 +1,6 @@
 ---
 name: bgvars
-description: Write correct bgvars code — Bayesian global VAR (GVAR) and global VEC (GVEC) models in R with create_gvarmodel, create_gvecmodel, add_weight_matrices, add_submodels, create_varxsubmodel, create_vecxsubmodel, align_model_obs, add_priors, add_posterior_coefficients, scale_error_correction, write_to_hdf5, open_export, map_submodels, choose_best_model_from_hdf5, read_gvar_from_folder and submodels_to_gvar. Use whenever R code loads bgvars, handles a 'gvarmodel', 'gvecmodel', 'submodeldata', 'varxsubmodel', 'vecxsubmodel' or 'gvarexport' object, uses the gvar2019, gvar2023 or dees2007 data, or estimates country models with weakly exogenous foreign variables and trade weights. Also use when a global model is estimated through a folder of HDF5 files, in batches, or by the BayesTS command line, and when the solved global model is analysed with generalised impulse responses.
+description: Write correct bgvars code — Bayesian global VAR (GVAR) and global VEC (GVEC) models in R with create_gvarmodel, create_gvecmodel, add_weight_matrices, add_submodels, create_varxsubmodel, create_vecxsubmodel, align_model_obs, add_priors, add_posterior_coefficients, scale_error_correction, write_to_hdf5, open_export, map_submodels, choose_best_model_from_hdf5, read_gvar_from_folder, submodels_to_gvar and persistence_profiles. Use whenever R code loads bgvars, handles a 'gvarmodel', 'gvecmodel', 'submodeldata', 'varxsubmodel', 'vecxsubmodel' or 'gvarexport' object, uses the gvar2019, gvar2023 or dees2007 data, or estimates country models with weakly exogenous foreign variables and trade weights. Also use when a global model is estimated through a folder of HDF5 files, in batches, or by the BayesTS command line, and when the solved global model is analysed with generalised impulse responses.
 ---
 
 # Writing correct bgvars code
@@ -89,6 +89,18 @@ the draws of `G` in element `g`. Its variables are named `<country>_<variable>`
 `vec_to_var()` first. Everything bvartools does with a `bvarmodel` —
 `irf(type = "gir")`, `fevd()`, `add_forecast_input()` with the future path of
 the global variables in `exogen` — works on it.
+
+A GVEC keeps one thing more than the level form holds. `vec_to_var()` drops the
+cointegrating vectors, so `submodels_to_gvar()` takes them first and maps each
+through the weight matrix of its sub-model: the solved model carries them in
+`posterior$beta`, counts them in `model$rank`, and is classed `gvecsolved`
+before `bvarmodel`. `persistence_profiles(gvar)` then follows each relation
+after a system-wide shock — one on impact, falling to zero where the relation is
+cointegrating, and the check on whether the rank was real. The same function on
+a single sub-model warns that it can follow only the domestic part, since a
+sub-model's foreign variables are not endogenous to it. A sub-model already in
+level form contributes no vectors, so a model stacked from both forms carries
+fewer relations than its ranks suggest and `model$rank` counts the ones it has.
 
 **7. Time variation is solved one period at a time.** A sub-model with
 `tvp = TRUE` or stochastic volatility has one set of coefficients per period;

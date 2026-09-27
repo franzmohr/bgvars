@@ -68,3 +68,38 @@ test_that("the global relation is not the sub-model's partial one", {
                  "only")
   expect_identical(nrow(partial[[1]]), nrow(global[[1]]))
 })
+
+test_that("the vectors grow with the draws when the export is solved in pieces", {
+  # The export path stacks the global model a chunk of draws at a time, and the
+  # cointegrating vectors are draws like the coefficients: solved in pieces they
+  # have to end up with as many rows. Kept as its own test because the fixtures
+  # above solve a model held in memory, which is never chunked, so nothing else
+  # here would notice a beta left at the size of the first piece.
+  object <- gvec_estimated(iterations = 30, burnin = 10, r = 1)
+
+  folder <- file.path(tempdir(), "bgvars-export-persistence")
+  unlink(folder, recursive = TRUE)
+  dir.create(folder, recursive = TRUE)
+  write_to_hdf5(object, folder = folder, overwrite = TRUE, mc.cores = 1)
+  export <- open_export(folder)
+
+  whole <- suppressMessages(submodels_to_gvar(export, chunk = 100))
+  pieces <- suppressMessages(submodels_to_gvar(export, chunk = 7))
+
+  for (solved in list(whole, pieces)) {
+    beta <- solved[["posterior"]][["beta"]][["coeffs"]]
+    expect_identical(nrow(beta), nrow(solved[["posterior"]][["a"]][["coeffs"]]))
+    expect_identical(ncol(beta), solved[["model"]][["k"]] * solved[["model"]][["rank"]])
+  }
+  expect_equal(unclass(pieces[["posterior"]][["beta"]][["coeffs"]]),
+               unclass(whole[["posterior"]][["beta"]][["coeffs"]]))
+  expect_identical(attr(pieces[["posterior"]][["beta"]][["coeffs"]], "relations"),
+                   attr(whole[["posterior"]][["beta"]][["coeffs"]], "relations"))
+
+  # And the profiles can actually be taken from the chunked solve.
+  pp <- persistence_profiles(pieces, n_ahead = 4)
+  expect_length(pp, solved[["model"]][["rank"]])
+  expect_equal(unname(pp[[1]][1, "median"]), 1)
+
+  unlink(folder, recursive = TRUE)
+})
