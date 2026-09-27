@@ -14,6 +14,7 @@
 #' @importFrom bvartools get_model_specifications
 #' @importFrom bvartools inclusion_prior
 #' @importFrom bvartools irf
+#' @importFrom bvartools persistence_profiles
 #' @importFrom bvartools minnesota_prior
 #' @importFrom bvartools rescale_error_correction
 #' @importFrom bvartools scale_error_correction

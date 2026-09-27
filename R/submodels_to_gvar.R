@@ -321,11 +321,22 @@ submodels_to_gvar.gvarexport <- function(object, period = NULL, submodels = NULL
   # come in both forms, is solved at all. The global data, the index and the
   # weight matrices describe the units and their weights, which neither form
   # changes.
+  # The cointegrating vectors are kept here, because vec_to_var() drops them:
+  # they say nothing about the level form and everything about the long-run
+  # relations, which the solved model is asked for further down. One entry per
+  # sub-model that has any, of the period this model is solved at.
+  coint_vectors <- list()
+
   for (i in names(object[["submodels"]])) {
     model_i <- .submodel_at_period(object[["submodels"]][[i]][[1]],
                                    time = times[period], submodel = i)
 
     if (inherits(model_i, "vecxsubmodel")) {
+      rank_i <- model_i[["model"]][["rank"]]
+      beta_i <- model_i[["posterior"]][["beta"]][["coeffs"]]
+      if (!is.null(rank_i) && rank_i > 0 && !is.null(beta_i)) {
+        coint_vectors[[i]] <- list(rank = rank_i, coeffs = as.matrix(beta_i))
+      }
       model_i <- vec_to_var(model_i)
     }
     object[["submodels"]][[i]][[1]] <- model_i
@@ -820,6 +831,20 @@ submodels_to_gvar.gvarexport <- function(object, period = NULL, submodels = NULL
   coeffs <- as_draws(cbind(posterior[["a"]], posterior[["b"]], posterior[["c"]]))
   u_sigma_inv <- as_draws(u_sigma_inv)
 
+  # Cointegrating vectors in global coordinates ----
+  #
+  # A sub-model's cointegrating vector spans its own variables and its foreign
+  # ones, and the weight matrix is what turns that pair into a statement about
+  # the global vector -- the same mapping the coefficients above go through,
+  # transposed, since beta multiplies the variables rather than being multiplied
+  # by them. Stacking them gives the sum(r_i) relations of the global system,
+  # which is what a persistence profile follows and what the count of common
+  # stochastic trends, k - sum(r_i), is about.
+  #
+  # Kept out of the draw loop: it needs nothing the stacking produces, only the
+  # weight matrices and each sub-model's own draws.
+  beta_global <- .global_beta(coint_vectors, submodels, w, k, draws)
+
   result <- list("model" = model,
                  "data" = data,
                  "posterior" = list("a" = list("coeffs" = coeffs),
@@ -827,6 +852,23 @@ submodels_to_gvar.gvarexport <- function(object, period = NULL, submodels = NULL
                  "g" = as_draws(posterior[["a0"]]))
 
   class(result) <- list("bvarmodel", "list")
+  if (!is.null(beta_global)) {
+    labelled <- as_draws(beta_global)
+    # coda::mcmc() keeps only what it knows about, so the names of the relations
+    # are put back on the object the caller sees.
+    attr(labelled, "relations") <- attr(beta_global, "relations")
+    result[["posterior"]][["beta"]] <- list("coeffs" = labelled)
+    result[["model"]][["rank"]] <- attr(beta_global, "rank")
+    # Prepended, so that every method written for the level VAR keeps working
+    # and only what needs the cointegrating vectors dispatches differently.
+    #
+    # A sub-model already in level form contributes none, because vec_to_var()
+    # dropped them and nothing can bring them back. A model whose sub-models
+    # come in both forms therefore carries fewer relations than its ranks
+    # suggest, and 'rank' counts the ones it actually has -- which is the number
+    # the count of common stochastic trends, k - rank, must be taken against.
+    class(result) <- list("gvecsolved", "bvarmodel", "list")
+  }
   return(result)
 }
 
@@ -896,4 +938,58 @@ submodels_to_gvar.gvarexport <- function(object, period = NULL, submodels = NULL
   }
 
   return(model)
+}
+
+# The cointegrating vectors of the sub-models, in the coordinates of the global
+# model.
+#
+# 'coint_vectors' is what .combine_submodels() kept before vec_to_var() dropped
+# it, one entry per sub-model that has a long-run relation.
+#
+# 'w[[i]]' has one row per variable of sub-model i, its own first and then its
+# foreign ones, and one column per variable of the global model. A vector of the
+# sub-model is stated over the same variables, in the same order, followed by
+# any restricted deterministic term, which is dropped: a deterministic term is
+# not a variable of the global system and the profile of a relation is about the
+# variables in it.
+#
+# Returns draws x (k * sum(r_i)), the relations side by side, or NULL where no
+# sub-model has one -- every sub-model at rank zero, or a global VAR.
+.global_beta <- function(coint_vectors, submodels, w, k, draws) {
+
+  blocks <- list()
+  labels <- character(0)
+
+  for (i in submodels) {
+    kept <- coint_vectors[[i]]
+    if (is.null(kept)) {
+      next
+    }
+    rank_i <- kept[["rank"]]
+    coeffs <- kept[["coeffs"]]
+
+    mapped <- nrow(w[[i]])
+    n_beta <- ncol(coeffs) / rank_i
+    if (n_beta < mapped) {
+      stop("Sub-model ", i, " has ", n_beta, " rows in its cointegrating ",
+           "vectors but its weight matrix maps ", mapped, " variables.")
+    }
+
+    block <- matrix(NA_real_, draws, k * rank_i)
+    for (draw in seq_len(draws)) {
+      beta_i <- matrix(coeffs[draw, ], n_beta, rank_i)
+      block[draw, ] <- as.numeric(crossprod(w[[i]], beta_i[seq_len(mapped), , drop = FALSE]))
+    }
+    blocks[[length(blocks) + 1]] <- block
+    labels <- c(labels, paste0(i, "_r", seq_len(rank_i)))
+  }
+
+  if (length(blocks) == 0) {
+    return(NULL)
+  }
+
+  out <- do.call(cbind, blocks)
+  attr(out, "rank") <- length(labels)
+  attr(out, "relations") <- labels
+  out
 }
