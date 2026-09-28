@@ -24,10 +24,10 @@
 .add_priors_check_coef <- function(object, coef) {
   
   allowed_coef_arguments <- c("v_i", "v_i_det", "coint_var", "const", "minnesota",
-                              "max_var", "shape", "rate", "rate_det")
+                              "max_var", "shape", "rate", "rate_det", "omega_v")
   # Only an error correction sub-model has loadings to give a rate of their own.
   if (inherits(object, "vecxsubmodel")) {
-    allowed_coef_arguments <- c(allowed_coef_arguments, "rate_alpha")
+    allowed_coef_arguments <- c(allowed_coef_arguments, "rate_alpha", "omega_v_alpha")
   }
   for (i in names(coef)) {
     if (!i %in% allowed_coef_arguments) {
@@ -52,11 +52,46 @@
   # Tests for specifications used in TVP models
   if (!is.null(object[["model"]][["tvp"]])) {
     if (object[["model"]][["tvp"]]) {
-      if (!"shape" %in% names(coef)) {
-        stop("Argument 'coef$shape' must be specified for TVP models.")
-      }
-      if (!"rate" %in% names(coef)) {
-        stop("Argument 'coef$rate' must be specified for TVP models.")
+      # The state variances take one of two parameterisations and never both.
+      # "shape" and "rate" put a gamma prior on the precisions of the state
+      # equation, the centred form; "omega_v" puts a normal prior on the signed
+      # standard deviations instead, the non-centred form of
+      # Fruehwirth-Schnatter and Wagner (2010). The samplers reject a block that
+      # names both, so it is caught here where the argument is still visible.
+      if ("omega_v" %in% names(coef)) {
+        centred <- c("shape", "rate", "rate_det", "rate_alpha")
+        given <- centred[centred %in% names(coef)]
+        if (length(given) > 0) {
+          stop("Argument 'coef' gives both a gamma prior on the precisions of the ",
+               "state equation ('", paste(given, collapse = "', '"),
+               "') and a normal prior on their standard deviations ('omega_v'). ",
+               "Give one: 'omega_v' for the non-centred parameterisation, 'shape' ",
+               "and 'rate' for the centred one.")
+        }
+        if (any(coef[["omega_v"]] <= 0)) {
+          stop("Argument 'coef$omega_v' must be positive. It is the prior variance ",
+               "of the standard deviation of the state innovations, and also the ",
+               "prior mean of their variance.")
+        }
+        if (!is.null(coef[["omega_v_alpha"]]) && any(coef[["omega_v_alpha"]] <= 0)) {
+          stop("Argument 'coef$omega_v_alpha' must be positive.")
+        }
+      } else {
+        if ("omega_v_alpha" %in% names(coef)) {
+          stop("Argument 'coef$omega_v_alpha' is the prior of the loadings under the ",
+               "non-centred parameterisation of the state equation and needs ",
+               "'coef$omega_v' beside it.")
+        }
+        if (!"shape" %in% names(coef)) {
+          stop("Argument 'coef$shape' must be specified for TVP models, or ",
+               "'coef$omega_v' for the non-centred parameterisation of the state ",
+               "equation.")
+        }
+        if (!"rate" %in% names(coef)) {
+          stop("Argument 'coef$rate' must be specified for TVP models, or ",
+               "'coef$omega_v' for the non-centred parameterisation of the state ",
+               "equation.")
+        }
       }
       
       if (!is.null(coef[["const"]])) {
