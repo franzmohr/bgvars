@@ -64,8 +64,19 @@ sub-models because a sub-model's foreign variables are built from them.
 uninformative. Which `sigma` elements are needed depends on `error`, exactly as
 in bvartools (`df` and `scale` for the Wishart default, `shape` and `rate` for
 gamma, six elements for stochastic volatility). Time varying sub-models also need
-`shape` and `rate` in `coef`. An unrecognised element stops with an error. (Some
-help pages still speak of default values; the code has none.)
+a prior for their state variances, in one of two parameterisations: `shape` and
+`rate` in `coef` put a gamma prior on the precisions of the state equation, and
+`omega_v` puts a normal prior on the signed standard deviations instead, the
+non-centred form of Fruehwirth-Schnatter and Wagner (2010). The second makes a
+constant coefficient an interior point of the prior rather than the boundary of a
+variance, so the posterior can say that a coefficient does not move: it carries
+the draws of omega and, in `omega_log_zero`, the Savage-Dickey ordinate that
+tests omega = 0 per state. `omega_v` is also the prior mean of the state
+variance, which is `rate / (shape - 1)` for the other, so the two are matched by
+setting them equal. They cannot be combined, a VECX sub-model takes
+`omega_v_alpha` for its loadings as it takes `rate_alpha`, and an unrecognised
+element stops with an error. (Some help pages still speak of default values; the
+code has none.)
 
 **4. Lag orders of weakly exogenous and global variables count from lag
 zero.** `p_exogen = 1` means the contemporaneous foreign variables alone, `2`

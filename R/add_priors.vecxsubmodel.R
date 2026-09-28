@@ -82,6 +82,15 @@
 #'   keeps their drift from absorbing the residuals while the other coefficients vary. It does
 #'   not reach the steps of the cointegration vectors, which can absorb the residuals as well;
 #'   see section 'Prior on the cointegration space'.}
+#'   \item{\code{omega_v}}{a positive numeric, in place of \code{shape} and \code{rate}: the
+#'   variance of a normal prior on the signed standard deviation \eqn{\omega} of the state
+#'   innovations, \eqn{\omega \sim N(0, V_\omega)}, which is also the prior mean of the state
+#'   variance \eqn{\omega^2}. This is the non-centred parameterisation of
+#'   Frühwirth-Schnatter and Wagner (2010); see Details. Only for models with time
+#'   varying parameters, and not to be combined with \code{shape} and \code{rate}.}
+#'   \item{\code{omega_v_alpha}}{a positive numeric, the \code{omega_v} of the loadings, as
+#'   \code{rate_alpha} is the \code{rate} of the loadings. If it is not given, \code{omega_v} is
+#'   used. Only used with \code{omega_v} and a positive rank.}
 #' }
 #' 
 #' Argument \code{coint} specifies the prior on the cointegration space. It is
@@ -165,14 +174,47 @@
 #' \eqn{\kappa_4} as the first, second, third and forth element in
 #' \code{varsel$minnesota}, respectively.
 #' 
+#' The state variances of a model with time varying parameters take one of two
+#' parameterisations, and \code{coef} names which by naming its parameters. With
+#' \code{shape} and \code{rate} the precisions of the state equation have a gamma
+#' prior, so the variances have an inverse gamma one, which gives zero density to
+#' a variance of zero: the model cannot conclude that a coefficient is constant,
+#' because the prior has already ruled it out. With \code{omega_v} the random walk
+#' \eqn{x_t = x_{t-1} + v_t}, \eqn{v_t \sim N(0, \omega^2)}, is written
+#' \eqn{x_t = x_0 + \omega \tilde{x}_t} with \eqn{\tilde{x}_t} a standard random
+#' walk, so \eqn{\omega} enters the measurement equation as a regression
+#' coefficient and a normal prior \eqn{\omega \sim N(0, V_\omega)} is conjugate.
+#' A coefficient that does not move, \eqn{\omega = 0}, is then an interior point
+#' of the prior rather than the boundary of a variance, and the posterior carries
+#' the Savage-Dickey density ratio that tests it: the draws of \eqn{\omega} come
+#' back in \code{posterior$a$omega} and the log density at zero of its conditional
+#' posterior in \code{posterior$a$omega_log_zero}, one column per state, with
+#' \code{omega_log_zero_joint} for the block as a whole. This is the non-centred
+#' parameterisation of Frühwirth-Schnatter and Wagner (2010), and the test is that
+#' of Chan (2018).
+#'
+#' \eqn{V_\omega} is also the prior mean of the state variance, the implied prior
+#' on \eqn{\omega^2} being \eqn{Gamma(1/2, 1 / (2 V_\omega))}, so the two
+#' parameterisations are given the same prior mean by setting \code{omega_v} to
+#' the \code{rate / (shape - 1)} of the other. What differs is the shape: the
+#' non-centred prior puts far more mass near zero. They cannot be combined, and
+#' the covariance block follows whichever the coefficients take.
+#'
 #' @inheritSection bvartools::cointspace_prior Prior on the cointegration space
 #'
 #' @return An object of class 'vecxsubmodel'.
 #' 
 #' @references
 #' 
+#' Chan, J. C. C. (2018). Specification tests for time-varying parameter models with stochastic
+#' volatility. \emph{Econometric Reviews, 37}(8), 807--823. \doi{10.1080/07474938.2016.1167948}
+#'
 #' Chan, J., Koop, G., Poirier, D. J., & Tobias J. L. (2019). \emph{Bayesian econometric methods}
 #' (2nd ed.). Cambridge: Cambridge University Press.
+#'
+#' Frühwirth-Schnatter, S., & Wagner, H. (2010). Stochastic model specification search for
+#' Gaussian and partial non-Gaussian state space models. \emph{Journal of Econometrics, 154}(1),
+#' 85--100. \doi{10.1016/j.jeconom.2009.07.003}
 #' 
 #' Johansen, S. (1995). \emph{Likelihood-based inference in cointegrated vector
 #' autoregressive models}. Oxford: Oxford University Press.
@@ -532,14 +574,31 @@ add_priors.vecxsubmodel <- function(object,
         if (n_det > 0 & !is.null(coef[["v_i_det"]])) {
           diag(v_i)[tot_par - n_struct - n_det + 1:n_det] <- coef[["v_i_det"]]
         }
-        object[["priors"]][["a"]][["shape"]] <- matrix(coef[["shape"]], tot_par)
-        object[["priors"]][["a"]][["rate"]] <- matrix(coef[["rate"]], tot_par)
-        if (n_det > 0 & !is.null(coef[["rate_det"]])) {
-          object[["priors"]][["a"]][["rate"]][tot_par - n_struct - n_det + 1:n_det, ] <- coef[["rate_det"]]
-        }
-        # The loadings come first among the coefficients.
-        if (r > 0 & !is.null(coef[["rate_alpha"]])) {
-          object[["priors"]][["a"]][["rate"]][1:n_alpha, ] <- coef[["rate_alpha"]]
+        if (!is.null(coef[["omega_v"]])) {
+          # The non-centred parameterisation: a normal prior on the signed
+          # standard deviation of the state innovations instead of the gamma one
+          # on their precision. Written this way a coefficient that does not move
+          # is an interior point of the prior rather than the boundary of a
+          # variance, which is what carries the test of time variation; see
+          # Details. The two are mutually exclusive, and .add_priors_check_coef()
+          # has already refused a 'coef' that gives both.
+          object[["priors"]][["a"]][["omega_v"]] <- matrix(coef[["omega_v"]], tot_par)
+          # The loadings come first among the coefficients, and multiply levels
+          # rather than differences, so they take a prior of their own here as
+          # they do through 'rate_alpha' in the centred parameterisation.
+          if (r > 0 & !is.null(coef[["omega_v_alpha"]])) {
+            object[["priors"]][["a"]][["omega_v"]][1:n_alpha, ] <- coef[["omega_v_alpha"]]
+          }
+        } else {
+          object[["priors"]][["a"]][["shape"]] <- matrix(coef[["shape"]], tot_par)
+          object[["priors"]][["a"]][["rate"]] <- matrix(coef[["rate"]], tot_par)
+          if (n_det > 0 & !is.null(coef[["rate_det"]])) {
+            object[["priors"]][["a"]][["rate"]][tot_par - n_struct - n_det + 1:n_det, ] <- coef[["rate_det"]]
+          }
+          # The loadings come first among the coefficients.
+          if (r > 0 & !is.null(coef[["rate_alpha"]])) {
+            object[["priors"]][["a"]][["rate"]][1:n_alpha, ] <- coef[["rate_alpha"]]
+          }
         }
       } else {
         v_i <- diag(coef[["v_i"]], tot_par)
@@ -575,8 +634,12 @@ add_priors.vecxsubmodel <- function(object,
     object[["priors"]][["psi"]][["mu"]] <- matrix(0, n_covar)
     object[["priors"]][["psi"]][["v_inv"]] <- diag(coef[["v_i"]], n_covar)
     if (object[["model"]][["tvp"]]) {
-      object[["priors"]][["psi"]][["shape"]] <- matrix(coef[["shape"]], n_covar)
-      object[["priors"]][["psi"]][["rate"]] <- matrix(coef[["rate"]], n_covar) 
+      if (!is.null(coef[["omega_v"]])) {
+        object[["priors"]][["psi"]][["omega_v"]] <- matrix(coef[["omega_v"]], n_covar)
+      } else {
+        object[["priors"]][["psi"]][["shape"]] <- matrix(coef[["shape"]], n_covar)
+        object[["priors"]][["psi"]][["rate"]] <- matrix(coef[["rate"]], n_covar)
+      }
     }
     
     # Variable selection

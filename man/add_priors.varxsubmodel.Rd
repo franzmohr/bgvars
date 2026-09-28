@@ -81,6 +81,12 @@ Argument \code{coef} can contain the following elements:
   \item{\code{rate_det}}{a numeric specifying the prior rate parameter of the error term of the
   state equation for coefficients, which correspond to deterministic terms. If it is not given,
   \code{rate} is used. Only used for models with time varying parameters.}
+  \item{\code{omega_v}}{a positive numeric, in place of \code{shape} and \code{rate}: the
+  variance of a normal prior on the signed standard deviation \eqn{\omega} of the state
+  innovations, \eqn{\omega \sim N(0, V_\omega)}, which is also the prior mean of the state
+  variance \eqn{\omega^2}. This is the non-centred parameterisation of
+  Frühwirth-Schnatter and Wagner (2010); see Details. Only for models with time
+  varying parameters, and not to be combined with \code{shape} and \code{rate}.}
 }
 If \code{minnesota} is given, the prior precisions of the coefficients are taken from it
 and \code{v_i} and \code{v_i_det} do not enter them. The prior means are still set by
@@ -158,6 +164,32 @@ inclusion probabilities are calculated in a Minnesota-like fashion as
 for lag \eqn{l} with \eqn{\kappa_1}, \eqn{\kappa_2}, \eqn{\kappa_3},
 \eqn{\kappa_4} as the first, second, third and forth element in
 \code{varsel$minnesota}, respectively.
+
+The state variances of a model with time varying parameters take one of two
+parameterisations, and \code{coef} names which by naming its parameters. With
+\code{shape} and \code{rate} the precisions of the state equation have a gamma
+prior, so the variances have an inverse gamma one, which gives zero density to
+a variance of zero: the model cannot conclude that a coefficient is constant,
+because the prior has already ruled it out. With \code{omega_v} the random walk
+\eqn{x_t = x_{t-1} + v_t}, \eqn{v_t \sim N(0, \omega^2)}, is written
+\eqn{x_t = x_0 + \omega \tilde{x}_t} with \eqn{\tilde{x}_t} a standard random
+walk, so \eqn{\omega} enters the measurement equation as a regression
+coefficient and a normal prior \eqn{\omega \sim N(0, V_\omega)} is conjugate.
+A coefficient that does not move, \eqn{\omega = 0}, is then an interior point
+of the prior rather than the boundary of a variance, and the posterior carries
+the Savage-Dickey density ratio that tests it: the draws of \eqn{\omega} come
+back in \code{posterior$a$omega} and the log density at zero of its conditional
+posterior in \code{posterior$a$omega_log_zero}, one column per state, with
+\code{omega_log_zero_joint} for the block as a whole. This is the non-centred
+parameterisation of Frühwirth-Schnatter and Wagner (2010), and the test is that
+of Chan (2018).
+
+\eqn{V_\omega} is also the prior mean of the state variance, the implied prior
+on \eqn{\omega^2} being \eqn{Gamma(1/2, 1 / (2 V_\omega))}, so the two
+parameterisations are given the same prior mean by setting \code{omega_v} to
+the \code{rate / (shape - 1)} of the other. What differs is the shape: the
+non-centred prior puts far more mass near zero. They cannot be combined, and
+the covariance block follows whichever the coefficients take.
 }
 \examples{
 
@@ -202,8 +234,15 @@ object <- add_priors(object,
 
 }
 \references{
+Chan, J. C. C. (2018). Specification tests for time-varying parameter models with stochastic
+volatility. \emph{Econometric Reviews, 37}(8), 807--823. \doi{10.1080/07474938.2016.1167948}
+
 Chan, J., Koop, G., Poirier, D. J., & Tobias J. L. (2019). \emph{Bayesian econometric methods}
 (2nd ed.). Cambridge: Cambridge University Press.
+
+Frühwirth-Schnatter, S., & Wagner, H. (2010). Stochastic model specification search for
+Gaussian and partial non-Gaussian state space models. \emph{Journal of Econometrics, 154}(1),
+85--100. \doi{10.1016/j.jeconom.2009.07.003}
 
 George, E. I., Sun, D., & Ni, S. (2008). Bayesian stochastic search for VAR model
 restrictions. \emph{Journal of Econometrics, 142}(1), 553--580.
