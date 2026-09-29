@@ -127,6 +127,20 @@ export. That returns a data frame with columns `submodel` and `position`, which
 `submodels_to_gvar(export, submodels = best)` take directly. Use a common
 sample (`align_model_obs()`) before comparing lag orders.
 
+**8a. Ask whether the time varying coefficients move.** With the non-centred
+prior `coef$omega_v` in place of `shape` and `rate`,
+`time_variation_test(object)` gives the Savage-Dickey Bayes factors of Chan
+(2018) for every model: grouped per sub-model for a `gvarmodel` or `gvecmodel`,
+and as a named list per stored model (`AT/001`) for a `gvarexport`, which takes
+`submodels` and `cores`. It reads and does not write, so the global model and the
+export are left as they are. This is worth doing rather than assumed: under the
+inverse gamma prior on the state variance the data do not identify how much a
+coefficient moves, so a country model on fewer than two hundred observations
+drifts or stands still because the prior said so. `sigma$omega_v` is the same
+prior for the log-volatilities, in place of `sigma$shape` and `sigma$rate`, so a
+TVP-SV sub-model can put either block, both or neither in the non-centred form;
+the test reports the blocks that are in it.
+
 **9. Scaling the error correction term is a modelling step.** For a GVEC with a
 prior on the cointegration space, `scale_error_correction(object)` before the
 simulation puts the series of the error correction term on comparable scales,

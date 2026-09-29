@@ -133,3 +133,92 @@ test_that("a VARX sub-model takes omega_v in both blocks", {
                sigma = sv_prior()),
     "not recognised")
 })
+
+# The log-volatilities' own non-centred prior. 'coef$omega_v' is the
+# coefficients' and 'sigma$omega_v' is this one; a stochastic volatility model
+# with time varying parameters can take either, both or neither.
+
+sv_tvp_submodel <- function(class = "varx") {
+  object <- if (class == "varx") gvar_object() else gvec_object()
+  add_submodels(object,
+                endogen = c("y", "Dp"), p_endogen = 1,
+                exogen = c("y", "Dp"), p_exogen = 1,
+                deterministic = if (class == "varx") "const" else NULL,
+                const = if (class == "varx") NULL else "unrestricted",
+                r = if (class == "varx") NULL else 1,
+                tvp = TRUE, error = "sv", iterations = 20, burnin = 10)
+}
+
+sv_sigma <- function(...) {
+  c(list(mu = 0, v_i = 1 / 100, state_variance = 0.05, offset = 1e-8), list(...))
+}
+
+test_that("sigma$omega_v replaces shape and rate of the log-volatilities", {
+
+  object <- sv_tvp_submodel()
+  priors <- add_priors(object,
+                       coef = list(v_i = 1, v_i_det = 1 / 10, omega_v = 0.001),
+                       sigma = sv_sigma(omega_v = 0.1))
+
+  u_sigma <- priors[["submodels"]][["US"]][[1]][["priors"]][["u_sigma"]]
+  k <- priors[["submodels"]][["US"]][[1]][["model"]][["k"]]
+  expect_equal(u_sigma[["type"]], "sv")
+  expect_equal(u_sigma[["omega_v"]], matrix(0.1, k))
+  expect_null(u_sigma[["shape"]])
+  expect_null(u_sigma[["rate"]])
+
+  # The centred prior is untouched by the change.
+  centred <- add_priors(object,
+                        coef = list(v_i = 1, v_i_det = 1 / 10, shape = 3, rate = 1e-4),
+                        sigma = sv_sigma(shape = 3, rate = 0.01))
+  u_sigma <- centred[["submodels"]][["US"]][[1]][["priors"]][["u_sigma"]]
+  expect_equal(u_sigma[["shape"]], matrix(3, k))
+  expect_equal(u_sigma[["rate"]], matrix(0.01, k))
+  expect_null(u_sigma[["omega_v"]])
+})
+
+test_that("the two parameterisations of the log-volatilities are not mixed", {
+
+  object <- sv_tvp_submodel()
+  coef <- list(v_i = 1, v_i_det = 1 / 10, omega_v = 0.001)
+
+  expect_error(add_priors(object, coef = coef,
+                          sigma = sv_sigma(omega_v = 0.1, shape = 3, rate = 0.01)),
+               "Give one")
+  expect_error(add_priors(object, coef = coef, sigma = sv_sigma(omega_v = 0)),
+               "finite positive")
+  expect_error(add_priors(object, coef = coef, sigma = sv_sigma(omega_v = -1)),
+               "finite positive")
+  # Nothing is missing when omega_v stands in for shape and rate.
+  expect_error(add_priors(object, coef = coef, sigma = sv_sigma()),
+               "Missing prior specifications")
+})
+
+test_that("sigma$omega_v is refused where no sampler reads it", {
+
+  # Constant coefficients: the log-volatilities still have a state equation, but
+  # the non-centred sampler is only written for the time varying models.
+  object <- add_submodels(gvar_object(),
+                          endogen = c("y", "Dp"), p_endogen = 1,
+                          exogen = c("y", "Dp"), p_exogen = 1,
+                          deterministic = "const", error = "sv",
+                          iterations = 20, burnin = 10)
+  expect_error(add_priors(object, coef = list(v_i = 1, v_i_det = 1 / 10),
+                          sigma = sv_sigma(omega_v = 0.1)),
+               "time varying parameters")
+})
+
+test_that("a GVEC sub-model takes the same prior", {
+
+  object <- sv_tvp_submodel("vecx")
+  priors <- add_priors(object,
+                       coef = list(v_i = 1, v_i_det = 1 / 10, omega_v = 0.001),
+                       # Time varying parameters make the cointegration space
+                       # time varying too, where 'rho' is the whole prior and
+                       # 'v_i' and 'p_tau_i' of the constant case are ignored.
+                       coint = list(rho = 0.999),
+                       sigma = sv_sigma(omega_v = 0.1))
+  model <- priors[["submodels"]][["US"]][[1]]
+  expect_equal(model[["priors"]][["u_sigma"]][["omega_v"]],
+               matrix(0.1, model[["model"]][["k"]]))
+})

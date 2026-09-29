@@ -83,7 +83,8 @@
 #'   for structural models, which need a gamma prior or stochastic volatility;
 #'   \item error \code{"gamma"} or \code{"gamma+covar"}: \code{shape} and \code{rate};
 #'   \item error \code{"sv"} or \code{"sv+covar"}: \code{mu}, \code{v_i}, \code{shape},
-#'   \code{rate}, \code{state_variance} and \code{offset}.
+#'   \code{rate}, \code{state_variance} and \code{offset}; with \code{tvp = TRUE},
+#'   \code{omega_v} may take the place of \code{shape} and \code{rate}.
 #' }
 #' Elements that the error specification does not use are ignored. The elements have
 #' the following meaning:
@@ -106,6 +107,14 @@
 #'   \item{\code{v_i}}{numeric of the prior precision of the initial state of the log-volatilities.}
 #'   \item{\code{state_variance}}{numeric of the initial draw for the variance of the log-volatilities.}
 #'   \item{\code{offset}}{numeric of the constant, which is added before taking the log of the squared errors.}
+#'   \item{\code{omega_v}}{a positive numeric, in place of \code{shape} and \code{rate}: the
+#'   variance of a normal prior on the signed standard deviation of the log-volatility
+#'   innovations, as \code{coef$omega_v} is for the coefficients. Only for sub-models with
+#'   time varying parameters and stochastic volatility, and never beside \code{shape} and
+#'   \code{rate}. Under it the log-volatility does not move exactly when the standard
+#'   deviation is zero, which is a point inside the prior, so
+#'   \code{\link[bvartools]{time_variation_test}} can report a Bayes factor for that block
+#'   as well as for the coefficients.}
 #' }
 #'
 #' For a sub-model with discounted parameters the prior is built by

@@ -4,22 +4,39 @@
 \alias{map_submodels}
 \title{Apply a Function to the Models of an Export}
 \usage{
-map_submodels(object, f, ..., submodels = NULL, cores = 1, export = NULL)
+map_submodels(
+  object,
+  f,
+  ...,
+  submodels = NULL,
+  write = TRUE,
+  cores = 1,
+  export = NULL
+)
 }
 \arguments{
 \item{object}{an object of class 'gvarexport', from
 \code{\link{open_export}}.}
 
 \item{f}{a function taking an estimable model -- a 'bvarmodel' or a
-'bvecmodel' -- and returning one. If it has an argument named \code{index},
-the position of the model in the manifest is passed to it, which is what
-numbers seeds and what lets a caller tell the models apart.}
+'bvecmodel' -- and returning one, or, with \code{write = FALSE}, returning
+anything at all. If it has an argument named \code{index}, the position of the
+model in the manifest is passed to it, which is what numbers seeds and what
+lets a caller tell the models apart.}
 
 \item{...}{further arguments passed to \code{f}.}
 
 \item{submodels}{character vector of the sub-models the step is applied to,
 or \code{NULL}, the default, for all of them. The models of the other
 sub-models are left untouched, and so are their rows of the manifest.}
+
+\item{write}{whether what \code{f} returns is written back to the model's
+file. \code{TRUE}, the default, is a step of an estimation, and \code{f} must
+then return a model. \code{FALSE} is a step that reads: \code{f} may return
+anything, the export is left exactly as it is, and the results come back in a
+named list instead of the object. It is what a diagnostic over an export
+uses, as \code{write} of \code{\link[bvartools]{map_models}} does for a folder
+of single models.}
 
 \item{cores}{the number of worker processes the models are handled on.
 Defaults to one. With more than one the models are spread over a socket
@@ -30,8 +47,9 @@ environment that the workers need, for instance the sampler that
 \code{posterior_function} refers to. Ignored with one core.}
 }
 \value{
-The object in \code{object}, with its manifest brought up to date,
-invisibly.
+With \code{write = TRUE}, the object in \code{object}, with its
+manifest brought up to date, invisibly. With \code{write = FALSE}, a named
+list of what \code{f} returned for each model.
 }
 \description{
 Reads every model of an exported global model, applies a function to it,
@@ -54,6 +72,13 @@ thinning the draws does not change it.
 The methods of the estimation steps for an export call this, so a pipeline
 rarely calls it directly. It is what to use for a step the package has no
 method for.
+
+With \code{write = FALSE} nothing is written and the manifest is not rebuilt,
+so a diagnostic cannot change what the export is. The results are named by
+the sub-model and the file that holds the model, as in \code{AT/001}, because
+a sub-model has one model per candidate specification and the file is what
+tells them apart. \code{\link[bvartools]{time_variation_test}} for an export
+is such a step.
 
 A step over a subset is a step over the whole export applied to part of it,
 not a step over a smaller export: the position a model has in the whole
@@ -99,6 +124,10 @@ export <- map_submodels(export, function(model) {
 
 # One sub-model at a time, which is how a long estimation is resumed
 export <- map_submodels(export, add_initial_values, submodels = "AT")
+
+# A step that reads rather than writes
+map_submodels(export, function(model) nrow(model$data$train$y),
+              write = FALSE)
 
 }
 \seealso{

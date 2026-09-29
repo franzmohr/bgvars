@@ -20,6 +20,7 @@
 #' @importFrom bvartools scale_error_correction
 #' @importFrom bvartools selection_criteria
 #' @importFrom bvartools ssvs_prior
+#' @importFrom bvartools time_variation_test
 #' @importFrom bvartools use_expanding_window
 #' @importFrom bvartools vec_to_var
 #' @importFrom bvartools write_to_hdf5

@@ -38,3 +38,25 @@
   models <- generic(flat[["models"]], ..., cores = cores)
   .set_submodel_models(object, models, flat[["sizes"]])
 }
+
+# The same for a generic that reads rather than changes a model: the results are
+# grouped back into one list per sub-model, keeping the names and the order of
+# the sub-models, and the global model is not touched. A diagnostic over a global
+# model returns its results, not the model, so it cannot use the function above.
+# Unlike the function above it passes no 'cores': the reading generics map over
+# a 'modellist' in order and take no cluster, so offering one here would
+# advertise an argument that does nothing.
+.read_from_submodel_models <- function(object, generic, ...) {
+  flat <- .submodel_models(object)
+  results <- generic(flat[["models"]], ...)
+  sizes <- flat[["sizes"]]
+  before <- cumsum(sizes) - sizes
+  out <- lapply(seq_along(sizes), function(s) {
+    if (sizes[s] == 0) {
+      return(list())
+    }
+    results[before[s] + seq_len(sizes[s])]
+  })
+  names(out) <- names(object[["submodels"]])
+  out
+}
