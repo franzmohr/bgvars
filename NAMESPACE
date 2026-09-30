@@ -46,6 +46,9 @@ S3method(submodels_to_gvar,gvecmodel)
 S3method(thin,gvarexport)
 S3method(thin,gvarmodel)
 S3method(thin,gvecmodel)
+S3method(time_variation_test,gvarexport)
+S3method(time_variation_test,gvarmodel)
+S3method(time_variation_test,gvecmodel)
 S3method(vec_to_var,vecxsubmodel)
 S3method(window,gvarmodel)
 S3method(window,gvecmodel)
@@ -88,6 +91,7 @@ importFrom(bvartools,
   scale_error_correction,
   selection_criteria,
   ssvs_prior,
+  time_variation_test,
   use_expanding_window,
   vec_to_var,
   write_to_hdf5

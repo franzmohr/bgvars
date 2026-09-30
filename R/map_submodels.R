@@ -7,10 +7,18 @@
 #' @param object an object of class 'gvarexport', from
 #' \code{\link{open_export}}.
 #' @param f a function taking an estimable model -- a 'bvarmodel' or a
-#' 'bvecmodel' -- and returning one. If it has an argument named \code{index},
-#' the position of the model in the manifest is passed to it, which is what
-#' numbers seeds and what lets a caller tell the models apart.
+#' 'bvecmodel' -- and returning one, or, with \code{write = FALSE}, returning
+#' anything at all. If it has an argument named \code{index}, the position of the
+#' model in the manifest is passed to it, which is what numbers seeds and what
+#' lets a caller tell the models apart.
 #' @param ... further arguments passed to \code{f}.
+#' @param write whether what \code{f} returns is written back to the model's
+#' file. \code{TRUE}, the default, is a step of an estimation, and \code{f} must
+#' then return a model. \code{FALSE} is a step that reads: \code{f} may return
+#' anything, the export is left exactly as it is, and the results come back in a
+#' named list instead of the object. It is what a diagnostic over an export
+#' uses, as \code{write} of \code{\link[bvartools]{map_models}} does for a folder
+#' of single models.
 #' @param submodels character vector of the sub-models the step is applied to,
 #' or \code{NULL}, the default, for all of them. The models of the other
 #' sub-models are left untouched, and so are their rows of the manifest.
@@ -38,6 +46,13 @@
 #' rarely calls it directly. It is what to use for a step the package has no
 #' method for.
 #'
+#' With \code{write = FALSE} nothing is written and the manifest is not rebuilt,
+#' so a diagnostic cannot change what the export is. The results are named by
+#' the sub-model and the file that holds the model, as in \code{AT/001}, because
+#' a sub-model has one model per candidate specification and the file is what
+#' tells them apart. \code{\link[bvartools]{time_variation_test}} for an export
+#' is such a step.
+#'
 #' A step over a subset is a step over the whole export applied to part of it,
 #' not a step over a smaller export: the position a model has in the whole
 #' manifest is what is passed as \code{index} and what numbers its seed, so a
@@ -55,8 +70,9 @@
 #' there rather than in the session it was written in. Pass what such a function
 #' needs as an argument instead.
 #'
-#' @return The object in \code{object}, with its manifest brought up to date,
-#' invisibly.
+#' @return With \code{write = TRUE}, the object in \code{object}, with its
+#' manifest brought up to date, invisibly. With \code{write = FALSE}, a named
+#' list of what \code{f} returned for each model.
 #'
 #' @examples
 #'
@@ -86,13 +102,20 @@
 #' # One sub-model at a time, which is how a long estimation is resumed
 #' export <- map_submodels(export, add_initial_values, submodels = "AT")
 #'
+#' # A step that reads rather than writes
+#' map_submodels(export, function(model) nrow(model$data$train$y),
+#'               write = FALSE)
+#'
 #' @family export
 #' @export
-map_submodels <- function(object, f, ..., submodels = NULL, cores = 1,
-                          export = NULL) {
+map_submodels <- function(object, f, ..., submodels = NULL, write = TRUE,
+                          cores = 1, export = NULL) {
 
   if (!inherits(object, "gvarexport")) {
     stop("Argument 'object' must be of class 'gvarexport'. Use open_export().")
+  }
+  if (!is.logical(write) || length(write) != 1 || is.na(write)) {
+    stop("Argument 'write' must be TRUE or FALSE.")
   }
   f <- match.fun(f)
 
@@ -109,7 +132,7 @@ map_submodels <- function(object, f, ..., submodels = NULL, cores = 1,
     rows <- which(manifest[, "submodel"] %in% submodels)
   }
   if (length(rows) == 0) {
-    return(invisible(object))
+    return(if (write) invisible(object) else list())
   }
 
   # Everything a model needs travels in its own task -- the function and the
@@ -120,7 +143,7 @@ map_submodels <- function(object, f, ..., submodels = NULL, cores = 1,
   arguments <- list(...)
   tasks <- lapply(rows, function(i) {
     list(file = file.path(object[["folder"]], manifest[i, "file"]), index = i,
-         f = f, arguments = arguments)
+         f = f, arguments = arguments, write = write)
   })
 
   cores <- max(1L, as.integer(cores))
@@ -136,6 +159,13 @@ map_submodels <- function(object, f, ..., submodels = NULL, cores = 1,
       parallel::clusterExport(cluster, export, envir = parent.frame())
     }
     parallel::parLapplyLB(cluster, tasks, .map_one_model)
+  }
+
+  if (!write) {
+    names(specs) <- paste(manifest[rows, "submodel"],
+                          sub("\\.h5$", "", basename(manifest[rows, "file"])),
+                          sep = "/")
+    return(specs)
   }
 
   for (j in seq_along(specs)) {
@@ -161,6 +191,12 @@ map_submodels <- function(object, f, ..., submodels = NULL, cores = 1,
     arguments <- c(arguments, list(index = task[["index"]]))
   }
   model <- do.call(f, arguments)
+
+  # A step that reads hands back whatever the function made of the model, and
+  # the model itself is dropped with the worker.
+  if (!isTRUE(task[["write"]])) {
+    return(model)
+  }
 
   if (!inherits(model, "bvarmodel") && !inherits(model, "bvecmodel")) {
     stop("The function returned an object of class ",

@@ -147,7 +147,36 @@
     }
     
     if (object$model$error %in% c("sv", "sv+covar")) {
-      if (any(!c("mu", "v_i", "shape", "rate", "state_variance", "offset") %in% names(sigma))) {
+      # The innovations of the log-volatilities take one of the two
+      # parameterisations the coefficients take, and never both: "shape" and
+      # "rate" put a gamma prior on their precision, "omega_v" a normal prior on
+      # their signed standard deviation. The second is only read by a model whose
+      # parameters vary over time, so it is refused elsewhere rather than written
+      # into the priors and silently left unread.
+      if (!is.null(sigma[["omega_v"]])) {
+        if (!isTRUE(object[["model"]][["tvp"]])) {
+          stop("Argument 'sigma$omega_v' is the non-centred parameterisation of the ",
+               "state equation of the log-volatilities and is only available for ",
+               "sub-models with time varying parameters. Use 'sigma$shape' and ",
+               "'sigma$rate' for the centred one.")
+        }
+        given <- c("shape", "rate")[c("shape", "rate") %in% names(sigma)]
+        if (length(given) > 0) {
+          stop("Argument 'sigma' gives both a gamma prior on the precisions of the ",
+               "log-volatility innovations ('", paste(given, collapse = "', '"),
+               "') and a normal prior on their standard deviations ('omega_v'). ",
+               "Give one: 'omega_v' for the non-centred parameterisation, 'shape' ",
+               "and 'rate' for the centred one.")
+        }
+        if (!is.numeric(sigma[["omega_v"]]) || any(!is.finite(sigma[["omega_v"]])) ||
+            any(sigma[["omega_v"]] <= 0)) {
+          stop("Argument 'sigma$omega_v' must be a finite positive numeric. It is the ",
+               "prior variance of the standard deviation of the log-volatility ",
+               "innovations, and also the prior mean of their variance.")
+        }
+      }
+      state_prior <- if (is.null(sigma[["omega_v"]])) c("shape", "rate") else "omega_v"
+      if (any(!c("mu", "v_i", state_prior, "state_variance", "offset") %in% names(sigma))) {
         stop("Missing prior specifications for stochastic volatility prior.")
       }
       error_prior <- "sv"
