@@ -11,7 +11,7 @@ which layer a piece of work belongs to:
 
 | Layer | Owns |
 | --- | --- |
-| **BayesTS** (`D:/workspace-cpp/BayesTS`, C++) | the samplers and everything computationally heavy; the HDF5 model file format and the `bayests` command line |
+| **BayesTS** (`D:/projects/BayesTS`, C++) | the samplers and everything computationally heavy; the HDF5 model file format and the `bayests` command line |
 | **bvartools** (`D:/workspace-r/bvartools`) | a single VAR/VEC model in R: the model object, priors, the R bindings to the vendored samplers, `irf()`, `fevd()`, forecasts, `selection_criteria()`, `write_to_hdf5()` for one model, `open_model()`, `bayests_files()` |
 | **bgvars** (this repository) | what only a *global* model has: country data and trade weights, foreign variables, sub-models with two blocks of unmodelled variables, the export of many models to a folder, choosing per sub-model, and stacking the sub-models into the solved global model |
 
