@@ -1,6 +1,6 @@
 ---
 name: bgvars
-description: Write correct bgvars code — Bayesian global VAR (GVAR) and global VEC (GVEC) models in R with create_gvarmodel, create_gvecmodel, add_weight_matrices, add_submodels, create_varxsubmodel, create_vecxsubmodel, align_model_obs, add_priors, add_posterior_coefficients, scale_error_correction, write_to_hdf5, open_export, map_submodels, choose_best_model_from_hdf5, read_gvar_from_folder, submodels_to_gvar and persistence_profiles. Use whenever R code loads bgvars, handles a 'gvarmodel', 'gvecmodel', 'submodeldata', 'varxsubmodel', 'vecxsubmodel' or 'gvarexport' object, uses the gvar2019, gvar2023 or dees2007 data, or estimates country models with weakly exogenous foreign variables and trade weights. Also use when a global model is estimated through a folder of HDF5 files, in batches, or by the BayesTS command line, and when the solved global model is analysed with generalised impulse responses.
+description: Write correct bgvars code — Bayesian global VAR (GVAR) and global VEC (GVEC) models in R with create_gvarmodel, create_gvecmodel, add_weight_matrices, add_submodels, create_varxsubmodel, create_vecxsubmodel, align_model_obs, add_priors, add_posterior_coefficients, scale_error_correction, write_to_hdf5, open_export, map_submodels, choose_best_model_from_hdf5, read_gvar_from_folder, submodels_to_gvar, persistence_profiles and weak_exogeneity_test. Use whenever R code loads bgvars, handles a 'gvarmodel', 'gvecmodel', 'submodeldata', 'varxsubmodel', 'vecxsubmodel' or 'gvarexport' object, uses the gvar2019, gvar2023 or dees2007 data, or estimates country models with weakly exogenous foreign variables and trade weights. Also use when a global model is estimated through a folder of HDF5 files, in batches, or by the BayesTS command line, and when the solved global model is analysed with generalised impulse responses.
 ---
 
 # Writing correct bgvars code
@@ -140,6 +140,29 @@ drifts or stands still because the prior said so. `sigma$omega_v` is the same
 prior for the log-volatilities, in place of `sigma$shape` and `sigma$rate`, so a
 TVP-SV sub-model can put either block, both or neither in the non-centred form;
 the test reports the blocks that are in it.
+
+**8b. Test the assumption the solving rests on.** Stacking the sub-models is
+licensed only if each country's foreign variables are long-run forcing for it, so
+that its disequilibria do not feed back into them.
+`weak_exogeneity_test(object)` runs the test of Harbo et al. (1998) as Dees et
+al. (2007) apply it: for every weakly exogenous variable the marginal model
+`d x* = mu + gamma' ECM_{t-1} + controls`, and an F test of `gamma = 0`. The
+controls are the lagged differences the conditional model itself carries, plus
+`lags` lags of the foreign differences, default one. It returns one row per
+weakly exogenous variable, grouped per sub-model for a `gvecmodel` and named per
+stored model for a `gvarexport`, which takes `submodels` and `cores`.
+
+The statistic is computed **at every draw of the cointegration space**, because
+beta is what the test conditions on and it is not estimated precisely, so the
+columns are the posterior median of the F statistic, the median of its p value,
+and `rejected`, the share of draws rejecting at `level`. A variable whose
+rejection depends on which draw of beta is taken has not been shown to violate
+the assumption. A rejection says that sub-model should not be stacked as it
+stands: move the variable into the endogenous block of the country whose model it
+belongs to, or report the rejection. **Rank zero is refused** -- there is no
+relation for the foreign variables to be exogenous with respect to -- and so are
+a VAR sub-model, which specifies no disequilibrium, and a time varying one, which
+carries a different relation in every period.
 
 **9. Scaling the error correction term is a modelling step.** For a GVEC with a
 prior on the cointegration space, `scale_error_correction(object)` before the
