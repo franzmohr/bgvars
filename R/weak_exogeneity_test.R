@@ -1,0 +1,28 @@
+#' Test the Weak Exogeneity of the Foreign Variables
+#'
+#' Tests whether the cointegrating relations of a VEC sub-model enter the
+#' equations of the variables that sub-model treats as weakly exogenous.
+#'
+#' @param object an object of class 'vecxsubmodel', 'modellist', 'gvecmodel' or
+#' 'gvarexport' whose models carry draws of the cointegration space.
+#' @param ... arguments passed to the methods, among them \code{lags} and
+#' \code{level}.
+#'
+#' @details
+#' Weak exogeneity is the assumption a global model is solved on, and it is a
+#' restriction on the \emph{marginal} model of the foreign variables rather than
+#' on the conditional model that is estimated. See
+#' \code{\link{weak_exogeneity_test.vecxsubmodel}} for the regression, the
+#' statistic and what a rejection means.
+#'
+#' @return See the methods. For a single sub-model a data frame with one row per
+#' weakly exogenous variable.
+#'
+#' @seealso \code{\link{weak_exogeneity_test.vecxsubmodel}} for a single
+#' sub-model and the sub-models of a global model, and
+#' \code{\link{submodels_to_gvar}} for the step the assumption licenses.
+#'
+#' @export
+weak_exogeneity_test <- function(object, ...) {
+  UseMethod("weak_exogeneity_test")
+}
