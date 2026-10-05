@@ -227,16 +227,20 @@ test_that("a time varying VECX sub-model can be estimated with BVS", {
   expect_no_error(summary(model))
 })
 
-test_that("variable selection over the coefficients alone needs time varying parameters", {
+test_that("variable selection over the coefficients alone no longer needs time varying parameters", {
   object <- vecx_tvp(tvp = FALSE, error = "sv+covar")
 
-  # A constant coefficient sampler reads one selection scheme for coefficients
-  # and covariances together.
-  expect_error(vecx_priors(object, varsel = list(inprior = 0.5, exclude_det = TRUE)),
-               "applies one selection scheme to both")
+  # A constant coefficient sampler used to read one selection scheme for
+  # coefficients and covariances together, and this combination was refused.
+  # Every sampler with a covariance block now reads that block's own scheme.
+  expect_no_error(vecx_priors(object, varsel = list(inprior = 0.5, exclude_det = TRUE)))
 
-  expect_no_error(vecx_priors(object, varsel = list(inprior = 0.5, exclude_det = TRUE,
-                                                    covar = TRUE)))
+  alone <- vecx_priors(object, varsel = list(inprior = 0.5, exclude_det = TRUE))
+  expect_equal(alone[["submodels"]][[1]][[1]][["priors"]][["psi"]][["varsel"]], "none")
+
+  both <- vecx_priors(object, varsel = list(inprior = 0.5, exclude_det = TRUE,
+                                            covar = TRUE))
+  expect_equal(both[["submodels"]][[1]][[1]][["priors"]][["psi"]][["varsel"]], "bvs")
 })
 
 test_that("SSVS is refused for error correction sub-models", {

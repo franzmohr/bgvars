@@ -147,7 +147,14 @@ Argument \code{varsel} can contain the following elements, of which BVS requires
   \item{\code{inprior}}{a numeric between 0 and 1 specifying the prior probability
   of a variable to be included in the model.}
   \item{\code{covar}}{logical indicating if the variable selection algorithm
-  should also be applied to the error covariance matrix.}
+  should also be applied to the error covariance matrix. Left out it is
+  \code{FALSE}, and it is \strong{worth a thought rather than a default}: a
+  generalised impulse response of the solved global model is built from the
+  off-diagonals of the error covariance, so selecting them to zero collapses
+  it towards an orthogonalised response; and the block carries
+  \eqn{k_i(k_i-1)/2} elements per sub-model, so there is rarely the
+  dimensionality case for selecting over it that there is for the
+  coefficients.}
   \item{\code{exclude_det}}{logical indicating if deterministic terms should
   be excluded from the variable selection algorithm.}
   \item{\code{minnesota}}{a numeric vector of length 4 containing parameters
