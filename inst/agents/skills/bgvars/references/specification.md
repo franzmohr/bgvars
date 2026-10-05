@@ -168,6 +168,15 @@ the lists to every sub-model. Nothing has a default.
 | `tvp = TRUE` | add `shape`, `rate`, optional `rate_det`; VECX also `rate_alpha` for the loadings | as above | VECX: `rho` for time varying cointegration |
 | `varsel = "bvs"` | as above | as above | pass `varsel = list(inprior = 0.5, exclude_det = TRUE)` |
 
+`varsel$covar` says whether selection reaches the error covariance block, and
+every sub-model with such a block answers it, whether or not its coefficients
+are time varying. Left out it is `FALSE`, so the coefficients are selected over
+and the covariances are not, and a run that wants selection there asks for it.
+Either way it is worth a thought: a generalised impulse response is built from
+the off-diagonals of the error covariance, so selecting them to zero collapses
+it towards an orthogonalised response, and the block carries only
+`k_i(k_i-1)/2` elements per sub-model against the coefficients' many more.
+
 ```r
 object <- add_priors(object,
                      coef = list(v_i = 0),
