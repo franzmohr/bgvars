@@ -115,7 +115,7 @@
 #' pass over the sample, no chain -- so \code{burnin} must be 0 and \code{thin}
 #' 1, \code{error} must be \code{"wishart"}, and neither variable selection nor
 #' a structural model is available. It conditions on a fixed cointegration
-#' matrix, which \code{\link[bvartools]{add_initial_values}} takes from
+#' matrix, which \code{\link[bayests]{add_initial_values}} takes from
 #' Johansen's estimate, so what drifts is the adjustment to the long-run
 #' relations and not the relations themselves. What it buys is speed and an
 #' exact marginal likelihood: the sum of \code{/posterior/loglik} is the log

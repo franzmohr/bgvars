@@ -6,9 +6,9 @@
 #' @param folder path to a folder holding an export, that is, a \code{model.h5}
 #' and a \code{submodels} directory beside it.
 #' @param criterion selection criterion used to choose the best model using
-#' \code{\link[bvartools]{selection_criteria}}.
+#' \code{\link[bayests]{selection_criteria}}.
 #' @param plugin the point at which \code{"AIC"}, \code{"BIC"} and \code{"HQ"}
-#' are evaluated, passed to \code{\link[bvartools]{selection_criteria}}.
+#' are evaluated, passed to \code{\link[bayests]{selection_criteria}}.
 #' \code{"mean"}, the default, uses the posterior mean and reads every model
 #' file in full. \code{"best"} uses the draw with the highest log-likelihood,
 #' which the light read already provides, so the point criteria then cost no
@@ -26,7 +26,7 @@
 #' memory to rank it.
 #'
 #' \code{"AIC"}, \code{"BIC"} and \code{"HQ"} are evaluated at the posterior mean
-#' of the parameters, see \code{\link[bvartools]{selection_criteria}}, which
+#' of the parameters, see \code{\link[bayests]{selection_criteria}}, which
 #' needs the draws of the coefficients and the data. For them each model file is
 #' read in full, one at a time, which takes longer. With
 #' \code{plugin = "best"} they are evaluated at the draw with the highest
@@ -107,7 +107,7 @@ choose_best_model_from_hdf5 <- function(folder, criterion, plugin = c("mean", "b
       }
 
       if (point_criterion) {
-        object <- bvartools::read_model_from_hdf5(filename = filename)
+        object <- bayests::read_model_from_hdf5(filename = filename)
       }
 
       sc[[j]] <- .selection_criteria_from_hdf5(object, point_criterion, plugin)
@@ -129,7 +129,7 @@ choose_best_model_from_hdf5 <- function(folder, criterion, plugin = c("mean", "b
     class(sc) <- c("selcritlist", "list")
 
     # Ties are broken by taking the first model.
-    result[i, "position"] <- bvartools::choose_best_model(sc, criterion = criterion)[1]
+    result[i, "position"] <- bayests::choose_best_model(sc, criterion = criterion)[1]
   }
 
   return(result)
@@ -146,11 +146,11 @@ choose_best_model_from_hdf5 <- function(folder, criterion, plugin = c("mean", "b
 .selection_criteria_from_hdf5 <- function(object, point_criterion, plugin = "mean") {
 
   if (point_criterion) {
-    return(bvartools::selection_criteria(object, plugin = plugin))
+    return(bayests::selection_criteria(object, plugin = plugin))
   }
 
   withCallingHandlers(
-    bvartools::selection_criteria(object, plugin = plugin),
+    bayests::selection_criteria(object, plugin = plugin),
     warning = function(w) {
       if (grepl("could not be evaluated at the posterior mean", conditionMessage(w),
                 fixed = TRUE)) {
@@ -180,7 +180,7 @@ choose_best_model_from_hdf5 <- function(folder, criterion, plugin = c("mean", "b
 #' Read the Inputs of a Selection Criterion from an HDF5 File
 #'
 #' Reads the parts of an exported model that
-#' \code{\link[bvartools]{selection_criteria}} works on and returns them as a
+#' \code{\link[bayests]{selection_criteria}} works on and returns them as a
 #' model object of the class the file was written with.
 #'
 #' @param filename path to a single exported model.

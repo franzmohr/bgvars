@@ -129,7 +129,7 @@ the following meaning:
   time varying parameters and stochastic volatility, and never beside \code{shape} and
   \code{rate}. Under it the log-volatility does not move exactly when the standard
   deviation is zero, which is a point inside the prior, so
-  \code{\link[bvartools]{time_variation_test}} can report a Bayes factor for that block
+  \code{\link[bayests]{time_variation_test}} can report a Bayes factor for that block
   as well as for the coefficients.}
 }
 

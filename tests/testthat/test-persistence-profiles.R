@@ -81,7 +81,7 @@ test_that("the vectors grow with the draws when the export is solved in pieces",
   unlink(folder, recursive = TRUE)
   dir.create(folder, recursive = TRUE)
   write_to_hdf5(object, folder = folder, overwrite = TRUE, mc.cores = 1)
-  export <- open_export(folder)
+  export <- read_export(folder)
 
   whole <- suppressMessages(submodels_to_gvar(export, chunk = 100))
   pieces <- suppressMessages(submodels_to_gvar(export, chunk = 7))

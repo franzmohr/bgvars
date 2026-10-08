@@ -71,7 +71,7 @@ export(create_vecxsubmodel)
 export(get_submodel_specifications)
 export(get_weight_matrix)
 export(map_submodels)
-export(open_export)
+export(read_export)
 export(read_gvar_from_folder)
 export(read_submodel_from_folder)
 export(select_list_elements)
@@ -79,7 +79,7 @@ export(submodel_directories)
 export(submodels_to_gvar)
 export(weak_exogeneity_test)
 exportPattern("^[[:alpha:]]+")
-importFrom(bvartools,
+importFrom(bayests,
   add_initial_values,
   add_posterior_coefficients,
   add_posterior_forecasts,
@@ -90,18 +90,20 @@ importFrom(bvartools,
   choose_best_model,
   expected_model_size,
   get_model_specifications,
-  inclusion_prior,
   irf,
+  selection_criteria,
+  time_variation_test,
+  use_expanding_window,
+  write_to_hdf5
+)
+importFrom(bvartools,
+  inclusion_prior,
   minnesota_prior,
   persistence_profiles,
   rescale_error_correction,
   scale_error_correction,
-  selection_criteria,
   ssvs_prior,
-  time_variation_test,
-  use_expanding_window,
-  vec_to_var,
-  write_to_hdf5
+  vec_to_var
 )
 importFrom(coda,thin)
 importFrom(stats,

@@ -5,7 +5,7 @@
 #' memory of one model per worker rather than of the whole model.
 #'
 #' @param object an object of class 'gvarexport', from
-#' \code{\link{open_export}}.
+#' \code{\link{read_export}}.
 #' @param f a function taking an estimable model -- a 'bvarmodel' or a
 #' 'bvecmodel' -- and returning one, or, with \code{write = FALSE}, returning
 #' anything at all. If it has an argument named \code{index}, the position of the
@@ -17,7 +17,7 @@
 #' then return a model. \code{FALSE} is a step that reads: \code{f} may return
 #' anything, the export is left exactly as it is, and the results come back in a
 #' named list instead of the object. It is what a diagnostic over an export
-#' uses, as \code{write} of \code{\link[bvartools]{map_models}} does for a folder
+#' uses, as \code{write} of \code{\link[bayests]{map_models}} does for a folder
 #' of single models.
 #' @param submodels character vector of the sub-models the step is applied to,
 #' or \code{NULL}, the default, for all of them. The models of the other
@@ -31,7 +31,7 @@
 #'
 #' @details
 #' The unit is one model, which is what a file of the export holds. A model is
-#' read with \code{\link[bvartools]{read_model_from_hdf5}}, passed to \code{f},
+#' read with \code{\link[bayests]{read_model_from_hdf5}}, passed to \code{f},
 #' and written back to its own file through a temporary file that replaces the
 #' old one once it is complete, so an interrupted step leaves either the model
 #' as it was or the model as \code{f} made it, never half of it.
@@ -50,7 +50,7 @@
 #' so a diagnostic cannot change what the export is. The results are named by
 #' the sub-model and the file that holds the model, as in \code{AT/001}, because
 #' a sub-model has one model per candidate specification and the file is what
-#' tells them apart. \code{\link[bvartools]{time_variation_test}} for an export
+#' tells them apart. \code{\link[bayests]{time_variation_test}} for an export
 #' is such a step.
 #'
 #' A step over a subset is a step over the whole export applied to part of it,
@@ -92,7 +92,7 @@
 #' dir.create(folder, showWarnings = FALSE)
 #' write_to_hdf5(object, folder = folder, overwrite = TRUE, mc.cores = 1)
 #'
-#' export <- open_export(folder)
+#' export <- read_export(folder)
 #'
 #' # What add_priors() for an export does
 #' export <- map_submodels(export, function(model) {
@@ -112,7 +112,7 @@ map_submodels <- function(object, f, ..., submodels = NULL, write = TRUE,
                           cores = 1, export = NULL) {
 
   if (!inherits(object, "gvarexport")) {
-    stop("Argument 'object' must be of class 'gvarexport'. Use open_export().")
+    stop("Argument 'object' must be of class 'gvarexport'. Use read_export().")
   }
   if (!is.logical(write) || length(write) != 1 || is.na(write)) {
     stop("Argument 'write' must be TRUE or FALSE.")
@@ -184,7 +184,7 @@ map_submodels <- function(object, f, ..., submodels = NULL, write = TRUE,
 .map_one_model <- function(task) {
 
   f <- task[["f"]]
-  model <- bvartools::read_model_from_hdf5(filename = task[["file"]])
+  model <- bayests::read_model_from_hdf5(filename = task[["file"]])
 
   arguments <- c(list(model), task[["arguments"]])
   if ("index" %in% names(formals(f))) {
@@ -211,7 +211,7 @@ map_submodels <- function(object, f, ..., submodels = NULL, write = TRUE,
   if (file.exists(temporary)) {
     unlink(temporary)
   }
-  bvartools::write_to_hdf5(model, filename = temporary)
+  bayests::write_to_hdf5(model, filename = temporary)
   unlink(task[["file"]])
   if (!file.rename(temporary, task[["file"]])) {
     stop("The model of ", task[["file"]], " was written to ", temporary,

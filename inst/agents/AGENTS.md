@@ -34,7 +34,7 @@ is the part worth keeping in context at all times.
    simulation, `rescale_error_correction()` before `vec_to_var()` or
    `submodels_to_gvar()`.
 8. **Large models go through a folder**: `write_to_hdf5(object, folder)` (in
-   batches with `append = TRUE`), `open_export(folder)`, then the same verbs on
+   batches with `append = TRUE`), `read_export(folder)`, then the same verbs on
    the handle, with `cores` and `submodels`. The files are BayesTS model files:
    `bayests posterior <folder>/submodels` estimates them outside R.
 9. **Seeds**: `add_seed(object, seed)` numbers the models, so draws do not

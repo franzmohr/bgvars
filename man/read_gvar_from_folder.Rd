@@ -16,7 +16,7 @@ the models exported under that name to take. If \code{NULL} (default), every
 sub-model in the export is read.}
 
 \item{draws}{the draws to read, as their positions in the chain, passed to
-\code{\link[bvartools]{read_model_from_hdf5}}. Defaults to \code{NULL},
+\code{\link[bayests]{read_model_from_hdf5}}. Defaults to \code{NULL},
 every draw. An integer vector reads those draws of every sub-model, which is
 what lets a caller work through a long chain in pieces rather than hold it
 whole; \code{\link{submodels_to_gvar}} for an export does that.}
@@ -25,7 +25,7 @@ whole; \code{\link{submodels_to_gvar}} for an export does that.}
 An object of class 'gvarmodel' or 'gvecmodel'.
 }
 \description{
-Reads back a global model that was exported with \code{\link[bvartools]{write_to_hdf5}},
+Reads back a global model that was exported with \code{\link[bayests]{write_to_hdf5}},
 including any posterior draws an external sampler has written into the
 sub-model files since.
 }

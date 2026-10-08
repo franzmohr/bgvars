@@ -36,7 +36,7 @@
 #' Starting values of \eqn{\beta} that a sub-model already carries follow the
 #' same transformation -- for time varying cointegration both the path and the
 #' state before the sample -- so the chain starts from the model it simulates.
-#' Whether \code{\link[bvartools]{add_initial_values}} is called before or after
+#' Whether \code{\link[bayests]{add_initial_values}} is called before or after
 #' scaling makes no difference to what comes back: rescaling returns the
 #' starting values on the scale of the data either way.
 #'

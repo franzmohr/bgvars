@@ -63,7 +63,7 @@ test_that("an export is tested model by model and left as it was", {
   unlink(folder, recursive = TRUE)
   dir.create(folder, recursive = TRUE)
   write_to_hdf5(object, folder = folder, overwrite = TRUE, mc.cores = 1)
-  export <- open_export(folder)
+  export <- read_export(folder)
 
   res <- time_variation_test(export)
 
@@ -73,7 +73,7 @@ test_that("an export is tested model by model and left as it was", {
   expect_s3_class(res[[1]], "bvartimevar")
 
   # Reading leaves the manifest and the files exactly as they were.
-  expect_equal(open_export(folder)[["manifest"]], export[["manifest"]])
+  expect_equal(read_export(folder)[["manifest"]], export[["manifest"]])
 
   # One sub-model at a time.
   one <- time_variation_test(export, submodels = "US")
@@ -90,7 +90,7 @@ test_that("map_submodels() reads without writing", {
   unlink(folder, recursive = TRUE)
   dir.create(folder, recursive = TRUE)
   write_to_hdf5(object, folder = folder, overwrite = TRUE, mc.cores = 1)
-  export <- open_export(folder)
+  export <- read_export(folder)
   before <- export[["manifest"]]
 
   observations <- map_submodels(export, function(model) nrow(model$data$train$y),
@@ -100,7 +100,7 @@ test_that("map_submodels() reads without writing", {
   expect_length(observations, nrow(before))
   expect_named(observations, paste(before[, "submodel"], "001", sep = "/"))
   expect_true(all(vapply(observations, is.numeric, logical(1))))
-  expect_equal(open_export(folder)[["manifest"]], before)
+  expect_equal(read_export(folder)[["manifest"]], before)
 
   # A function that returns something other than a model is only allowed when
   # nothing is written.

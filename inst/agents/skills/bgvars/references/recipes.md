@@ -154,7 +154,7 @@ folder <- file.path(tempdir(), "skill-tvp")
 dir.create(folder, showWarnings = FALSE)
 write_to_hdf5(object, folder = folder, overwrite = TRUE, mc.cores = 1)
 
-export <- open_export(folder)
+export <- read_export(folder)
 export <- add_priors(export,
                      coef = list(v_i = 1, v_i_det = 1 / 10, shape = 3, rate = 1e-10, rate_det = 1e-8),
                      sigma = list(shape = 3, rate = 0.01, mu = 0, v_i = 0.01,

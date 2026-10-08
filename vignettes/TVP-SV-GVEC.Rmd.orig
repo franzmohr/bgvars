@@ -525,7 +525,7 @@ to a cointegrated system can move the levels of its variables permanently.
 ## Choosing between specifications
 
 AIC, BIC and HQ count parameters that a state equation does not use, as
-`?bvartools::selection_criteria` explains, so they are no guide for these
+`?bayests::selection_criteria` explains, so they are no guide for these
 sub-models. WAIC and LOOIC are no reliable guide either. `add_posterior_loglik`
 evaluates the likelihood of each period at the states of that period, and those
 states have seen the period's observation: the state of a period is informed

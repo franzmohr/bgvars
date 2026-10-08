@@ -114,7 +114,7 @@ test_that("the estimated model can be summarised by selection criteria", {
   object <- gvar_estimated(iterations = 20, burnin = 10, p_endogen = 1:2)
   object <- add_posterior_loglik(object)
 
-  criteria <- bvartools::selection_criteria(object[["submodels"]][["US"]])
+  criteria <- bayests::selection_criteria(object[["submodels"]][["US"]])
 
   expect_length(criteria, 2)
   for (i in criteria) {

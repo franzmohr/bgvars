@@ -9,7 +9,7 @@
 \arguments{
 \item{object}{an object of class 'gvecmodel', usually, the output of a call to
 \code{\link{create_gvecmodel}} in combination with \code{\link{add_submodels}}
-and \code{\link[bvartools]{add_initial_values}}.}
+and \code{\link[bayests]{add_initial_values}}.}
 
 \item{...}{further arguments passed to or from other methods.}
 }

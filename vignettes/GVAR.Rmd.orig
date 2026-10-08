@@ -125,11 +125,11 @@ dir.create(folder, showWarnings = FALSE)
 write_to_hdf5(object, folder = folder, overwrite = TRUE)
 ```
 
-`open_export` returns a handle to that folder. It carries the table, not the
+`read_export` returns a handle to that folder. It carries the table, not the
 models.
 
 ```{r open-export, eval = TRUE}
-export <- open_export(folder)
+export <- read_export(folder)
 
 export
 ```
@@ -200,7 +200,7 @@ sub-models and writes the posterior draws back into the files it read.
 bayests posterior /path/to/gvar/submodels
 ```
 
-`bvartools::bayests_posterior()` wraps the same executable as a
+`bayests::bayests_posterior()` wraps the same executable as a
 `posterior_function`, so a folder can be estimated with it through
 `add_posterior_coefficients` above.
 

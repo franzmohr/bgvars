@@ -47,7 +47,7 @@ stopifnot(file.exists(file.path(folder, "model.h5")),
 
 ## Estimating the export in R
 
-`open_export(folder)` returns a `gvarexport` handle: the folder, the manifest and
+`read_export(folder)` returns a `gvarexport` handle: the folder, the manifest and
 the class the export was written from — not the models. Every estimation verb has
 a method for it that reads a model, changes it, writes it back (through a
 temporary file, so an interruption never leaves half a model) and drops it:
@@ -56,7 +56,7 @@ temporary file, so an interruption never leaves half a model) and drops it:
 `scale_error_correction()` and `rescale_error_correction()`.
 
 ```r
-export <- open_export(folder)
+export <- read_export(folder)
 export <- add_priors(export, coef = list(v_i = 0), sigma = list(df = 3, scale = 1e-4))
 export <- add_initial_values(export)
 export <- add_seed(export, 20260919)
@@ -96,16 +96,16 @@ bayests posterior <folder>/submodels
 ```
 
 From R, `submodel_directories(export)` gives one directory per country, and
-`bvartools::bayests_files()` runs several BayesTS processes over them — the
+`bayests::bayests_files()` runs several BayesTS processes over them — the
 parallelism is in processes, not in R workers, which on Windows cost gigabytes
 each while they only wait:
 
 ```text
-run <- bvartools::bayests_files(executable = "D:/BayesTS/bin/bayests.exe")
+run <- bayests::bayests_files(executable = "D:/BayesTS/bin/bayests.exe")
 run(submodel_directories(export), jobs = 6)
 ```
 
-`bvartools::bayests_posterior()` wraps the same executable as a
+`bayests::bayests_posterior()` wraps the same executable as a
 `posterior_function` for `add_posterior_coefficients()`. A sub-model with
 `algorithm = "discount"` can only be estimated this way.
 
@@ -132,7 +132,7 @@ for (i in seq_along(batches)) {
   rm(batch)
 }
 
-stopifnot(nrow(open_export(batch_folder)$manifest) == 6)
+stopifnot(nrow(read_export(batch_folder)$manifest) == 6)
 ```
 
 ## Reading back, choosing, solving
@@ -160,7 +160,7 @@ stopifnot(names(best) == c("submodel", "position"),
 
 The solved model is held whole. For a large one, write it with
 `write_to_hdf5(gvar, filename = file)` and analyse it through
-`bvartools::open_model(file)`, whose `irf()` and `fevd()` read the draws in
+`bayests::read_model_file(file)`, whose `irf()` and `fevd()` read the draws in
 pieces too.
 
 ## Errors worth recognising

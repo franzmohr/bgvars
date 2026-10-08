@@ -4,7 +4,7 @@
 #'
 #' @param object a list of the estimated models of one sub-model, usually one
 #' element of \code{object$submodels} after a call to
-#' \code{\link[bvartools]{add_posterior_coefficients}}.
+#' \code{\link[bayests]{add_posterior_coefficients}}.
 #'
 #' @return A data frame with one row per model, holding the group the sub-model
 #' belongs to, the type of the model, the endogenous, weakly exogenous and global

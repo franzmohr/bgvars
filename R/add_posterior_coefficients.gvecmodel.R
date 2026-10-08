@@ -5,11 +5,11 @@
 #'
 #' @param object an object of class 'gvecmodel', usually, a result of a
 #' call to \code{\link{create_gvecmodel}} in combination with
-#' \code{\link[bvartools]{add_priors}} and \code{\link[bvartools]{add_initial_values}}.
+#' \code{\link[bayests]{add_priors}} and \code{\link[bayests]{add_initial_values}}.
 #' @param ... further arguments passed to or from other methods.
 #' @param cores the number of worker processes the models are simulated on.
 #' With more than one, all models of all sub-models are shared out over one
-#' cluster, as \code{\link[bvartools]{add_posterior_coefficients}} does for a
+#' cluster, as \code{\link[bayests]{add_posterior_coefficients}} does for a
 #' 'modellist'. The draws do not depend on the number of workers, since every
 #' model draws with its own seed (see \code{\link[=add_seed.gvarmodel]{add_seed}}).
 #'

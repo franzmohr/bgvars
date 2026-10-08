@@ -101,7 +101,7 @@ read_submodel_from_folder <- function(folder, submodel) {
       }
 
       result <- .read_submodels(folder, rows)[[submodel]]
-      # Named after the files, as bvartools::read_models_from_folder names them.
+      # Named after the files, as bayests::read_models_from_folder names them.
       names(result) <- sub("[.]h5$", "", basename(rows[, "file"]))
       return(result)
     }
@@ -113,6 +113,6 @@ read_submodel_from_folder <- function(folder, submodel) {
     stop("Submodel ", submodel, " is not available. Its folder does not exist.")
   }
 
-  return(bvartools::read_models_from_folder(path_to_submodel))
+  return(bayests::read_models_from_folder(path_to_submodel))
 
 }

@@ -11,10 +11,10 @@ choose_best_model_from_hdf5(folder, criterion, plugin = c("mean", "best"))
 and a \code{submodels} directory beside it.}
 
 \item{criterion}{selection criterion used to choose the best model using
-\code{\link[bvartools]{selection_criteria}}.}
+\code{\link[bayests]{selection_criteria}}.}
 
 \item{plugin}{the point at which \code{"AIC"}, \code{"BIC"} and \code{"HQ"}
-are evaluated, passed to \code{\link[bvartools]{selection_criteria}}.
+are evaluated, passed to \code{\link[bayests]{selection_criteria}}.
 \code{"mean"}, the default, uses the posterior mean and reads every model
 file in full. \code{"best"} uses the draw with the highest log-likelihood,
 which the light read already provides, so the point criteria then cost no
@@ -40,7 +40,7 @@ not touched, so the function does not need to hold a whole sub-model in
 memory to rank it.
 
 \code{"AIC"}, \code{"BIC"} and \code{"HQ"} are evaluated at the posterior mean
-of the parameters, see \code{\link[bvartools]{selection_criteria}}, which
+of the parameters, see \code{\link[bayests]{selection_criteria}}, which
 needs the draws of the coefficients and the data. For them each model file is
 read in full, one at a time, which takes longer. With
 \code{plugin = "best"} they are evaluated at the draw with the highest
