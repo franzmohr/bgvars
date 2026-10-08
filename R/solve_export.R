@@ -16,7 +16,7 @@
 .solve_export <- function(object, period = NULL, submodels = NULL, chunk = 100) {
 
   if (!inherits(object, "gvarexport")) {
-    stop("Argument 'object' must be of class 'gvarexport'. Use open_export().")
+    stop("Argument 'object' must be of class 'gvarexport'. Use read_export().")
   }
   chunk <- max(1L, as.integer(chunk))
 

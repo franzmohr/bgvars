@@ -16,7 +16,7 @@ map_submodels(
 }
 \arguments{
 \item{object}{an object of class 'gvarexport', from
-\code{\link{open_export}}.}
+\code{\link{read_export}}.}
 
 \item{f}{a function taking an estimable model -- a 'bvarmodel' or a
 'bvecmodel' -- and returning one, or, with \code{write = FALSE}, returning
@@ -35,7 +35,7 @@ file. \code{TRUE}, the default, is a step of an estimation, and \code{f} must
 then return a model. \code{FALSE} is a step that reads: \code{f} may return
 anything, the export is left exactly as it is, and the results come back in a
 named list instead of the object. It is what a diagnostic over an export
-uses, as \code{write} of \code{\link[bvartools]{map_models}} does for a folder
+uses, as \code{write} of \code{\link[bayests]{map_models}} does for a folder
 of single models.}
 
 \item{cores}{the number of worker processes the models are handled on.
@@ -58,7 +58,7 @@ memory of one model per worker rather than of the whole model.
 }
 \details{
 The unit is one model, which is what a file of the export holds. A model is
-read with \code{\link[bvartools]{read_model_from_hdf5}}, passed to \code{f},
+read with \code{\link[bayests]{read_model_from_hdf5}}, passed to \code{f},
 and written back to its own file through a temporary file that replaces the
 old one once it is complete, so an interrupted step leaves either the model
 as it was or the model as \code{f} made it, never half of it.
@@ -77,7 +77,7 @@ With \code{write = FALSE} nothing is written and the manifest is not rebuilt,
 so a diagnostic cannot change what the export is. The results are named by
 the sub-model and the file that holds the model, as in \code{AT/001}, because
 a sub-model has one model per candidate specification and the file is what
-tells them apart. \code{\link[bvartools]{time_variation_test}} for an export
+tells them apart. \code{\link[bayests]{time_variation_test}} for an export
 is such a step.
 
 A step over a subset is a step over the whole export applied to part of it,
@@ -115,7 +115,7 @@ folder <- file.path(tempdir(), "bgvars-example-map")
 dir.create(folder, showWarnings = FALSE)
 write_to_hdf5(object, folder = folder, overwrite = TRUE, mc.cores = 1)
 
-export <- open_export(folder)
+export <- read_export(folder)
 
 # What add_priors() for an export does
 export <- map_submodels(export, function(model) {
@@ -133,7 +133,7 @@ map_submodels(export, function(model) nrow(model$data$train$y),
 \seealso{
 Other export:
 \code{\link{export_steps}},
-\code{\link[=open_export]{open_export()}},
+\code{\link[=read_export]{read_export()}},
 \code{\link[=submodel_directories]{submodel_directories()}}
 }
 \concept{export}

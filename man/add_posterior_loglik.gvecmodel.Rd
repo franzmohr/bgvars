@@ -13,7 +13,7 @@
 
 \item{cores}{the number of worker processes the log-likelihoods are
 computed on. With more than one, all models of all sub-models are shared out
-over one cluster, as \code{\link[bvartools]{add_posterior_loglik}} does for
+over one cluster, as \code{\link[bayests]{add_posterior_loglik}} does for
 a 'modellist'.}
 }
 \value{

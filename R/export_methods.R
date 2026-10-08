@@ -5,7 +5,7 @@
 #' writes it back and drops it, so a step costs one model per worker.
 #'
 #' @param object an object of class 'gvarexport', from
-#' \code{\link{open_export}}.
+#' \code{\link{read_export}}.
 #' @param x the same, for the method of \code{thin}, whose generic calls its
 #' first argument \code{x}.
 #' @param seed an integer, the seed of the first model. The models are numbered
@@ -21,7 +21,7 @@
 #' The methods do what their counterparts for a 'gvarmodel' or a 'gvecmodel' do,
 #' model by model, and they take the same arguments. Everything that concerns
 #' the global model as a whole -- the global data, the index and the weight
-#' matrices -- is written once by \code{\link[bvartools]{write_to_hdf5}} and is
+#' matrices -- is written once by \code{\link[bayests]{write_to_hdf5}} and is
 #' not touched again.
 #'
 #' \code{scale_error_correction} and \code{rescale_error_correction} carry the
@@ -59,7 +59,7 @@
 #' dir.create(folder, showWarnings = FALSE)
 #' write_to_hdf5(object, folder = folder, overwrite = TRUE, mc.cores = 1)
 #'
-#' export <- open_export(folder)
+#' export <- read_export(folder)
 #' export <- add_priors(export, coef = list(v_i = 1),
 #'                      sigma = list(df = 3, scale = 1e-8))
 #' export <- add_initial_values(export)
@@ -96,7 +96,7 @@ add_seed.gvarexport <- function(object, seed, ..., cores = 1) {
   # installed there may not have.
   seeds <- .model_seed(seed, seq_len(nrow(object[["manifest"]])) - 1L)
   map_submodels(object, function(model, index, seeds, ...) {
-    bvartools::add_seed(model, seeds[[index]], ...)
+    bayests::add_seed(model, seeds[[index]], ...)
   }, seeds = seeds, ..., cores = cores)
 }
 

@@ -8,7 +8,7 @@ submodel_directories(object, submodels = NULL)
 }
 \arguments{
 \item{object}{an object of class 'gvarexport', from
-\code{\link{open_export}}.}
+\code{\link{read_export}}.}
 
 \item{submodels}{character vector of the sub-models to return the
 directories of, or \code{NULL}, the default, for all of them.}
@@ -22,7 +22,7 @@ The directory each sub-model of an exported global model lies in, which is
 what an external program that works on the files is pointed at.
 }
 \details{
-\code{\link[bvartools]{write_to_hdf5}} gives every sub-model a directory of
+\code{\link[bayests]{write_to_hdf5}} gives every sub-model a directory of
 its own and every model of it a file in that directory, so a sub-model's
 directory is a natural unit of work: it holds the models of one country and
 nothing else.
@@ -32,12 +32,12 @@ on the files rather than in the session. The posterior is the largest thing a
 model has, and \code{\link{map_submodels}}, which reads a model, gives it to a
 function and writes it back, is the wrong shape for producing one: it would
 copy the draws into R and out again for nothing. With
-\code{\link[bvartools]{bayests_files}} a global model is estimated as
+\code{\link[bayests]{bayests_files}} a global model is estimated as
 \preformatted{run <- bayests_files(executable = "/opt/bayests/bin/bayests")
 run(submodel_directories(export), jobs = 6)}
 which starts six BayesTS processes, each working through one country's models
 where they lie. The draws are the same as those of
-\code{\link[bvartools]{add_posterior_coefficients}}, since a model is drawn
+\code{\link[bayests]{add_posterior_coefficients}}, since a model is drawn
 with the seed in its file.
 
 Note that the parallelism is in the processes rather than in a cluster of R
@@ -64,7 +64,7 @@ folder <- file.path(tempdir(), "bgvars-example-directories")
 dir.create(folder, showWarnings = FALSE)
 write_to_hdf5(object, folder = folder, overwrite = TRUE, mc.cores = 1)
 
-export <- open_export(folder)
+export <- read_export(folder)
 submodel_directories(export)
 submodel_directories(export, submodels = "US")
 
@@ -73,6 +73,6 @@ submodel_directories(export, submodels = "US")
 Other export:
 \code{\link{export_steps}},
 \code{\link[=map_submodels]{map_submodels()}},
-\code{\link[=open_export]{open_export()}}
+\code{\link[=read_export]{read_export()}}
 }
 \concept{export}

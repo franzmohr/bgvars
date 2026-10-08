@@ -5,7 +5,7 @@
 #'
 #' @param object an object of class 'gvarmodel', usually, the output of a call to
 #' \code{\link{create_gvarmodel}} in combination with \code{\link{add_submodels}}
-#' and \code{\link[bvartools]{add_initial_values}}.
+#' and \code{\link[bayests]{add_initial_values}}.
 #' @param ... further arguments passed to or from other methods.
 #' 
 #' @return A list of class 'gvarmodel'.

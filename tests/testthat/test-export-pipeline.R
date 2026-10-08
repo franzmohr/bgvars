@@ -32,7 +32,7 @@ written_export <- function(object, name) {
   unlink(folder, recursive = TRUE)
   dir.create(folder, recursive = TRUE)
   write_to_hdf5(object, folder = folder, overwrite = TRUE, mc.cores = 1)
-  open_export(folder)
+  read_export(folder)
 }
 
 draws_of <- function(x, submodel, position) {
@@ -109,7 +109,7 @@ test_that("the manifest follows what the models become", {
   # it was -- but it is written back, and reading the folder agrees with it.
   export <- thin(export, thin = 2)
   expect_equal(export[["manifest"]], before)
-  expect_equal(open_export(export[["folder"]])[["manifest"]], before)
+  expect_equal(read_export(export[["folder"]])[["manifest"]], before)
 
   drawn <- read_gvar_from_folder(export[["folder"]])
   expect_equal(nrow(draws_of(drawn, names(drawn[["submodels"]])[1], 1)), 10L)
@@ -120,7 +120,7 @@ test_that("the manifest follows what the models become", {
     model
   })
   expect_true(all(changed[["manifest"]][["burnin"]] == 77L))
-  expect_equal(open_export(export[["folder"]])[["manifest"]], changed[["manifest"]])
+  expect_equal(read_export(export[["folder"]])[["manifest"]], changed[["manifest"]])
 })
 
 test_that("map_submodels passes the position and refuses what is not a model", {
@@ -143,10 +143,10 @@ test_that("a model on disk is left alone when a step fails", {
   object <- export_model("gvar")
   export <- written_export(object, "failing")
   file <- file.path(export[["folder"]], export[["manifest"]][1, "file"])
-  before <- bvartools::read_model_from_hdf5(filename = file)
+  before <- bayests::read_model_from_hdf5(filename = file)
 
   expect_error(map_submodels(export, function(model) stop("no")), "no")
-  after <- bvartools::read_model_from_hdf5(filename = file)
+  after <- bayests::read_model_from_hdf5(filename = file)
   expect_equal(after[["data"]][["train"]][["y"]], before[["data"]][["train"]][["y"]])
   expect_false(file.exists(paste0(file, ".writing")))
 })
@@ -242,8 +242,8 @@ test_that("a step over one sub-model at a time is the step over all of them", {
     expect_equal(draws_of(second, submodel, 1), draws_of(first, submodel, 1),
                  info = submodel)
   }
-  expect_equal(open_export(piecewise[["folder"]])[["manifest"]],
-               open_export(whole[["folder"]])[["manifest"]])
+  expect_equal(read_export(piecewise[["folder"]])[["manifest"]],
+               read_export(whole[["folder"]])[["manifest"]])
 })
 
 test_that("a step leaves the sub-models it was not asked for alone", {

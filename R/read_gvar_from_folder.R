@@ -1,6 +1,6 @@
 #' Import a Global Model from a Folder
 #'
-#' Reads back a global model that was exported with \code{\link[bvartools]{write_to_hdf5}},
+#' Reads back a global model that was exported with \code{\link[bayests]{write_to_hdf5}},
 #' including any posterior draws an external sampler has written into the
 #' sub-model files since.
 #'
@@ -11,7 +11,7 @@
 #' the models exported under that name to take. If \code{NULL} (default), every
 #' sub-model in the export is read.
 #' @param draws the draws to read, as their positions in the chain, passed to
-#' \code{\link[bvartools]{read_model_from_hdf5}}. Defaults to \code{NULL},
+#' \code{\link[bayests]{read_model_from_hdf5}}. Defaults to \code{NULL},
 #' every draw. An integer vector reads those draws of every sub-model, which is
 #' what lets a caller work through a long chain in pieces rather than hold it
 #' whole; \code{\link{submodels_to_gvar}} for an export does that.
@@ -196,9 +196,9 @@ read_gvar_from_folder <- function(folder, submodels = NULL, draws = NULL) {
       # layout written here -- one model at the root of its file -- reads back
       # with a bvartools that predates the group argument.
       models[[i]] <- if (groups[rows[i]] == "") {
-        bvartools::read_model_from_hdf5(filename = filename, draws = draws)
+        bayests::read_model_from_hdf5(filename = filename, draws = draws)
       } else {
-        bvartools::read_model_from_hdf5(filename = filename,
+        bayests::read_model_from_hdf5(filename = filename,
                                         group = groups[rows[i]], draws = draws)
       }
     }
@@ -215,7 +215,7 @@ read_gvar_from_folder <- function(folder, submodels = NULL, draws = NULL) {
 #
 # The 'position' of a model is its position among the models of its sub-model,
 # which is the order the manifest lists them in, the order they were written
-# in, and hence the order bvartools::read_models_from_folder reads them back
+# in, and hence the order bayests::read_models_from_folder reads them back
 # in. Selections made from either route therefore mean the same thing.
 .select_manifest_rows <- function(manifest, submodels) {
 

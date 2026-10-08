@@ -7,6 +7,7 @@ Description: Assists in the set-up and inference of Bayesian global vector autor
 License: GPL (>= 3)
 Depends: R (>= 4.4.0), bvartools (>= 1.0.0)
 Imports:
+    bayests,
     coda,
     hdf5r,
     parallel,
@@ -68,10 +69,10 @@ Collate:
     'map_submodels.R'
     'minnesota_prior.varxsubmodel.R'
     'minnesota_prior.vecxsubmodel.R'
-    'open_export.R'
     'persistence_profiles.gvecsolved.R'
     'print.gvarmodel.R'
     'print.submodeldata.R'
+    'read_export.R'
     'read_gvar_from_folder.R'
     'read_submodel_from_folder.R'
     'scale_error_correction.gvecmodel.R'

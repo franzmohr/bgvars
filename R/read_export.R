@@ -1,11 +1,11 @@
-#' Open an Exported Global Model
+#' Read the Handle of an Exported Global Model
 #'
-#' Opens the export of a global model in a folder and returns a handle to it,
+#' Reads the export of a global model in a folder and returns a handle to it,
 #' which the estimation steps of the package work through without reading the
 #' sub-models into the session.
 #'
 #' @param folder path to a folder written by
-#' \code{\link[bvartools]{write_to_hdf5}}.
+#' \code{\link[bayests]{write_to_hdf5}}.
 #'
 #' @details
 #' A global model holds the posterior draws of every sub-model, and those draws
@@ -16,7 +16,7 @@
 #' manifest, and every step of the estimation touches one model at a time.
 #'
 #' A handle carries the manifest and the path, not the models. The methods of
-#' \code{\link{map_submodels}} -- \code{\link[bvartools]{add_priors}},
+#' \code{\link{map_submodels}} -- \code{\link[bayests]{add_priors}},
 #' \code{add_initial_values}, \code{add_seed},
 #' \code{add_posterior_coefficients}, \code{add_posterior_loglik},
 #' \code{thin} and the two error correction transformations -- read a model,
@@ -26,7 +26,7 @@
 #' The pipeline then reads as it does in memory:
 #'
 #' \preformatted{
-#' export <- open_export(folder)
+#' export <- read_export(folder)
 #' export <- add_priors(export, coef = list(v_i = 0),
 #'                      sigma = list(df = 3, scale = 1e-4))
 #' export <- add_initial_values(export)
@@ -68,7 +68,7 @@
 #' write_to_hdf5(object, folder = folder, overwrite = TRUE, mc.cores = 1)
 #'
 #' # Estimate it through the folder
-#' export <- open_export(folder)
+#' export <- read_export(folder)
 #' export <- add_priors(export, coef = list(v_i = 1),
 #'                      sigma = list(df = 3, scale = 1e-8))
 #' export <- add_initial_values(export)
@@ -77,7 +77,7 @@
 #'
 #' @family export
 #' @export
-open_export <- function(folder) {
+read_export <- function(folder) {
 
   if (!dir.exists(folder)) {
     stop("Folder ", folder, " does not exist.")
@@ -112,7 +112,7 @@ open_export <- function(folder) {
             class = c("gvarexport", "list"))
 }
 
-#' @rdname open_export
+#' @rdname read_export
 #' @param x an object of class 'gvarexport'.
 #' @param ... further arguments passed to or from other methods.
 #' @export

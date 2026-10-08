@@ -26,11 +26,11 @@ simulated.
 }
 \details{
 Calling this function is optional:
-\code{\link[bvartools]{add_initial_values}} already gives every model a seed
+\code{\link[bayests]{add_initial_values}} already gives every model a seed
 drawn from R's random number generator. \code{add_seed} replaces them with
 \code{seed}, \code{seed + 1}, \ldots, one per model, counted through the
 sub-models in their order and through the models of each sub-model in theirs.
 Every model then draws the same numbers whichever worker of a cluster
 simulates it, and no two models draw the same. See
-\code{\link[bvartools]{add_seed}} for how the seed is used.
+\code{\link[bayests]{add_seed}} for how the seed is used.
 }

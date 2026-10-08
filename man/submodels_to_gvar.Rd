@@ -42,7 +42,7 @@ Defaults to 100.}
 An object of class 'bvarmodel', which can be analysed with the
 functionality of \pkg{bvartools} -- impulse responses, forecast error
 variance decompositions and forecasts. A forecast needs the future path of
-the global variables, which \code{\link[bvartools]{add_forecast_input}}
+the global variables, which \code{\link[bayests]{add_forecast_input}}
 takes as its \code{exogen} argument; \code{data$original$exogen} of the
 returned object holds the series to continue.
 }
@@ -122,8 +122,8 @@ global model's own draws are held whole, which is what every method that
 works on them expects. They are the smaller half -- one square matrix per lag
 and draw, against a coefficient path per period and draw in every time
 varying sub-model -- but for a large global model they are still worth
-putting away: written with \code{\link[bvartools]{write_to_hdf5}} and opened
-with \code{\link[bvartools]{open_model}}, the impulse responses and variance
+putting away: written with \code{\link[bayests]{write_to_hdf5}} and opened
+with \code{\link[bayests]{read_model_file}}, the impulse responses and variance
 decompositions of \pkg{bvartools} read them in pieces as well.
 
 \preformatted{
@@ -131,7 +131,7 @@ solved <- submodels_to_gvar(export)
 write_to_hdf5(solved, filename = file)
 rm(solved)
 
-stored <- open_model(file)
+stored <- read_model_file(file)
 irf(stored, impulse = "US_r", response = "DE_y", n_ahead = 20, type = "gir")
 }
 }

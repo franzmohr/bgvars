@@ -6,7 +6,7 @@
 #   <folder>/submodels/<name>/001.h5, 002.h5, ...
 #
 # Everything written once by one process goes into model.h5. Each sub-model
-# keeps its own file, because bvartools::write_to_hdf5 writes a model at the
+# keeps its own file, because bayests::write_to_hdf5 writes a model at the
 # root of a file it creates and takes no group, and because one file per model
 # is what lets an external driver run several of them at once -- HDF5 has no
 # support for concurrent writers to one file.
@@ -201,7 +201,7 @@
 # width of the largest, and to three digits at least, so that the files sort as
 # text in the order they were written: a sub-model of a thousand models would
 # otherwise put 1000.h5 before 101.h5 in any directory listing, and with it
-# bvartools::read_models_from_folder.
+# bayests::read_models_from_folder.
 .submodel_file <- function(i, submodel, n = i) {
   width <- max(3L, nchar(as.character(n)))
   paste0("submodels/", submodel, "/", formatC(i, width = width, flag = "0"), ".h5")
@@ -239,6 +239,10 @@
 # and the paths to write them to.
 .write_submodel_to_hdf5 <- function(task) {
 
+  # Through bvartools, which re-exports the generic of bayests: a worker loads
+  # the namespace a call names, and the methods for the sub-models' VAR and
+  # VEC classes are registered by bvartools. bayests:: would load the generic
+  # without them.
   for (i in seq_along(task[["models"]])) {
     bvartools::write_to_hdf5(task[["models"]][[i]],
                              filename = task[["filenames"]][i])
@@ -259,7 +263,7 @@
 
   # Checked before anything is written, so that the common mistake -- exporting
   # twice into the same folder -- costs nothing and leaves the first export
-  # intact. bvartools::write_to_hdf5 refuses an existing file as well, and
+  # intact. bayests::write_to_hdf5 refuses an existing file as well, and
   # finding that out on sub-model 57 of 132 is what the check up here avoids.
   if (append) {
     if (!file.exists(filename_model)) {

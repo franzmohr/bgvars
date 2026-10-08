@@ -1,6 +1,6 @@
 ---
 name: bgvars
-description: Write correct bgvars code — Bayesian global VAR (GVAR) and global VEC (GVEC) models in R with create_gvarmodel, create_gvecmodel, add_weight_matrices, add_submodels, create_varxsubmodel, create_vecxsubmodel, align_model_obs, add_priors, add_posterior_coefficients, scale_error_correction, write_to_hdf5, open_export, map_submodels, choose_best_model_from_hdf5, read_gvar_from_folder, submodels_to_gvar, persistence_profiles and weak_exogeneity_test. Use whenever R code loads bgvars, handles a 'gvarmodel', 'gvecmodel', 'submodeldata', 'varxsubmodel', 'vecxsubmodel' or 'gvarexport' object, uses the gvar2019, gvar2023 or dees2007 data, or estimates country models with weakly exogenous foreign variables and trade weights. Also use when a global model is estimated through a folder of HDF5 files, in batches, or by the BayesTS command line, and when the solved global model is analysed with generalised impulse responses.
+description: Write correct bgvars code — Bayesian global VAR (GVAR) and global VEC (GVEC) models in R with create_gvarmodel, create_gvecmodel, add_weight_matrices, add_submodels, create_varxsubmodel, create_vecxsubmodel, align_model_obs, add_priors, add_posterior_coefficients, scale_error_correction, write_to_hdf5, read_export, map_submodels, choose_best_model_from_hdf5, read_gvar_from_folder, submodels_to_gvar, persistence_profiles and weak_exogeneity_test. Use whenever R code loads bgvars, handles a 'gvarmodel', 'gvecmodel', 'submodeldata', 'varxsubmodel', 'vecxsubmodel' or 'gvarexport' object, uses the gvar2019, gvar2023 or dees2007 data, or estimates country models with weakly exogenous foreign variables and trade weights. Also use when a global model is estimated through a folder of HDF5 files, in batches, or by the BayesTS command line, and when the solved global model is analysed with generalised impulse responses.
 ---
 
 # Writing correct bgvars code
@@ -188,7 +188,7 @@ folder <- file.path(tempdir(), "skill-gvar")
 dir.create(folder, showWarnings = FALSE)
 write_to_hdf5(object, folder = folder, overwrite = TRUE, mc.cores = 1)
 
-export <- open_export(folder)
+export <- read_export(folder)
 export <- add_seed(export, 20260919)
 export <- add_posterior_coefficients(export)
 export <- add_posterior_loglik(export)
@@ -215,13 +215,13 @@ Details and the batch loop: `references/export.md`.
 | --- | --- |
 | `references/recipes.md` | Complete examples: a GVAR with candidate lag orders chosen in memory, the Dees et al. (2007) GVEC with oil endogenous in the US model and scaled error correction terms, one sub-model on its own, a TVP-SV GVAR through a folder |
 | `references/specification.md` | The data (`submodeldata`), weights, what `add_submodels()` builds, naming of foreign variables, lag counting, deterministic terms, priors per model type, what is refused |
-| `references/export.md` | The folder workflow: batches, `open_export()`, `map_submodels()`, BayesTS, reading back, choosing and solving from files |
+| `references/export.md` | The folder workflow: batches, `read_export()`, `map_submodels()`, BayesTS, reading back, choosing and solving from files |
 | `references/solving.md` | `submodels_to_gvar()`, the layout of the solved model, `period`, generalised impulse responses and what they shock, stability |
 
 The help pages are the reference; this skill summarises them. Read the method,
 not the generic: `?add_priors.varxsubmodel`, `?add_priors.vecxsubmodel`,
 `?create_vecxsubmodel`, `?submodels_to_gvar`, `?write_to_hdf5.gvarmodel`,
-`?open_export`. The vignettes (`browseVignettes("bgvars")`) cover a GVAR, a GVEC
+`?read_export`. The vignettes (`browseVignettes("bgvars")`) cover a GVAR, a GVEC
 replicating Dees et al. (2007), and TVP-SV versions of both. The copy of this
 skill matching the installed version is at
 `system.file("agents", package = "bgvars")`.

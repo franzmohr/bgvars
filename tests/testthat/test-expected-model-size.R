@@ -67,7 +67,7 @@ test_that("an export is sized as the model it was written from", {
   dir.create(folder, recursive = TRUE)
   on.exit(unlink(folder, recursive = TRUE), add = TRUE)
   write_to_hdf5(add_initial_values(object), folder = folder, overwrite = TRUE, mc.cores = 1)
-  export <- open_export(folder)
+  export <- read_export(folder)
 
   in_memory <- expected_model_size(object)
   on_disk <- expected_model_size(export)
@@ -83,7 +83,7 @@ test_that("an export is sized as the model it was written from", {
 test_that("a global model too large to draw warns once, not once per model", {
   object <- add_initial_values(size_gvar())
 
-  old <- options(bvartools.size_warning = 1000)
+  old <- options(bayests.size_warning = 1000)
   on.exit(options(old), add = TRUE)
 
   warnings <- character(0)

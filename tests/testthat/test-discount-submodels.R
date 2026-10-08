@@ -91,7 +91,7 @@ test_that("an export of discounted sub-models records what they differ in", {
   on.exit(unlink(folder, recursive = TRUE), add = TRUE)
   write_to_hdf5(object, folder = folder)
 
-  export <- open_export(folder)
+  export <- read_export(folder)
   manifest <- export[["manifest"]]
   expect_equal(nrow(manifest), 12L)
   expect_true(all(c("delta_beta", "delta_sigma") %in% names(manifest)))
@@ -124,7 +124,7 @@ test_that("a closed form cannot be stacked into a global model", {
   write_to_hdf5(object, folder = folder)
 
   # From the manifest, before a file is read.
-  expect_error(submodels_to_gvar(open_export(folder)), "closed-form posterior")
+  expect_error(submodels_to_gvar(read_export(folder)), "closed-form posterior")
 })
 
 

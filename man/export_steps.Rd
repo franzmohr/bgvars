@@ -30,7 +30,7 @@
 }
 \arguments{
 \item{object}{an object of class 'gvarexport', from
-\code{\link{open_export}}.}
+\code{\link{read_export}}.}
 
 \item{...}{further arguments passed to the method for a single model.}
 
@@ -59,7 +59,7 @@ writes it back and drops it, so a step costs one model per worker.
 The methods do what their counterparts for a 'gvarmodel' or a 'gvecmodel' do,
 model by model, and they take the same arguments. Everything that concerns
 the global model as a whole -- the global data, the index and the weight
-matrices -- is written once by \code{\link[bvartools]{write_to_hdf5}} and is
+matrices -- is written once by \code{\link[bayests]{write_to_hdf5}} and is
 not touched again.
 
 \code{scale_error_correction} and \code{rescale_error_correction} carry the
@@ -95,7 +95,7 @@ folder <- file.path(tempdir(), "bgvars-example-steps")
 dir.create(folder, showWarnings = FALSE)
 write_to_hdf5(object, folder = folder, overwrite = TRUE, mc.cores = 1)
 
-export <- open_export(folder)
+export <- read_export(folder)
 export <- add_priors(export, coef = list(v_i = 1),
                      sigma = list(df = 3, scale = 1e-8))
 export <- add_initial_values(export)
@@ -107,7 +107,7 @@ export <- add_posterior_loglik(export)
 \seealso{
 Other export:
 \code{\link[=map_submodels]{map_submodels()}},
-\code{\link[=open_export]{open_export()}},
+\code{\link[=read_export]{read_export()}},
 \code{\link[=submodel_directories]{submodel_directories()}}
 }
 \concept{export}

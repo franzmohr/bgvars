@@ -18,7 +18,7 @@ whose models were estimated with time varying parameters and the prior
 \code{omega_v} of \code{\link[=add_priors.gvarmodel]{add_priors}}.}
 
 \item{...}{further arguments passed to
-\code{\link[bvartools]{time_variation_test}}, among them \code{joint} and
+\code{\link[bayests]{time_variation_test}}, among them \code{joint} and
 \code{batches}.}
 
 \item{submodels}{character vector of the sub-models the test is computed for,
@@ -30,7 +30,7 @@ method of a 'gvarexport'. Defaults to one.}
 }
 \value{
 A list of data frames of class \code{"bvartimevar"}, as described in
-\code{\link[bvartools]{time_variation_test}}, grouped per sub-model for a
+\code{\link[bayests]{time_variation_test}}, grouped per sub-model for a
 global model in memory and named per model for an export.
 }
 \description{
