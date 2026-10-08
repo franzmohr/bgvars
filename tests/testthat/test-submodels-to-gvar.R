@@ -474,3 +474,41 @@ test_that("time varying VECX sub-models are solved from the draws of one period"
   # Another period gives another model.
   expect_false(isTRUE(all.equal(gvec[["g"]], suppressMessages(submodels_to_gvar(object))[["g"]])))
 })
+
+# --- the seed of the solved model ----------------------------------------------
+#
+# Solving draws nothing, but what bvartools simulates from the solved model does,
+# and a VAR with a seed repeats those draws.
+
+test_that("the solved model takes the seed after its sub-models'", {
+  object <- add_posterior_coefficients(add_seed(gvar_estimated(iterations = 20, burnin = 10), 500))
+  seeds <- vapply(object[["submodels"]], function(x) x[[1]][["model"]][["seed"]], integer(1))
+  gvar <- submodels_to_gvar(object)
+  expect_identical(gvar[["model"]][["seed"]], seeds[[length(seeds)]] + 1L)
+  expect_false(gvar[["model"]][["seed"]] %in% seeds)
+})
+
+test_that("two forecasts of a solved model with a seed are identical", {
+  gvar <- submodels_to_gvar(gvar_estimated(iterations = 20, burnin = 10))
+  gvar <- add_forecast_input(gvar, n_ahead = 4, exogen = gvar_future_exogen(gvar, 4))
+  forecast <- function(state) {
+    set.seed(state)
+    add_posterior_forecasts(gvar)[["posterior"]][["forecast"]][["forecasts"]]
+  }
+  expect_identical(forecast(1), forecast(2))
+})
+
+test_that("a solved model has no seed where a sub-model has none", {
+  object <- gvar_estimated(iterations = 20, burnin = 10)
+  object[["submodels"]][[1]][[1]][["model"]][["seed"]] <- NULL
+  gvar <- submodels_to_gvar(object)
+  expect_null(gvar[["model"]][["seed"]])
+
+  gvar <- add_forecast_input(gvar, n_ahead = 4, exogen = gvar_future_exogen(gvar, 4))
+  forecast <- function(state) {
+    set.seed(state)
+    add_posterior_forecasts(gvar)[["posterior"]][["forecast"]][["forecasts"]]
+  }
+  expect_identical(forecast(1), forecast(1))
+  expect_false(identical(forecast(1), forecast(2)))
+})

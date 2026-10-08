@@ -203,6 +203,8 @@ test_that("a global model solved from pieces is the one solved whole", {
                    info = paste(type, chunk))
       expect_identical(pair[["disk"]][["model"]], pair[["memory"]][["model"]],
                        info = paste(type, chunk))
+      # The seed included, which both paths take from the sub-models' seeds.
+      expect_false(is.null(pair[["disk"]][["model"]][["seed"]]), info = paste(type, chunk))
       expect_s3_class(pair[["disk"]], "bvarmodel")
     }
   }
