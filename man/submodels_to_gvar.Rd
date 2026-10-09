@@ -45,6 +45,14 @@ variance decompositions and forecasts. A forecast needs the future path of
 the global variables, which \code{\link[bayests]{add_forecast_input}}
 takes as its \code{exogen} argument; \code{data$original$exogen} of the
 returned object holds the series to continue.
+
+Where every sub-model has a seed, see \code{\link[bayests]{add_seed}}, the
+returned object has one in \code{model$seed}: the seed \code{add_seed()}
+would give a model after the last sub-model. Its forecasts and sign
+restrictions are then drawn with seeds derived from it, as \pkg{bvartools}
+draws those of a VAR, and repeat however R's generator stands. Where a
+sub-model has none, neither has the global model, and they draw from R's
+generator as it stands.
 }
 \description{
 Combines the estimated sub-models of a global model into the solved global

@@ -112,6 +112,14 @@
 #' takes as its \code{exogen} argument; \code{data$original$exogen} of the
 #' returned object holds the series to continue.
 #'
+#' Where every sub-model has a seed, see \code{\link[bayests]{add_seed}}, the
+#' returned object has one in \code{model$seed}: the seed \code{add_seed()}
+#' would give a model after the last sub-model. Its forecasts and sign
+#' restrictions are then drawn with seeds derived from it, as \pkg{bvartools}
+#' draws those of a VAR, and repeat however R's generator stands. Where a
+#' sub-model has none, neither has the global model, and they draw from R's
+#' generator as it stands.
+#'
 #' @examples
 #'
 #' # Load data
@@ -516,6 +524,17 @@ submodels_to_gvar.gvarexport <- function(object, period = NULL, submodels = NULL
   # what the methods of bvartools derive from the draws is labelled alike.
   if (mcpar[3] > 1) {
     model[["thin"]] <- as.integer(mcpar[3])
+  }
+  # A seed, so that what bvartools simulates from the solved model -- its
+  # forecasts, scenarios included, and the rotations of sign restrictions --
+  # repeats, as it does for a VAR with a seed. Solving draws nothing, so the
+  # seed only decides those. It is the seed add_seed() would give the model after
+  # the last sub-model, which keeps the streams it derives apart from those of
+  # every sub-model, and it is left out where a sub-model has none: a model
+  # without a seed draws from R's generator as it stands.
+  seeds <- lapply(object[["submodels"]], function(x) x[[1]][["model"]][["seed"]])
+  if (!any(vapply(seeds, is.null, logical(1)))) {
+    model[["seed"]] <- bayests::.offset_seed(seeds[[length(seeds)]], 1)
   }
   # The name every 'bvartools' method that works on draws dispatches on. It
   # describes the three lines above rather than how any sub-model was
