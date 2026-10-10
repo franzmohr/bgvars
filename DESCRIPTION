@@ -5,7 +5,7 @@ Date: 2026-08-31
 Authors@R: person("Franz X.", "Mohr", email = "franz.x.mohr@outlook.com", role = c("aut","cre","cph"), comment = c(ORCID = "0009-0003-8890-7781"))
 Description: Assists in the set-up and inference of Bayesian global vector autoregressive (BGVAR) and error correction (BGVEC) models.
 License: GPL (>= 3)
-Depends: R (>= 4.4.0), bvartools (>= 1.0.0)
+Depends: R (>= 4.4.0), bvartools (>= 1.0.0.9000)
 Imports:
     bayests,
     coda,
