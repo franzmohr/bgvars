@@ -252,7 +252,7 @@ minnesota_prior.vecxsubmodel <- function(object, kappa1 = 2, kappa2 = .5, kappa3
     v_i <- diag(c(1 / V))
     
     result <- list("mu" = mu,
-                   "v_i" = v_i)
+                   "v_inv" = v_i)
     
     if (!is.null(object[["data"]][["train"]][["x"]])) {
       if (sigma == "AR") {
