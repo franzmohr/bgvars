@@ -119,6 +119,22 @@
     structural = field(specs, "structural", "logical"),
     tvp = field(specs, "tvp", "logical"),
     error = field(specs, "error", "character"),
+    # The pandemic specifications of a sub-model with constant coefficients and
+    # a Wishart prior. A sub-model without them records the values that say so,
+    # rather than NA, so that an export written before they existed and one
+    # written without them read alike: no break is period zero, and normal
+    # errors are FALSE.
+    volatility_break = if (is.null(specs[["volatility_break"]])) {
+      0L
+    } else {
+      field(specs, "volatility_break", "integer")
+    },
+    volatility_scales = if (is.null(specs[["volatility_scales"]])) {
+      0L
+    } else {
+      field(specs, "volatility_scales", "integer")
+    },
+    student_t = isTRUE(specs[["student_t"]]),
     iterations = field(specs, "iterations", "integer"),
     burnin = field(specs, "burnin", "integer"),
     # A model that keeps every draw carries no 'thin', so that is one rather

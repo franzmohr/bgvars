@@ -724,5 +724,14 @@ add_priors.vecxsubmodel <- function(object,
     }
   }
   
+  # The prior of a volatility break, checked by bvartools against this
+  # sub-model as it checks one of its own models: refused where the sub-model
+  # has no break, and required where it has one. student_t_prior() is called
+  # for its refusal alone, as add_priors.bvecmodel() calls it, because an error
+  # correction sub-model is never given Student t errors -- BayesTS has no
+  # sampler for them.
+  object[["priors"]][["volatility"]] <- bvartools::volatility_break_prior(object, sigma)
+  bvartools::student_t_prior(object, sigma)
+
   return(object)
 }

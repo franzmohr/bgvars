@@ -42,6 +42,16 @@
 #' @param tvp logical indicating whether the model parameters are time varying.
 #' @param varsel character specifying the type of variable selection algorithm
 #' that should be employed. Default is \code{"none"}. See 'Details'.
+#' @param volatility_break an optional date of the data, \code{c(year, period)}
+#' such as \code{c(2020, 1)}, from which every shock of the sub-model is scaled
+#' by \eqn{s_t}, the volatility break of Lenza and Primiceri (2022). How large
+#' the break was and how fast it faded are estimated. Available for a sub-model
+#' with constant coefficients and \code{error = "wishart"} only, and refused
+#' elsewhere. The date is a property of the global model rather than of one
+#' country, so \code{\link{add_submodels}} is where it is normally given.
+#' @param volatility_scales a whole number of at least one, how many periods
+#' from \code{volatility_break} on get a scale of their own before the excess
+#' decays (defaults to 3). Used only with \code{volatility_break}.
 #' @param delta_beta,delta_sigma numeric discount factors in \eqn{(0, 1]} of the
 #' discounted model, the first governing the coefficients and the second the
 #' error covariance. Both default to 1, at which the quantity they govern does
@@ -116,12 +126,26 @@ add_submodels.gvecmodel <- function(object,
                                     tvp = FALSE,
                                     varsel = "none",
                                     algorithm = NULL,
+                                    volatility_break = NULL,
+                                    volatility_scales = 3,
+                                    student_t = FALSE,
                                     delta_beta = 1,
                                     delta_sigma = 1,
                                     iterations = 10000,
                                     burnin = 2000,
                                     thin = 1,
                                     ...){
+  # Student t errors are a VAR feature: BayesTS draws the scale of a period in
+  # VarNormalWishart and in no error correction sampler. Asked for here the
+  # argument would otherwise fall into '...' and be dropped, leaving a model
+  # that is not the one the caller asked for and says nothing about it.
+  if (!missing(student_t) && !identical(student_t, FALSE)) {
+    stop("Student t errors are not available for an error correction ",
+         "sub-model: BayesTS draws the scale of each period in the VAR with a ",
+         "Wishart prior alone. Build the global model with ",
+         "create_gvarmodel() to ask for them, or drop 'student_t'.",
+         call. = FALSE)
+  }
   
   submodels <- unique(object[["global"]][["index"]][, "submodel"])
   
@@ -135,6 +159,8 @@ add_submodels.gvecmodel <- function(object,
                                                       structural = structural,
                                                       tvp = tvp, error = error, varsel = varsel,
                                                       algorithm = algorithm,
+                                                      volatility_break = volatility_break,
+                                                      volatility_scales = volatility_scales,
                                                       delta_beta = delta_beta,
                                                       delta_sigma = delta_sigma,
                                                       iterations = iterations, burnin = burnin,

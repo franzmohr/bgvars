@@ -19,6 +19,9 @@
   error = "wishart",
   varsel = "none",
   algorithm = NULL,
+  volatility_break = NULL,
+  volatility_scales = 3,
+  student_t = FALSE,
   delta_beta = 1,
   delta_sigma = 1,
   iterations = 10000,
@@ -74,6 +77,24 @@ that should be employed. Default is \code{"none"}. See 'Details'.}
 \code{NULL} (default), the algorithm is named by \code{tvp} and
 \code{error}. The one non-standard option is \code{"discount"}. See
 \code{\link{create_varxsubmodel}}.}
+
+\item{volatility_break}{an optional date of the data, \code{c(year, period)}
+such as \code{c(2020, 1)}, from which every shock of the sub-model is scaled
+by \eqn{s_t}, the volatility break of Lenza and Primiceri (2022). How large
+the break was and how fast it faded are estimated. Available for a sub-model
+with constant coefficients and \code{error = "wishart"} only, and refused
+elsewhere. The date is a property of the global model rather than of one
+country, so \code{\link{add_submodels}} is where it is normally given.}
+
+\item{volatility_scales}{a whole number of at least one, how many periods
+from \code{volatility_break} on get a scale of their own before the excess
+decays (defaults to 3). Used only with \code{volatility_break}.}
+
+\item{student_t}{logical. If \code{TRUE} the shocks of each period are
+multivariate Student t, \eqn{u_t \sim N(0, \lambda_t \Sigma)}, so a period
+with large shocks counts for less without anyone dating it. Available for a
+sub-model with constant coefficients and \code{error = "wishart"} only, and
+refused elsewhere, which includes every error correction sub-model.}
 
 \item{delta_beta, delta_sigma}{numeric discount factors in \eqn{(0, 1]} of the
 discounted model, the first governing the coefficients and the second the
