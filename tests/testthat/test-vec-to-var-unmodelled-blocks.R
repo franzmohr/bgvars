@@ -64,12 +64,12 @@ test_that("the level representation has the residuals of the error correction fo
 
       if (spec$p_exogen == 1) {
         expect_equal(varx[["model"]][["p_exogen"]], 2L, info = info)
-        expect_true(all(c("y.s.l00", "y.s.l01") %in% colnames(varx[["data"]][["train"]][["x"]])),
+        expect_true(all(c("y.s.l0", "y.s.l1") %in% colnames(varx[["data"]][["train"]][["x"]])),
                     info = info)
       }
       if (identical(spec$s, 1)) {
         expect_equal(varx[["model"]][["s_global"]], 2L, info = info)
-        expect_true(all(c("poil.l00", "poil.l01") %in% colnames(varx[["data"]][["train"]][["x"]])),
+        expect_true(all(c("poil.l0", "poil.l1") %in% colnames(varx[["data"]][["train"]][["x"]])),
                     info = info)
       }
     }

@@ -137,10 +137,27 @@ test_that("the lag orders are those of the VARX model in levels", {
   expect_equal(specs[["p_exogen"]], 3L)
   expect_equal(specs[["s_global"]], 2L)
   expect_equal(dimnames(model[["data"]][["train"]][["x"]])[[2]],
-               c("d.y.01", "d.Dp.01", "d.y.02", "d.Dp.02",
-                 "d.y.s.00", "d.Dp.s.00", "d.y.s.01", "d.Dp.s.01",
-                 "d.poil.00"))
+               c("d.y.l01", "d.Dp.l01", "d.y.l02", "d.Dp.l02",
+                 "d.y.s.l00", "d.Dp.s.l00", "d.y.s.l01", "d.Dp.s.l01",
+                 "d.poil.l00"))
   expect_equal(specs[["m"]], 2L * 2L + 1L)
+})
+
+test_that("regressors are named as in a VEC model of bvartools", {
+  # The difference, the variable, ".l" and the padded lag, as
+  # bvartools::create_bvecmodel() names them. Its s counts the blocks of
+  # differences, p_exogen the lags in levels, so p_exogen = 2 is s = 1.
+  object <- gvec_object()
+  model <- create_vecxsubmodel(object, submodel = "US",
+                               endogen = c("y", "Dp"), p_endogen = 3,
+                               exogen = c("y", "Dp"), p_exogen = 2,
+                               r = 1, iterations = 10, burnin = 10)[[1]]
+  vec <- bvartools::create_bvecmodel(model[["data"]][["original"]][["endogen"]],
+                                     p = 3, exogen = model[["data"]][["original"]][["exogen"]],
+                                     s = 1, r = 1, iterations = 10, burnin = 10)
+
+  expect_identical(dimnames(model[["data"]][["train"]][["x"]])[[2]],
+                   dimnames(vec[["data"]][["train"]][["x"]])[[2]])
 })
 
 test_that("create_vecxsubmodel falls back to all admissible ranks", {
@@ -204,7 +221,7 @@ test_that("the levels of the global variables enter the error correction term", 
   # The non-cointegration term holds differences and the unrestricted constant
   # only. Any level left in there would not be a valid VECX specification.
   x_names <- dimnames(with_global[["data"]][["train"]][["x"]])[[2]]
-  expect_equal(x_names, c("d.y.s.00", "d.Dp.s.00", "d.poil.00", "const"))
+  expect_equal(x_names, c("d.y.s.l00", "d.Dp.s.l00", "d.poil.l00", "const"))
   expect_equal(ncol(with_global[["data"]][["train"]][["w"]]),
                with_global[["model"]][["k_beta"]])
   expect_equal(ncol(with_global[["data"]][["train"]][["z"]]),
@@ -251,12 +268,12 @@ test_that("a lag order of one drops the differences but keeps the levels", {
   expect_equal(dimnames(no_global_diff[["data"]][["train"]][["w"]])[[2]],
                c("l.y", "l.Dp", "l.y.s", "l.Dp.s", "l.poil"))
   expect_equal(dimnames(no_global_diff[["data"]][["train"]][["x"]])[[2]],
-               c("d.y.s.00", "d.Dp.s.00", "const"))
+               c("d.y.s.l00", "d.Dp.s.l00", "const"))
   expect_equal(no_global_diff[["model"]][["m"]], 2L)
 
   no_exogen_diff <- build(p_exogen = 1, global = "poil", s = 2)
   expect_equal(dimnames(no_exogen_diff[["data"]][["train"]][["x"]])[[2]],
-               c("d.poil.00", "const"))
+               c("d.poil.l00", "const"))
   expect_equal(no_exogen_diff[["model"]][["m"]], 1L)
 
   # A model whose only regressor is deterministic still has to come together.
@@ -289,9 +306,9 @@ test_that("a grid over s keeps the regressors of every model distinct", {
   expect_length(models, 3)
   x_names <- lapply(models, function(i) dimnames(i[["data"]][["train"]][["x"]])[[2]])
   expect_equal(x_names,
-               list(c("d.y.s.00", "d.Dp.s.00", "const"),
-                    c("d.y.s.00", "d.Dp.s.00", "d.poil.00", "const"),
-                    c("d.y.s.00", "d.Dp.s.00", "d.poil.00", "d.poil.01", "const")))
+               list(c("d.y.s.l00", "d.Dp.s.l00", "const"),
+                    c("d.y.s.l00", "d.Dp.s.l00", "d.poil.l00", "const"),
+                    c("d.y.s.l00", "d.Dp.s.l00", "d.poil.l00", "d.poil.l01", "const")))
 
   for (i in models) {
     # A column addressed twice is the signature of the 1:0 selection.
@@ -319,7 +336,7 @@ test_that("a sub-model with a global block estimates end to end", {
   # A VECX model regresses on differences, so the global variable enters the
   # non-cointegration term as a difference and the error correction term as a
   # level.
-  expect_true("d.poil.00" %in% dimnames(model[["data"]][["train"]][["x"]])[[2]])
+  expect_true("d.poil.l00" %in% dimnames(model[["data"]][["train"]][["x"]])[[2]])
   expect_true("l.poil" %in% dimnames(model[["data"]][["train"]][["w"]])[[2]])
   # 'p_exogen' and 's_global' are the lag orders of the VARX model in levels, so
   # 'm' counts one block of differences less of each.

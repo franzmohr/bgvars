@@ -501,7 +501,7 @@ TR,rs,1.80,1.57
 
 In a sub-model, the coefficients `a` start with the `k * r` loadings, followed by
 `k` coefficients per column of `data$train$x`. The contemporaneous effect of
-foreign variable `v` is the coefficient on `d.v.s.00` in the equation of `d.v`.
+foreign variable `v` is the coefficient on `d.v.s.l00` in the equation of `d.v`.
 Its standard error is White's, with the small-sample factor T / (T - K).
 
 
@@ -509,12 +509,12 @@ Its standard error is White's, with the small-sample factor T / (T - K).
 counterparts <- function(model) {
   vars <- c("y", "Dp", "q", "rs", "rl")
   vars[paste0("d.", vars) %in% dimnames(model[["data"]][["train"]][["y"]])[[2]] &
-         paste0("d.", vars, ".s.00") %in% dimnames(model[["data"]][["train"]][["x"]])[[2]]]
+         paste0("d.", vars, ".s.l00") %in% dimnames(model[["data"]][["train"]][["x"]])[[2]]]
 }
 
 coef_position <- function(model, variable) {
   k <- model[["model"]][["k"]]
-  j <- match(paste0("d.", variable, ".s.00"), dimnames(model[["data"]][["train"]][["x"]])[[2]])
+  j <- match(paste0("d.", variable, ".s.l00"), dimnames(model[["data"]][["train"]][["x"]])[[2]])
   i <- match(paste0("d.", variable), dimnames(model[["data"]][["train"]][["y"]])[[2]])
   k * model[["model"]][["rank"]] + (j - 1) * k + i
 }
@@ -678,13 +678,13 @@ knitr::kable(effects[effects[["submodel"]] %in% c("US", "EA"), ], digits = 2, ro
 
 |submodel |variable | coef|    t|   ml| t_ml| post_mean|   q05|  q95|
 |:--------|:--------|----:|----:|----:|----:|---------:|-----:|----:|
-|US       |y        | 0.54| 3.12| 0.54| 3.12|      0.57|  0.30| 0.84|
+|US       |y        | 0.54| 3.12| 0.54| 3.12|      0.57|  0.29| 0.84|
 |US       |Dp       | 0.06| 0.87| 0.06| 0.87|      0.09| -0.03| 0.22|
 |EA       |y        | 0.53| 4.03| 0.53| 4.03|      0.51|  0.28| 0.73|
-|EA       |Dp       | 0.25| 3.31| 0.25| 3.31|      0.24|  0.08| 0.41|
-|EA       |q        | 1.15| 8.90| 1.15| 8.90|      1.16|  1.03| 1.30|
+|EA       |Dp       | 0.25| 3.31| 0.25| 3.31|      0.24|  0.07| 0.41|
+|EA       |q        | 1.15| 8.90| 1.15| 8.90|      1.17|  1.03| 1.31|
 |EA       |rs       | 0.09| 3.84| 0.09| 3.84|      0.08|  0.01| 0.15|
-|EA       |rl       | 0.63| 7.86| 0.62| 7.86|      0.63|  0.32| 0.95|
+|EA       |rl       | 0.63| 7.86| 0.62| 7.86|      0.63|  0.32| 0.94|
 
 
 
@@ -692,9 +692,9 @@ Every sub-model has 10000
 draws. For 105
 of the 105 coefficients the value of Table B11 lies inside the 90%
 posterior interval, and the posterior means correlate with the table at
-0.964. The
+0.967. The
 median absolute difference between posterior mean and ML estimate is
-0.042.
+0.045.
 With flat priors on the loadings and the short-run coefficients, their posterior
 given a draw of the cointegration space is centred on the least squares estimate
 for that space, and the ML estimate is that estimate at the ML space. The
@@ -786,9 +786,9 @@ girf_post <- paper_girf(gvar_post, impulse, panels)
 stable <- girf_post[["max_modulus"]] < 1 + 1e-6
 ```
 
-Only 247 of the 1000 draws give a stable global model,
+Only 221 of the 1000 draws give a stable global model,
 and the median of the largest modulus is
-1.025. Like the gap
+1.028. Like the gap
 between posterior and ML estimates, this comes from how weakly the data
 determine the cointegration spaces: a drawn space far from the ML space leaves
 combinations of the variables that are not stationary.
@@ -880,10 +880,10 @@ knitr::kable(section_6[, c("quantity", "paper", "ml", "posterior")], digits = 2,
 
 |quantity                                   |paper      |    ml| posterior|
 |:------------------------------------------|:----------|-----:|---------:|
-|US equity shock: US equity prices, impact  |-4 to -5   | -5.65|     -5.97|
+|US equity shock: US equity prices, impact  |-4 to -5   | -5.65|     -5.98|
 |US equity shock: US output, impact         |about -0.1 | -0.10|     -0.11|
 |US equity shock: US output, quarters 1-4   |-0.4       | -0.54|     -0.56|
-|US equity shock: US output, quarters 5-8   |-0.5       | -0.67|     -0.65|
+|US equity shock: US output, quarters 5-8   |-0.5       | -0.67|     -0.64|
 |US equity shock: EA equity prices, impact  |about -4.0 | -5.04|     -5.31|
 |Oil shock: oil price, impact               |10 to 11   | 12.48|     13.28|
 |US short rate shock: US short rate, impact |0.2        |  0.19|      0.21|
