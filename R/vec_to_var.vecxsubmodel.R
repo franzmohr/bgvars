@@ -238,25 +238,18 @@ vec_to_var.vecxsubmodel <- function(object, ...) {
   top_global <- max(q_global, 1L)
 
   # Names follow the convention of an estimated VARX sub-model.
-  lag_label <- function(lags, max_lag) {
-    width <- max(2, nchar(max(max_lag, 1)))
-    formatC(lags, width = width, flag = "0")
-  }
-
   x <- do.call(cbind, c(lags_endogen, lags_exogen, lags_global))
-  x_names <- c(paste0(rep(specification[["endogen"]], times = p), ".",
-                      rep(lag_label(1:p, p), each = k)))
+  x_names <- c(paste0(rep(specification[["endogen"]], times = p), ".l",
+                      rep(1:p, each = k)))
   if (m_exogen > 0) {
     x_names <- c(x_names,
                  paste0(rep(specification[["exogen"]], times = top_exogen + 1),
-                        ".l", rep(lag_label(0:top_exogen, top_exogen + 1),
-                                  each = m_exogen)))
+                        ".l", rep(0:top_exogen, each = m_exogen)))
   }
   if (m_global > 0) {
     x_names <- c(x_names,
                  paste0(rep(specification[["global"]], times = top_global + 1),
-                        ".l", rep(lag_label(0:top_global, top_global + 1),
-                                  each = m_global)))
+                        ".l", rep(0:top_global, each = m_global)))
   }
   if (!is.null(det_data)) {
     x <- cbind(x, det_data)

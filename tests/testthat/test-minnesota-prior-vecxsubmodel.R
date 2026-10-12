@@ -27,7 +27,7 @@ test_that("the Minnesota prior of a VECX sub-model reaches the sampler, block by
   # Residual standard deviation of each variable from a regression on its own
   # lagged level, its own lagged difference and every deterministic term.
   s_endo <- vapply(1:k, function(i) {
-    X <- cbind(w[, paste0("l.", vars[i])], x[, paste0("d.", vars[i], ".01")],
+    X <- cbind(w[, paste0("l.", vars[i])], x[, paste0("d.", vars[i], ".l01")],
                w[, "trend"], x[, "const"])
     e <- qr.resid(qr(X), y[, i])
     sqrt(sum(e^2) / (nrow(X) - ncol(X)))
@@ -49,12 +49,12 @@ test_that("the Minnesota prior of a VECX sub-model reaches the sampler, block by
       } else {
         kappa$kappa1 * kappa$kappa2 * s_endo[l]^2 / s_endo[j]^2
       }
-      expect_equal(cell(l, paste0("d.", vars[j], ".01")), unname(expected))
+      expect_equal(cell(l, paste0("d.", vars[j], ".l01")), unname(expected))
     }
     for (v_name in c("d.y.s", "d.Dp.s", "d.poil")) {
-      base <- unname(kappa$kappa1 * kappa$kappa3 * s_endo[l]^2 / s_x(paste0(v_name, ".00"))^2)
-      expect_equal(cell(l, paste0(v_name, ".00")), base, info = v_name)
-      expect_equal(cell(l, paste0(v_name, ".01")), base / 4, info = v_name)
+      base <- unname(kappa$kappa1 * kappa$kappa3 * s_endo[l]^2 / s_x(paste0(v_name, ".l00"))^2)
+      expect_equal(cell(l, paste0(v_name, ".l00")), base, info = v_name)
+      expect_equal(cell(l, paste0(v_name, ".l01")), base / 4, info = v_name)
     }
     expect_equal(cell(l, "const"), unname(kappa$kappa1 * kappa$kappa4 * s_endo[l]^2))
   }

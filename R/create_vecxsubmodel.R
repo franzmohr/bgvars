@@ -418,7 +418,7 @@ create_vecxsubmodel <- function(object,
       } else {
         i_temp <- paste0(c(rep(0, 2 - nchar(i)), i), collapse = "")
       }
-      temp_name <- c(temp_name, paste0("d.",vars_endogen, ".", i_temp))
+      temp_name <- c(temp_name, paste0("d.", vars_endogen, ".l", i_temp))
     }
   }
   
@@ -441,7 +441,7 @@ create_vecxsubmodel <- function(object,
       i_temp <- rep(0, 2)
     }
     i_temp <- paste0(i_temp, collapse = "")
-    temp_name <- c(temp_name, paste0("d.", vars_exogen, ".", i_temp))
+    temp_name <- c(temp_name, paste0("d.", vars_exogen, ".l", i_temp))
   }
   if (d_exogen_max > 1) {
     for (i in 1:(d_exogen_max - 1)) {
@@ -451,7 +451,7 @@ create_vecxsubmodel <- function(object,
       } else {
         i_temp <- paste0(c(rep(0, 2 - nchar(i)), i), collapse = "")
       }
-      temp_name <- c(temp_name, paste0("d.", vars_exogen, ".", i_temp))
+      temp_name <- c(temp_name, paste0("d.", vars_exogen, ".l", i_temp))
     } 
   }
   
@@ -469,7 +469,7 @@ create_vecxsubmodel <- function(object,
         i_temp <- rep(0, 2)
       }
       i_temp <- paste0(i_temp, collapse = "")
-      temp_name <- c(temp_name, paste0("d.", vars_global, ".", i_temp))
+      temp_name <- c(temp_name, paste0("d.", vars_global, ".l", i_temp))
     }
     if (d_global_max > 1) {
       for (i in 1:(d_global_max - 1)) {
@@ -479,7 +479,7 @@ create_vecxsubmodel <- function(object,
         } else {
           i_temp <- paste0(c(rep(0, 2 - nchar(i)), i), collapse = "")
         }
-        temp_name <- c(temp_name, paste0("d.", vars_global, ".", i_temp))
+        temp_name <- c(temp_name, paste0("d.", vars_global, ".l", i_temp))
       } 
     }
   } else {

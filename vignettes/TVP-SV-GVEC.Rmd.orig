@@ -264,10 +264,10 @@ sapply(object[["submodels"]], function(x) {drift(x[[1]])})
 ```
 
 Every block moves. The short-run coefficients that stay in the model drift by a
-median of 0.06 (US) to 0.15 (AT) posterior standard deviations over the sample,
+median of 0.04 (US) to 0.15 (AT) posterior standard deviations over the sample,
 and the largest of them by 0.55 in Austria and by close to three in Germany and
 the United States. The loadings and the constant, on their much smaller rates,
-move by fractions of a standard deviation, the US constant by almost two. With
+move by fractions of a standard deviation, the US constant by more than two. With
 one rate of 1e-12 for all coefficients, small enough for the loadings, the
 short-run medians round to 0.00 in all three sub-models.
 
@@ -408,7 +408,7 @@ ls_residuals <- function(regressors) {
   as.numeric(y[, 1] - d %*% (solve(crossprod(d)) %*% crossprod(d, y[, 1])))
 }
 
-foreign <- endsWith(dimnames(x)[[2]], ".s.00")
+foreign <- endsWith(dimnames(x)[[2]], ".s.l00")
 quarter <- which(stats::time(y) == 2020.25)
 
 data.frame(residual_2020Q2 = c(ls_residuals(x)[quarter],
@@ -589,7 +589,7 @@ choose_best_model(sc_at, criterion = "LPL")
 ```
 
 Model 1 is the sub-model of rank zero and model 2 the one of rank one. Over
-eight quarters their log predictive likelihoods differ by 0.9, far inside bands
+eight quarters their log predictive likelihoods differ by 0.7, far inside bands
 about 17 wide, so these windows do not tell the two ranks apart.
 
 Each window is a full estimation, so the exercise costs one estimation per rank

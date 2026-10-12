@@ -429,19 +429,19 @@ TR,rs,1.80,1.57
 
 In a sub-model, the coefficients `a` start with the `k * r` loadings, followed by
 `k` coefficients per column of `data$train$x`. The contemporaneous effect of
-foreign variable `v` is the coefficient on `d.v.s.00` in the equation of `d.v`.
+foreign variable `v` is the coefficient on `d.v.s.l00` in the equation of `d.v`.
 Its standard error is White's, with the small-sample factor T / (T - K).
 
 ```{r ml-effects, eval = TRUE}
 counterparts <- function(model) {
   vars <- c("y", "Dp", "q", "rs", "rl")
   vars[paste0("d.", vars) %in% dimnames(model[["data"]][["train"]][["y"]])[[2]] &
-         paste0("d.", vars, ".s.00") %in% dimnames(model[["data"]][["train"]][["x"]])[[2]]]
+         paste0("d.", vars, ".s.l00") %in% dimnames(model[["data"]][["train"]][["x"]])[[2]]]
 }
 
 coef_position <- function(model, variable) {
   k <- model[["model"]][["k"]]
-  j <- match(paste0("d.", variable, ".s.00"), dimnames(model[["data"]][["train"]][["x"]])[[2]])
+  j <- match(paste0("d.", variable, ".s.l00"), dimnames(model[["data"]][["train"]][["x"]])[[2]])
   i <- match(paste0("d.", variable), dimnames(model[["data"]][["train"]][["y"]])[[2]])
   k * model[["model"]][["rank"]] + (j - 1) * k + i
 }
