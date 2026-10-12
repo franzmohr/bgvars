@@ -914,8 +914,17 @@ submodels_to_gvar.gvarexport <- function(object, period = NULL, submodels = NULL
   a <- model[["posterior"]][["a"]][["coeffs"]]
   u_sigma_inv <- model[["posterior"]][["u_sigma_inv"]][["coeffs"]]
   sv <- ncol(u_sigma_inv) == tt * kk && tt > 1
+  # A constant coefficient Wishart sub-model whose errors are scaled -- by the
+  # volatility break of Lenza and Primiceri (2022), by Student t, or by both --
+  # has one covariance and a scale per period, so the date decides which
+  # covariance the global model is solved from just as it does under
+  # stochastic volatility. Without this it would be solved from the unscaled
+  # one whatever 'period' said, which is a different model from the one the
+  # date asks for and says nothing about itself.
+  scaled <- !is.null(model[["model"]][["volatility_break"]]) ||
+    isTRUE(model[["model"]][["student_t"]])
 
-  if (!tvp && !sv) {
+  if (!tvp && !sv && !scaled) {
     return(model)
   }
 
@@ -960,7 +969,72 @@ submodels_to_gvar.gvarexport <- function(object, period = NULL, submodels = NULL
     model[["model"]][["error"]] <- sub("sv", "gamma", model[["model"]][["error"]], fixed = TRUE)
   }
 
+  if (scaled) {
+    # The error covariance of the period is s_t^2 Sigma under a break and
+    # lambda_t Sigma under Student t, so the precision the stacking reads is
+    # divided by the same. Afterwards the sub-model carries neither, because
+    # its covariance already is the one of that date: a second application
+    # would scale it twice.
+    factor <- .error_scale_at(model, pos)
+    sigma_inv <- model[["posterior"]][["u_sigma_inv"]][["coeffs"]]
+    model[["posterior"]][["u_sigma_inv"]] <- list(
+      "coeffs" = keep_labels(sigma_inv / factor, sigma_inv))
+    model[["posterior"]][["volatility"]] <- NULL
+    model[["posterior"]][["student_t"]] <- NULL
+    model[["model"]][["volatility_break"]] <- NULL
+    model[["model"]][["volatility_scales"]] <- NULL
+    model[["model"]][["student_t"]] <- NULL
+  }
+
   return(model)
+}
+
+# The factor the error covariance of period 'pos' is scaled by, one per draw.
+#
+# A volatility break gives every shock from its period on a common scale: the
+# first 'volatility_scales' periods have a free scale of their own, and the
+# excess over one decays at 'rho' from there, which is the path of Lenza and
+# Primiceri (2022) and what BayesTS draws. Student t errors give each period
+# its own lambda. The two multiply, and the covariance is scaled by the square
+# of neither: s_t^2 is already the scale of the covariance, as lambda_t is.
+.error_scale_at <- function(model, pos) {
+
+  draws <- nrow(model[["posterior"]][["u_sigma_inv"]][["coeffs"]])
+  factor <- rep(1, draws)
+
+  first <- model[["model"]][["volatility_break"]]
+  if (!is.null(first)) {
+    theta <- model[["posterior"]][["volatility"]][["coeffs"]]
+    if (is.null(theta)) {
+      stop("Sub-model has a volatility break but no draws of it, so the error ",
+           "covariance of a period cannot be formed. Estimate it before ",
+           "solving the global model.")
+    }
+    m <- as.integer(model[["model"]][["volatility_scales"]])
+    j <- pos - as.integer(first)
+    s <- if (j < 0) {
+      rep(1, draws)
+    } else if (j < m) {
+      theta[, j + 1L]
+    } else {
+      last <- theta[, m]
+      rho <- theta[, m + 1L]
+      1 + (last - 1) * rho^(j - m + 1L)
+    }
+    factor <- factor * s^2
+  }
+
+  if (isTRUE(model[["model"]][["student_t"]])) {
+    lambda <- model[["posterior"]][["student_t"]][["lambda"]]
+    if (is.null(lambda)) {
+      stop("Sub-model has Student t errors but no draws of lambda, so the ",
+           "error covariance of a period cannot be formed. Estimate it before ",
+           "solving the global model.")
+    }
+    factor <- factor * lambda[, pos]
+  }
+
+  as.numeric(factor)
 }
 
 # The cointegrating vectors of the sub-models, in the coordinates of the global

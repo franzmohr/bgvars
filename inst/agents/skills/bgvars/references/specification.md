@@ -199,6 +199,29 @@ TVP-SV vignettes).
 `minnesota_prior()` and `inclusion_prior()` have methods for single sub-models
 when the prior should be inspected before it is used.
 
+## The pandemic
+
+Two ways to keep 2020 from setting the coefficients, both of the constant
+coefficient Wishart samplers and refused for everything else:
+
+| argument | where | what it does |
+| --- | --- | --- |
+| `volatility_break = c(2020, 2)` | `add_submodels()`, either form | scales every shock from that quarter on by `s_t`, the break of Lenza and Primiceri (2022). `volatility_scales` (3) periods get a free scale, then the excess decays. Prior `sigma$volatility = list(shape = 1, rho_shape1 = 3.04, rho_shape2 = 1.51)` |
+| `student_t = TRUE` | `add_submodels()` of a **GVAR** only | each period's shocks are `N(0, lambda_t Sigma)`, so an outlier counts for less without anyone dating it. Prior `sigma$student_t = list(df = 5)`, or `list(shape = 2, rate = 0.1)` to draw them |
+
+The break is a property of the global model rather than of one country -- a
+date given to `add_submodels()` reaches every sub-model, as the deterministic
+terms do -- and it is placed in each sub-model's own estimation sample, which
+starts a lag after the data.
+
+**The date a global model is solved at decides which error covariance it is
+solved from.** `submodels_to_gvar(period = )` already chose the period of a
+stochastic volatility sub-model; a scaled covariance follows the same rule, so
+a period before the break gives the covariance that was drawn and one at the
+break gives `s_t^2` times it. Solve before the break for responses under
+normal volatility. The solved sub-model then carries no break, because its
+covariance already is the one of that date.
+
 ## What is refused, and why
 
 - **SSVS on a VECX sub-model** — not implemented for error correction

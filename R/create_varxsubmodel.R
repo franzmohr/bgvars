@@ -38,6 +38,21 @@
 #' \code{NULL} (default), the algorithm is named by \code{tvp} and
 #' \code{error}. The one non-standard option is \code{"discount"}. See
 #' 'Details'.
+#' @param volatility_break an optional date of the data, \code{c(year, period)}
+#' such as \code{c(2020, 1)}, from which every shock of the sub-model is scaled
+#' by \eqn{s_t}, the volatility break of Lenza and Primiceri (2022). How large
+#' the break was and how fast it faded are estimated. Available for a sub-model
+#' with constant coefficients and \code{error = "wishart"} only, and refused
+#' elsewhere. The date is a property of the global model rather than of one
+#' country, so \code{\link{add_submodels}} is where it is normally given.
+#' @param volatility_scales a whole number of at least one, how many periods
+#' from \code{volatility_break} on get a scale of their own before the excess
+#' decays (defaults to 3). Used only with \code{volatility_break}.
+#' @param student_t logical. If \code{TRUE} the shocks of each period are
+#' multivariate Student t, \eqn{u_t \sim N(0, \lambda_t \Sigma)}, so a period
+#' with large shocks counts for less without anyone dating it. Available for a
+#' sub-model with constant coefficients and \code{error = "wishart"} only, and
+#' refused elsewhere, which includes every error correction sub-model.
 #' @param delta_beta,delta_sigma numeric discount factors in \eqn{(0, 1]} of the
 #' discounted model, the first governing the coefficients and the second the
 #' error covariance. Both default to 1, at which the quantity they govern does
@@ -151,6 +166,9 @@ create_varxsubmodel <- function(object,
                                 error = "wishart",
                                 varsel = "none",
                                 algorithm = NULL,
+                                volatility_break = NULL,
+                                volatility_scales = 3,
+                                student_t = FALSE,
                                 delta_beta = 1,
                                 delta_sigma = 1,
                                 iterations = 10000,
@@ -474,6 +492,16 @@ create_varxsubmodel <- function(object,
   # Endogenous variables y
   y <- stats::ts(as.matrix(temp[, 1:n_endogen]), class = c("mts", "ts", "matrix"))
   stats::tsp(y) <- stats::tsp(temp)
+
+  # The volatility break of Lenza and Primiceri (2022) and the Student t errors
+  # of a VARX sub-model, both checked by bvartools where its own models check
+  # them. Every candidate is estimated on the same sample, so the period the
+  # break falls on is resolved once here and carried by all of them.
+  model <- c(model, bvartools::check_volatility_break(volatility_break,
+                                                      volatility_scales, y, algo))
+  if (.check_student_t(student_t, algo)) {
+    model[["student_t"]] <- TRUE
+  }
   dimnames(y)[[2]] <- temp_name[1:n_endogen]
   
   # Structural data
@@ -580,4 +608,25 @@ create_varxsubmodel <- function(object,
   class(result) <- c("modellist", "list")
   
   return(result)
+}
+
+# Student t errors, as create_bvarmodel() validates them: a single TRUE or
+# FALSE, and available for the constant coefficient VAR with a Wishart prior
+# alone, which is the one sampler that draws the scale of each period. A VECX
+# sub-model never reaches this, because create_vecxsubmodel() does not offer
+# the argument: BayesTS has no Student t VEC to estimate.
+.check_student_t <- function(student_t, algorithm) {
+  if (!is.logical(student_t) || length(student_t) != 1 || is.na(student_t)) {
+    stop("Argument 'student_t' must be TRUE or FALSE.", call. = FALSE)
+  }
+  if (!student_t) {
+    return(FALSE)
+  }
+  if (!identical(algorithm, "VarNormalWishart")) {
+    stop("Student t errors are available for a sub-model with constant ",
+         "coefficients and error = \"wishart\", whose sampler draws the scale ",
+         "of every period; this sub-model would be estimated with ", algorithm,
+         ".", call. = FALSE)
+  }
+  TRUE
 }

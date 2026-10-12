@@ -659,5 +659,11 @@ add_priors.varxsubmodel <- function(object,
     } 
   }
   
+  # The priors of a volatility break and of Student t errors, checked by
+  # bvartools against this sub-model as they are checked against one of its own
+  # models: refused where the sub-model has neither, required where it has one.
+  object[["priors"]][["volatility"]] <- bvartools::volatility_break_prior(object, sigma)
+  object[["priors"]][["student_t"]] <- bvartools::student_t_prior(object, sigma)
+
   return(object)
 }
