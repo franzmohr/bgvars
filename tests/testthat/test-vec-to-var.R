@@ -14,6 +14,11 @@ test_that("vec_to_var rewrites a VECX sub-model as a VARX sub-model", {
   expect_equal(model[["model"]][["type"]], "VARX")
   expect_equal(model[["model"]][["endogen"]], c("y", "Dp"))
   expect_equal(model[["model"]][["exogen"]], c("y.s", "Dp.s"))
+  # Its regressors are named as those of an estimated VARX sub-model, which
+  # are the labels of summary().
+  x_names <- dimnames(model[["data"]][["train"]][["x"]])[[2]]
+  expect_identical(x_names, bvartools:::.get_regressor_names_bvarmodel(model))
+  expect_true(all(c("y.l1", "Dp.l1", "y.s.l0") %in% x_names))
 })
 
 test_that("the converted sub-model describes its own coefficients", {

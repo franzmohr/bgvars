@@ -335,6 +335,9 @@ create_varxsubmodel <- function(object,
   }
   
   
+  # The columns are named as bvartools' create_bvarmodel() names them and its
+  # summary() labels the coefficients, by the name of the variable and ".l"
+  # with its lag: "y.l1" and "y.s.l0".
   p_endogen_max <- max(p_endogen)
   temp <- endogen
   temp_name <- vars_endogen
@@ -342,12 +345,7 @@ create_varxsubmodel <- function(object,
     # Obtain lags of endogenous variables
     for (i in 1:p_endogen_max) {
       temp <- cbind(temp, stats::lag(endogen, -i))
-      if (nchar(p_endogen_max) > 2) {
-        i_temp <- paste0(c(rep(0, nchar(p_endogen_max) - nchar(i)), i), collapse = "")
-      } else {
-        i_temp <- paste0(c(rep(0, 2 - nchar(i)), i), collapse = "")
-      }
-      temp_name <- c(temp_name, paste0(vars_endogen, ".", i_temp))
+      temp_name <- c(temp_name, paste0(vars_endogen, ".l", i))
     }
   }
   
@@ -359,23 +357,12 @@ create_varxsubmodel <- function(object,
   p_exogen_max <- max(p_exogen)
   if (p_exogen_max > 0) {
     temp <- cbind(temp, exogen)
-    if (nchar(p_exogen_max) > 2) {
-      i_temp <- rep(0, nchar(p_exogen_max))
-    } else {
-      i_temp <- rep(0, 2)
-    }
-    i_temp <- paste0(i_temp, collapse = "")
-    temp_name <- c(temp_name, paste0(vars_exogen, ".l", i_temp))
+    temp_name <- c(temp_name, paste0(vars_exogen, ".l0"))
   }
   if (p_exogen_max > 1) {
     for (i in 1:(p_exogen_max - 1)) {
       temp <- cbind(temp, stats::lag(exogen, -i))
-      if (nchar(p_exogen_max) > 2) {
-        i_temp <- paste0(c(rep(0, nchar(p_exogen_max) - nchar(i)), i), collapse = "")
-      } else {
-        i_temp <- paste0(c(rep(0, 2 - nchar(i)), i), collapse = "")
-      }
-      temp_name <- c(temp_name, paste0(vars_exogen, ".l", i_temp))
+      temp_name <- c(temp_name, paste0(vars_exogen, ".l", i))
     } 
   }
   
@@ -385,23 +372,12 @@ create_varxsubmodel <- function(object,
     s_max <- max(s)
     if (s_max > 0) {
       temp <- cbind(temp, global)
-      if (nchar(s_max) > 2) {
-        i_temp <- rep(0, nchar(s_max))
-      } else {
-        i_temp <- rep(0, 2)
-      }
-      i_temp <- paste0(i_temp, collapse = "")
-      temp_name <- c(temp_name, paste0(vars_global, ".l", i_temp))
+      temp_name <- c(temp_name, paste0(vars_global, ".l0"))
     }
     if (s_max > 1) {
       for (i in 1:(s_max - 1)) {
         temp <- cbind(temp, stats::lag(global, -i))
-        if (nchar(s_max) > 2) {
-          i_temp <- paste0(c(rep(0, nchar(s_max) - nchar(i)), i), collapse = "")
-        } else {
-          i_temp <- paste0(c(rep(0, 2 - nchar(i)), i), collapse = "")
-        }
-        temp_name <- c(temp_name, paste0(vars_global, ".l", i_temp))
+        temp_name <- c(temp_name, paste0(vars_global, ".l", i))
       } 
     }
   } else {

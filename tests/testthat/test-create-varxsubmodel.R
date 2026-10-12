@@ -82,6 +82,22 @@ test_that("data matrices are consistent with the model specification", {
   expect_equal(nrow(y), nrow(object[["global"]][["endogen"]]) - 1L)
 })
 
+test_that("regressors are named as summary() labels them", {
+  # As in bvartools' create_bvarmodel(): the variable, ".l" and the lag,
+  # without padding it.
+  model <- create_varxsubmodel(gvar_object(), submodel = "US",
+                               endogen = c("y", "Dp"), p_endogen = 1,
+                               exogen = c("y", "Dp"), p_exogen = 2,
+                               global = "poil", s = 1,
+                               deterministic = "const",
+                               iterations = 10, burnin = 10)[[1]]
+  x_names <- dimnames(model[["data"]][["train"]][["x"]])[[2]]
+
+  expect_identical(x_names, c("y.l1", "Dp.l1", "y.s.l0", "Dp.s.l0",
+                              "y.s.l1", "Dp.s.l1", "poil.l0", "const"))
+  expect_identical(x_names, bvartools:::.get_regressor_names_bvarmodel(model))
+})
+
 test_that("the endogenous variables are the own series of the sub-model", {
   object <- gvar_object()
   model <- create_varxsubmodel(object, submodel = "JP",
