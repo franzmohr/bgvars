@@ -104,6 +104,12 @@ country, so \code{\link{add_submodels}} is where it is normally given.}
 from \code{volatility_break} on get a scale of their own before the excess
 decays (defaults to 3). Used only with \code{volatility_break}.}
 
+\item{student_t}{logical. Not available for an error correction sub-model,
+and refused rather than ignored: the scale of a period is drawn by
+VarNormalWishart and by no error correction sampler. Use
+\code{\link{create_gvarmodel}} for a global model in first differences, or
+\code{volatility_break} to date the periods whose shocks are large.}
+
 \item{delta_beta, delta_sigma}{numeric discount factors in \eqn{(0, 1]} of the
 discounted model, the first governing the coefficients and the second the
 error covariance. Both default to 1, at which the quantity they govern does
